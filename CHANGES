@@ -1,0 +1,9 @@
+Move Makefile to Makefile.orig
+Rename Makefile.epics to Makefile.
+git clone https://github.com/Beckhoff/ADS.git ADS
+Move configure/RELEASE to configure/RELEASE.orig.
+Edit configure/RELEASE to pull in $(TOP)/RELEASE_SITE and use our asyn module.
+
+Changes from SVN to git:
+Removed $(TOP)/RELEASE_SITE as that is now created by epics-update -r.
+
