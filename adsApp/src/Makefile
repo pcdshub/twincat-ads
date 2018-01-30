@@ -29,11 +29,11 @@ ads_DBD += asyn.dbd
 ads_DBD += drvAsynIPPort.dbd
 
 # Add all the support libraries needed by this IOC
-ads_LIBS += asyn
 ifdef AXIS
 ads_LIBS += axis
 ads_LIBS += EthercatMCSupport
 endif
+ads_LIBS += asyn
 #ads_LIBS += AdsLib-Linux.o
 
 # ads_registerRecordDeviceDriver.cpp derives from ads.dbd
