@@ -12,8 +12,10 @@ USR_CPPFLAGS += -I ../../../ADS/AdsLib/
 # Build the IOC application
 
 PROD_IOC = ads
+LIBRARY_IOC = tcads
+
 # ads.dbd will be created and installed
-DBD += ads.dbd
+DBD += ads.dbd adsController.dbd
 
 # ads.dbd will be made up from these files:
 ads_DBD += base.dbd
@@ -50,12 +52,12 @@ ADSSOURCES = \
   Frame.cpp \
 
 
-ads_SRCS += ads_registerRecordDeviceDriver.cpp
-ads_SRCS += adsCom.cpp 
-ads_SRCS += drvAsynAdsPort.cpp
-ads_SRCS += cmd.c
-ads_SRCS += cmd_EAT.c
-ads_SRCS += ${ADSSOURCES}
+tcads_SRCS += ads_registerRecordDeviceDriver.cpp
+tcads_SRCS += adsCom.cpp 
+tcads_SRCS += drvAsynAdsPort.cpp
+tcads_SRCS += cmd.c
+tcads_SRCS += cmd_EAT.c
+tcads_SRCS += ${ADSSOURCES}
 
 
 # Build the main IOC entry point on workstation OSs.
@@ -66,7 +68,7 @@ ads_SRCS_vxWorks += -nil-
 #ads_OBJS_vxWorks += $(EPICS_BASE_BIN)/vxComLibrary
 
 # Finally link to the EPICS Base libraries
-ads_LIBS += $(EPICS_BASE_IOC_LIBS)
+ads_LIBS += $(EPICS_BASE_IOC_LIBS) tcads
 
 #===========================
 
