@@ -23,8 +23,8 @@ adsExApp_SRCS += adsExApp_registerRecordDeviceDriver.cpp
 adsExApp_SRCS_DEFAULT += adsMain.cpp
 adsExApp_SRCS_vxWorks += -nil-
 
-adsExApp_LIBS += asyn
 adsExApp_LIBS += ads
+adsExApp_LIBS += asyn
 # Finally link to the EPICS Base libraries
 adsExApp_LIBS += $(EPICS_BASE_IOC_LIBS)
 

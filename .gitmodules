@@ -1,7 +1,7 @@
 [submodule "ADS"]
 	path = ADS
-	url = https://github.com/Beckhoff/ADS.git
-	branch = 7df1d60f8bf088a2be718323d27aa2156f7d7b0f
+	url = /afs/slac.stanford.edu/g/cd/swe/git/repos/package/epics/modules/ADS.git
+	branch = github-master
 [submodule "TwinCATexample"]
 	path = TwinCATexample
 	url = https://torstenbogershausen@bitbucket.org/europeanspallationsource/tc_ads_example.git

@@ -1,0 +1,42 @@
+# RELEASE.local
+#
+# Read definitions of:
+#	EPICS_SITE_TOP
+#	BASE_MODULE_VERSION
+#	EPICS_MODULES 
+# from one of the following options
+-include $(TOP)/../../RELEASE_SITE
+-include $(TOP)/RELEASE_SITE
+
+# Check that EPICS_MODULES was defined in a RELEASE_SITE file
+-include $(TOP)/../../RELEASE_SITE.check
+
+# ===============================================================
+# Define the version of modules needed by
+# IOC apps or other Support apps
+# ===============================================================
+ASYN_MODULE_VERSION = R4.31-1.0.0
+#AXIS_MODULE_VERSION = R0.0.1
+
+# ==========================================================
+# External Support module path definitions
+#
+# If any of these macros expand to a path which
+# contains an "include" directory, that directory will be
+# included in the compiler include path.
+#
+# If any of these macros expand to a path which
+# contains a "lib/<arch>" directory, that directory will be
+# included in the compiler link path for that architecture.
+#
+# If your build fails, look for these paths in your build output
+# ==========================================================
+ASYN     = $(EPICS_MODULES)/asyn/$(ASYN_MODULE_VERSION)
+#AXIS     = $(EPICS_MODULES)/axis/$(AXIS_MODULE_VERSION)
+
+# Set EPICS_BASE last so it appears last in the DB, DBD, INCLUDE, and LIB search paths
+EPICS_BASE = $(EPICS_SITE_TOP)/base/$(BASE_MODULE_VERSION)
+
+# Check for invalid or undefined EPICS_BASE
+-include $(TOP)/../../EPICS_BASE.check
+

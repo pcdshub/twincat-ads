@@ -1,0 +1,14 @@
+Remove everything from Makefile so we always use Makefile.epics.
+
+Add configure/RELEASE.local.
+
+Add empty RELEASE_LIBS.local and RELEASE_PATHS.local and remove from .gitignore.
+
+git-clone-github.sh https://github.com/Beckhoff/ADS.git to make a local ADS
+library repository.
+
+Change .gitmodules to use local ADS repository.
+
+adsApp/Db/Makefile needs to remove the moved .db files.
+
+Edit adsApp/src/Makefile to put asyn after ads.
