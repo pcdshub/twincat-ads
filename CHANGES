@@ -12,3 +12,5 @@ Change .gitmodules to use local ADS repository.
 adsApp/Db/Makefile needs to remove the moved .db files.
 
 Edit adsApp/src/Makefile to put asyn after ads.
+
+Add ID and RELEASE_SITE to .gitignore.

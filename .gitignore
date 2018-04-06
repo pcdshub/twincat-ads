@@ -2,6 +2,8 @@
 *~
 *.pyc
 *.bak
+ID
+RELEASE_SITE
 adsApp/Db/O.*
 adsApp/src/O.*
 adsApp/src/Debug
