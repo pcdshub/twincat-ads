@@ -1,0 +1,6 @@
+#
+# SLAC Release notes for twincat-ads EPICS module
+#
+
+R2.0.0-0.0.1:	2018-04-06, mcbrowne
+	Initial release based on ESS v2.0.0 plus SLAC build support
