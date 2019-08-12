@@ -1,6 +1,6 @@
 [submodule "ADS"]
 	path = ADS
-	url = /afs/slac.stanford.edu/g/cd/swe/git/repos/package/epics/modules/ADS.git
+	url = ../ADS.git
 	branch = github-master
 [submodule "TwinCATexample"]
 	path = TwinCATexample
