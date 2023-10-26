@@ -3316,8 +3316,17 @@ asynStatus adsAsynPortDriver::adsConnect()
 
   // open a new ADS port
   adsLock();
-  if (!adsPort_)
-      adsPort_ = AdsPortOpenEx();
+  if (!adsPort_) {
+    if (!strcmp(ipaddr_, "127.0.0.1") || !strcmp(ipaddr_, "localhost")) {
+        asynPrint(pasynUserSelf, ASYN_TRACE_WARNING, "%s:%s:Opening a special ADS port on localhost.\n", driverName, functionName);
+        if (!AdsPortOpenLocalEx(adsPort_)) {
+            asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:Open localhost ADS port failed.\n", driverName, functionName);
+            return asynError;
+        }
+    } else {
+        adsPort_ = AdsPortOpenEx();
+    }
+  }
   adsUnlock();
   if (!adsPort_) {
     asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:Open ADS port failed.\n", driverName, functionName);
