@@ -232,7 +232,7 @@ private:
   int                            defaultMaxDelayTimeMS_;
   int                            adsTimeoutMS_;
   int                            connectedAds_;
-  long                           adsPort_;
+  uint16_t                       adsPort_;
   int                            routeAdded_;
   int                            notConnectedCounter_;
   int                            oneAmsConnectionOKold_;
