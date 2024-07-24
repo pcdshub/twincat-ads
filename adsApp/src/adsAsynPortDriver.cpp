@@ -608,7 +608,7 @@ void adsAsynPortDriver::bulkReadThread()
                     asynPrint(asynTraceUser, ASYN_TRACE_ERROR,
                               "%s:%s: bulk read for %s (%d) failed\n",
                               driverName, functionName, paramInfo->drvInfo, j);
-                    continue;
+                    exit(1);
                 }
                 paramInfo->plcTimeStampRaw=nTimeStamp;
                 paramInfo->lastCallbackSize=paramInfo->plcSize;
