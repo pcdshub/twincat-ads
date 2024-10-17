@@ -643,7 +643,7 @@ void adsAsynPortDriver::report(FILE *fp, int details)
   asynPrint(pasynUserSelf,ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
 
   if(!fp){
-    fprintf(fp,"%s:%s: ERROR: File NULL.\n", driverName, functionName);
+    printf("%s:%s: ERROR: File NULL.\n", driverName, functionName);
     return;
   }
 
@@ -4575,12 +4575,12 @@ extern "C" {
       defaultSampleTimeMS=100;
     }
 
-    if (!maxDelayTimeMS<0) {
+    if (maxDelayTimeMS<0) {
       printf("adsAsynPortDriverConfigure bad maxDelayTimeMS: %dms. Standard value of 500ms will be used.\n",maxDelayTimeMS);
       maxDelayTimeMS=500;
     }
 
-    if (!adsTimeoutMS<0) {
+    if (adsTimeoutMS<0) {
       printf("adsAsynPortDriverConfigure bad adsTimeoutMS: %dms. Standard value of 2000ms will be used.\n",adsTimeoutMS);
       adsTimeoutMS=2000;
     }
