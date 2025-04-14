@@ -132,6 +132,9 @@ static void adsSymbolsChangedCallback(const AmsAddr* pAddr, const AdsNotificatio
  */
 static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* pNotification, uint32_t hUser)
 {
+  if (!allowCallbackEpicsState) {
+    return;
+  }
   const char* functionName = "adsDataCallback";
 
   if(!adsAsynPortObj){
