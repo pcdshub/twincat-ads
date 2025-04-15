@@ -132,6 +132,15 @@ static void adsSymbolsChangedCallback(const AmsAddr* pAddr, const AdsNotificatio
  */
 static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* pNotification, uint32_t hUser)
 {
+  /* We need to skip this when it fires too early.
+  * See https://github.com/pcdshub/twincat-ads/pull/17 for a full explanation
+  * In short: this is run on the io processing loop and it acquires a lock,
+  * so this can break IOC initialization if the lock takes more than 1s to acquire.
+  * We'll catch up later by calling fireAllCallbacksLock once (see getEpicsState).
+  */
+  if (!allowCallbackEpicsState) {
+    return;
+  }
   const char* functionName = "adsDataCallback";
 
   if(!adsAsynPortObj){
