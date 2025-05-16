@@ -1,0 +1,5 @@
+# default group
+* @pcdshub/epics-reviewers 
+
+# github folder holds administrative files
+.github/** @pcdshub/software-admin
