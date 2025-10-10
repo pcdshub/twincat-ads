@@ -132,15 +132,6 @@ static void adsSymbolsChangedCallback(const AmsAddr* pAddr, const AdsNotificatio
  */
 static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* pNotification, uint32_t hUser)
 {
-  /* We need to skip this when it fires too early.
-  * See https://github.com/pcdshub/twincat-ads/pull/17 for a full explanation
-  * In short: this is run on the io processing loop and it acquires a lock,
-  * so this can break IOC initialization if the lock takes more than 1s to acquire.
-  * We'll catch up later by calling fireAllCallbacksLock once (see getEpicsState).
-  */
-  if (!allowCallbackEpicsState) {
-    return;
-  }
   const char* functionName = "adsDataCallback";
 
   if(!adsAsynPortObj){
@@ -186,10 +177,11 @@ static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* p
     return;
   }
 
-  paramInfo->plcTimeStampRaw=pNotification->nTimeStamp;
-  paramInfo->lastCallbackSize=pNotification->cbSampleSize;
-
-  adsAsynPortObj->adsUpdateParameterLock(paramInfo,data);
+  // Copy data into memory here so the ADS Recv queue can deallocate it
+  void* local_data = malloc(pNotification->cbSampleSize);
+  memcpy(local_data, data, pNotification->cbSampleSize);
+  adsAsynPortDriver::datacbinfo cbinfo = {paramInfo, local_data, *pNotification};
+  adsAsynPortObj->datacbqueue.push(cbinfo);
 }
 
 /** Start cyclic thread for supervision of connection.
@@ -211,6 +203,17 @@ void bulkReadThread(void *drvPvt)
   adsAsynPortDriver *pPvt = (adsAsynPortDriver *)drvPvt;
   pPvt->bulkReadThread();
 }
+
+/** Start data callback thread
+ * \param[in] drvPvt adsAsynPortDriver object
+ * \return void
+ */
+void dataCallbackThread(void *drvPvt)
+{
+  adsAsynPortDriver *pPvt = (adsAsynPortDriver *)drvPvt;
+  pPvt->dataCallbackThread();
+}
+
 
 /** Constructor for the adsAsynPortDriver class.
  * \param[in] portName Asyn port name.
@@ -376,6 +379,16 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
                                           epicsThreadPriorityMedium,
                                           epicsThreadGetStackSize(epicsThreadStackMedium),
                                           (EPICSTHREADFUNC)::bulkReadThread,this) == NULL);
+
+  if(status){
+    printf("%s:%s: epicsThreadCreate failure\n", driverName, functionName);
+    return;
+  }
+  //* Create the thread that does the ADS subscription callbacks */
+  status = (asynStatus)(epicsThreadCreate("adsAsynPortDriverDataCallbackThread",
+                                          epicsThreadPriorityMedium,
+                                          epicsThreadGetStackSize(epicsThreadStackMedium),
+                                          (EPICSTHREADFUNC)::dataCallbackThread,this) == NULL);
 
   if(status){
     printf("%s:%s: epicsThreadCreate failure\n", driverName, functionName);
@@ -553,12 +566,17 @@ void adsAsynPortDriver::bulkReadThread()
     long status;
     uint32_t cnt, readSize;
     asynUser *asynTraceUser=getTraceAsynUser();
-
-    gettimeofday(&now, NULL);
+    while (!bulkOK) {
+        usleep(1000000);
+    }
     while (1) {
-        start = now;
+        gettimeofday(&start, NULL);
         adsLock();
         for (int i = 0; bulk[i].cnt; i++) {
+            // Let other threads go, otherwise we can hold the lock for many timeouts
+            adsUnlock();
+            usleep(1);
+            adsLock();
             if (!bulkOK || !bulk[i].cnt) {
                 break;
             }
@@ -632,12 +650,29 @@ void adsAsynPortDriver::bulkReadThread()
 #ifdef MCB_DEBUG
         printf("ELAPSED: %g\n", bulk_elapsed_us / 1000000.0);
 #endif
-        if (bulk_elapsed_us < bulk_delay_us) {
-            usleep(bulk_delay_us - bulk_elapsed_us);
-            gettimeofday(&now, NULL);
-        }
+        // Always sleep at least 1 to let other threads acquire the ads lock
+        usleep(std::max(bulk_delay_us - bulk_elapsed_us, 1));
     }
 }
+
+
+/* Keeps possible slow data callbacks off of the ADS Recv queue*/
+void adsAsynPortDriver::dataCallbackThread()
+{
+    while (1) {
+        if (datacbqueue.empty() || !allowCallbackEpicsState) {
+            usleep(10000);
+            continue;
+        }
+        adsAsynPortDriver::datacbinfo* info = &datacbqueue.front();
+        info->paramInfo->plcTimeStampRaw = info->pNotification.nTimeStamp;
+        info->paramInfo->lastCallbackSize = info->pNotification.cbSampleSize;
+        adsUpdateParameterLock(info->paramInfo, info->data);
+        datacbqueue.pop();
+        free(info->data);
+    }
+}
+
 
 /** Report of configured parameters.
  * \param[in] fp Output file.
