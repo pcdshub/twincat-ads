@@ -140,6 +140,7 @@ static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* p
   }
 
   asynUser *asynTraceUser=adsAsynPortObj->getTraceAsynUser();
+  asynPrint(asynTraceUser,ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
   asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER , "%s:%s:\n", driverName, functionName);
 
   const uint8_t* data = reinterpret_cast<const uint8_t*>(pNotification + 1);
@@ -164,8 +165,12 @@ static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* p
     asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: getAdsParamInfo() for hUser %u failed\n", driverName, functionName,hUser);
     return;
   }
+  if (adsAsynPortObj->datacbqueue.size() > MAXCBQSIZE) {
+    asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: datacbqueue at max size, skip %s (%d)\n", driverName, functionName,paramInfo->drvInfo,paramInfo->paramIndex);
+    return;
+  }
 
-  asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER,"Callback for parameter %s (%d).\n",paramInfo->drvInfo,paramInfo->paramIndex);
+  asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER,"Process callback for parameter %s (%d).\n",paramInfo->drvInfo,paramInfo->paramIndex);
   asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER,"hUser 0x%x, data size[b]: %d.\n", hUser,pNotification->cbSampleSize);
   asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER,"time stamp [100ns]: %ld, since last plc [ms]: %4.2lf, since last ioc [ms]: %4.2lf.\n",
             pNotification->nTimeStamp,((double)(pNotification->nTimeStamp-oldTimeStamp))/10000.0,(((double)(micros_used))/1000.0));
@@ -177,7 +182,8 @@ static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* p
     return;
   }
 
-  // Copy data into memory here so the ADS Recv queue can deallocate it
+  // Copy data into memory here because the data pointer will not stay valid forever
+  // This malloc is freed in dataCallbackThread
   void* local_data = malloc(pNotification->cbSampleSize);
   memcpy(local_data, data, pNotification->cbSampleSize);
   adsAsynPortDriver::datacbinfo cbinfo = {paramInfo, local_data, *pNotification};
@@ -659,16 +665,21 @@ void adsAsynPortDriver::bulkReadThread()
 /* Keeps possible slow data callbacks off of the ADS Recv queue*/
 void adsAsynPortDriver::dataCallbackThread()
 {
+    const char* functionName = "dataCallbackThread";
+    asynPrint(pasynUserSelf,ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
     while (1) {
         if (datacbqueue.empty() || !allowCallbackEpicsState) {
             usleep(10000);
             continue;
         }
         adsAsynPortDriver::datacbinfo* info = &datacbqueue.front();
+        asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER,"%s:%s: Callback queue has %ld elements\n", driverName, functionName, datacbqueue.size());
+        asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER,"%s:%s: Run callback for parameter %s (%d).\n", driverName, functionName, info->paramInfo->drvInfo,info->paramInfo->paramIndex);
         info->paramInfo->plcTimeStampRaw = info->pNotification.nTimeStamp;
         info->paramInfo->lastCallbackSize = info->pNotification.cbSampleSize;
         adsUpdateParameterLock(info->paramInfo, info->data);
         datacbqueue.pop();
+        // This free is for the malloc in adsDataCallback
         free(info->data);
     }
 }

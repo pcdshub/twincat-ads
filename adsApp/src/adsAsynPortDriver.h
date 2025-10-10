@@ -103,6 +103,7 @@ public:
   void dataCallbackThread();
   void poll_info(char *name);
   // data callback thread
+#define MAXCBQSIZE 10000
   struct datacbinfo {
     adsParamInfo*                paramInfo;
     void*                        data;
