@@ -140,7 +140,7 @@ static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* p
   }
 
   asynUser *asynTraceUser=adsAsynPortObj->getTraceAsynUser();
-  asynPrint(asynTraceUser,ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
   asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER , "%s:%s:\n", driverName, functionName);
 
   const uint8_t* data = reinterpret_cast<const uint8_t*>(pNotification + 1);
@@ -165,8 +165,8 @@ static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* p
     asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: getAdsParamInfo() for hUser %u failed\n", driverName, functionName,hUser);
     return;
   }
-  if (adsAsynPortObj->datacbqueue.size() > MAXCBQSIZE) {
-    asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: datacbqueue at max size, skip %s (%d)\n", driverName, functionName,paramInfo->drvInfo,paramInfo->paramIndex);
+  if(adsAsynPortObj->datacbqueue.size() > MAXCBQSIZE){
+    asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: datacbqueue at max size, skip %s (%d)\n", driverName, functionName, paramInfo->drvInfo, paramInfo->paramIndex);
     return;
   }
 
@@ -674,7 +674,7 @@ void adsAsynPortDriver::dataCallbackThread()
         }
         adsAsynPortDriver::datacbinfo* info = &datacbqueue.front();
         asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER,"%s:%s: Callback queue has %ld elements\n", driverName, functionName, datacbqueue.size());
-        asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER,"%s:%s: Run callback for parameter %s (%d).\n", driverName, functionName, info->paramInfo->drvInfo,info->paramInfo->paramIndex);
+        asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER,"%s:%s: Run callback for parameter %s (%d).\n", driverName, functionName, info->paramInfo->drvInfo, info->paramInfo->paramIndex);
         info->paramInfo->plcTimeStampRaw = info->pNotification.nTimeStamp;
         info->paramInfo->lastCallbackSize = info->pNotification.cbSampleSize;
         adsUpdateParameterLock(info->paramInfo, info->data);
