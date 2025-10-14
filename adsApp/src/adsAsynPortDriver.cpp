@@ -677,9 +677,9 @@ void adsAsynPortDriver::dataCallbackThread()
         info->paramInfo->plcTimeStampRaw = info->pNotification.nTimeStamp;
         info->paramInfo->lastCallbackSize = info->pNotification.cbSampleSize;
         adsUpdateParameterLock(info->paramInfo, info->data);
-        datacbqueue.pop();
         // This free is for the malloc in adsDataCallback
         free(info->data);
+        datacbqueue.pop();
     }
 }
 
