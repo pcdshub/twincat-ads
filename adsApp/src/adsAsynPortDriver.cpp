@@ -140,8 +140,7 @@ static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* p
   }
 
   asynUser *asynTraceUser=adsAsynPortObj->getTraceAsynUser();
-  asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
-  asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER , "%s:%s:\n", driverName, functionName);
+  asynPrint(asynTraceUser, ASYN_TRACE_FLOW | ASYN_TRACEIO_DRIVER, "%s:%s:\n", driverName, functionName);
 
   const uint8_t* data = reinterpret_cast<const uint8_t*>(pNotification + 1);
   struct timeval newTime;
