@@ -15,7 +15,7 @@
 # Define the version of modules needed by
 # IOC apps or other Support apps
 # ===============================================================
-ASYN_MODULE_VERSION = R4.39-1.0.2
+ASYN_MODULE_VERSION = R4.42-1.0.0
 #AXIS_MODULE_VERSION = R0.0.1
 
 # ==========================================================

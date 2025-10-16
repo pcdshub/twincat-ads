@@ -10,6 +10,7 @@
 #include <vector>
 #include "adsAsynPortDriverUtils.h"
 #include <mutex>
+#include <queue>
 
 /** Class derived of asynPortDriver for ads communication with TwinCAT plc:s */
 
@@ -99,7 +100,16 @@ public:
 
   void cyclicThread();
   void bulkReadThread();
+  void dataCallbackThread();
   void poll_info(char *name);
+  // data callback thread
+#define MAXCBQSIZE 10000
+  struct datacbinfo {
+    adsParamInfo*                paramInfo;
+    void*                        data;
+    const AdsNotificationHeader  pNotification;
+  };
+  std::queue<datacbinfo>         datacbqueue;
 protected:
 
 private:
