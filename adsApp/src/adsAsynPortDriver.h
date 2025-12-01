@@ -84,6 +84,17 @@ public:
   virtual asynStatus writeFloat64Array(asynUser *pasynUser,
                                        epicsFloat64 *value,
                                        size_t nElements);
+  // 64-bit integer interface support (asynInt64 and asynInt64Array)
+  virtual asynStatus writeInt64(asynUser *pasynUser,
+                                        epicsInt64 value);
+  virtual asynStatus readInt64Array(asynUser *pasynUser,
+                                        epicsInt64 *value,
+                                        size_t nElements,
+                                        size_t *nIn);
+  virtual asynStatus writeInt64Array(asynUser *pasynUser,
+                                        epicsInt64 *value,
+                                        size_t nElements);
+
   asynStatus adsUpdateParameterLock(adsParamInfo* paramInfo,
                                     const void *data);
   asynStatus invalidateParamsLock(uint16_t amsPort);

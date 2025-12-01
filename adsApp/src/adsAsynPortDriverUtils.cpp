@@ -274,6 +274,10 @@ const char *asynTypeToString(long type)
       return "asynParamFloat64Array";
     case asynParamGenericPointer:
       return "asynParamGenericPointer";
+    case asynParamInt64:
+      return "asynParamInt64";
+    case asynParamInt64Array:
+      return "asynParamInt64Array";
     default:
       return "asynUnknownType";
   }
@@ -432,6 +436,12 @@ asynParamType dtypStringToAsynType(char *dtype)
   }
   if(strcmp("asynFloat64ArrayIn",dtype)==0 || strcmp("asynFloat64ArrayOut",dtype)==0){
     return asynParamFloat64Array;
+  }
+  if(strcmp("asynInt64",dtype)==0){
+    return asynParamInt64;
+  }
+  if(strcmp("asynInt64ArrayIn",dtype)==0 || strcmp("asynInt64ArrayOut",dtype)==0){
+    return asynParamInt64Array;
   }
   //  asynParamUInt32Digital,
   //  asynParamOctet,
@@ -824,7 +834,7 @@ int octetBinary2ascii(bool returnVarName,
         RETURN_VAR_NAME_IF_NEEDED;
         int64_t *ADST_INT64Var;
         ADST_INT64Var=((int64_t*)binaryBuffer)+cycles;
-        octetCmdBuf_printf(asciiBuffer,"% PRId64",*ADST_INT64Var);
+        octetCmdBuf_printf(asciiBuffer,"%" PRId64,*ADST_INT64Var);
         //printf("Binary 2 ASCII ADST_INT64, value: %" PRId64 "\n", *ADST_INT64Var);
         bytesPerDataPoint=8;
         bytesProcessed+=bytesPerDataPoint;
@@ -860,7 +870,7 @@ int octetBinary2ascii(bool returnVarName,
         RETURN_VAR_NAME_IF_NEEDED;
         uint64_t *ADST_UINT64Var;
         ADST_UINT64Var=((uint64_t*)binaryBuffer)+cycles;
-        octetCmdBuf_printf(asciiBuffer,"% PRIu64",*ADST_UINT64Var);
+        octetCmdBuf_printf(asciiBuffer,"%" PRIu64,*ADST_UINT64Var);
         //printf("Binary 2 ASCII ADST_UINT64, value: %" PRIu64 "\n", *ADST_UINT64Var);
         bytesPerDataPoint=8;
         bytesProcessed+=bytesPerDataPoint;
