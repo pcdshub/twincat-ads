@@ -1069,6 +1069,9 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
     case asynParamFloat64:
       setDoubleParam(index,0);
       break;
+    case asynParamInt64:
+      setInteger64Param(index,0);
+      break;
     default:
       break;
   }
