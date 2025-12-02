@@ -834,7 +834,7 @@ int octetBinary2ascii(bool returnVarName,
         RETURN_VAR_NAME_IF_NEEDED;
         int64_t *ADST_INT64Var;
         ADST_INT64Var=((int64_t*)binaryBuffer)+cycles;
-        octetCmdBuf_printf(asciiBuffer,"%" PRId64,*ADST_INT64Var);
+        octetCmdBuf_printf(asciiBuffer,"% PRId64",*ADST_INT64Var);
         //printf("Binary 2 ASCII ADST_INT64, value: %" PRId64 "\n", *ADST_INT64Var);
         bytesPerDataPoint=8;
         bytesProcessed+=bytesPerDataPoint;

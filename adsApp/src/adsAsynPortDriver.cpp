@@ -4121,7 +4121,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo* paramInfo,const v
         case asynParamInt64:
           ret = setInteger64Param(paramInfo->paramIndex, *ADST_INT64Var);
           break;
-        // No 64 bit int array callback type (also no 64bit int in EPICS)
+        // No 64 bit uint array callback type (also no 64bit uint in EPICS)
         case asynParamInt64Array:
           // handled in fireCallbacks()
           ret=asynSuccess;
@@ -4518,6 +4518,9 @@ asynStatus adsAsynPortDriver::setAlarmParam(adsParamInfo *paramInfo,int alarm,in
         break;
       case asynParamInt32Array:
         stat=doCallbacksInt32Array((epicsInt32 *)paramInfo->arrayDataBuffer,writeSize/sizeof(epicsInt32), paramInfo->paramIndex,paramInfo->asynAddr);
+        break;
+      case asynParamInt64Array:
+        stat=doCallbacksInt64Array((epicsInt64 *)paramInfo->arrayDataBuffer,writeSize/sizeof(epicsInt64), paramInfo->paramIndex,paramInfo->asynAddr);
         break;
       case asynParamFloat32Array:
         stat=doCallbacksFloat32Array((epicsFloat32 *)paramInfo->arrayDataBuffer,writeSize/sizeof(epicsFloat32), paramInfo->paramIndex,paramInfo->asynAddr);
