@@ -2702,7 +2702,11 @@ asynStatus adsAsynPortDriver::adsGenericArrayRead(asynUser *pasynUser,long allow
   adsParamInfo *paramInfo=pAdsParamArray_[paramIndex];
 
   //Only support same datatype as in PLC
-  if(paramInfo->plcDataType!=allowedType){
+  // Allow LWORD/ULINT as signed INT64
+  bool extendedAllowedType = (paramInfo->plcDataType == allowedType) ||
+    (paramInfo->plcDataType == ADST_UINT64 && allowedType == ADST_INT64);
+
+  if(!extendedAllowedType){
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (%s vs %s). Read canceled.\n", driverName, functionName,adsTypeToString(paramInfo->plcDataType),adsTypeToString(allowedType));
     setAlarmParam(paramInfo,READ_ALARM,INVALID_ALARM);
     return asynError;
@@ -2758,7 +2762,11 @@ asynStatus adsAsynPortDriver::adsGenericArrayWrite(asynUser *pasynUser,long allo
   adsParamInfo *paramInfo=pAdsParamArray_[paramIndex];
 
   //Only support same datatype as in PLC
-  if(paramInfo->plcDataType!=allowedType){
+  // Allow LWORD/ULINT as signed INT64
+  bool extendedAllowedType = (paramInfo->plcDataType == allowedType) ||
+    (paramInfo->plcDataType == ADST_UINT64 && allowedType == ADST_INT64);
+
+  if(!extendedAllowedType){
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (%s vs %s). Write canceled.\n", driverName, functionName,adsTypeToString(paramInfo->plcDataType),adsTypeToString(allowedType));
     setAlarmParam(paramInfo,WRITE_ALARM,INVALID_ALARM);
     return asynError;
@@ -4199,7 +4207,11 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo* paramInfo,const v
         case asynParamInt64:
           ret = setInteger64Param(paramInfo->paramIndex, (epicsInt64)(*ADST_UINT64Var));
           break;
-        // Arrays of unsigned not supported
+        // No 64 bit uint array callback type (also no 64bit uint in EPICS)
+        case asynParamInt64Array:
+          // handled in fireCallbacks()
+          ret=asynSuccess;
+          break;
         default:
           asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName,adsTypeToString(paramInfo->plcDataType),asynTypeToString(paramInfo->asynType));
           return asynError;
@@ -4378,6 +4390,18 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo* paramInfo)
       }
       break;
     case ADST_INT64:
+      switch(paramInfo->asynType){
+        case asynParamInt64Array:
+          ret= doCallbacksInt64Array((epicsInt64 *)paramInfo->arrayDataBuffer, paramInfo->lastCallbackSize / sizeof(epicsInt64), paramInfo->paramIndex, paramInfo->asynAddr);
+          break;
+        default:
+          asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName,adsTypeToString(paramInfo->plcDataType),asynTypeToString(paramInfo->asynType));
+          return asynError;
+          break;
+      }
+      break;
+	// No 64 bit uint array callback type -> cast into int64_t and use doCallbacksInt64Array
+    case ADST_UINT64:
       switch(paramInfo->asynType){
         case asynParamInt64Array:
           ret= doCallbacksInt64Array((epicsInt64 *)paramInfo->arrayDataBuffer, paramInfo->lastCallbackSize / sizeof(epicsInt64), paramInfo->paramIndex, paramInfo->asynAddr);
