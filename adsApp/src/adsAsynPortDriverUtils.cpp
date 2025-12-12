@@ -274,6 +274,10 @@ const char *asynTypeToString(long type)
       return "asynParamFloat64Array";
     case asynParamGenericPointer:
       return "asynParamGenericPointer";
+    case asynParamInt64:
+      return "asynParamInt64";
+    case asynParamInt64Array:
+      return "asynParamInt64Array";
     default:
       return "asynUnknownType";
   }
@@ -432,6 +436,12 @@ asynParamType dtypStringToAsynType(char *dtype)
   }
   if(strcmp("asynFloat64ArrayIn",dtype)==0 || strcmp("asynFloat64ArrayOut",dtype)==0){
     return asynParamFloat64Array;
+  }
+  if(strcmp("asynInt64",dtype)==0){
+    return asynParamInt64;
+  }
+  if(strcmp("asynInt64ArrayIn",dtype)==0 || strcmp("asynInt64ArrayOut",dtype)==0){
+    return asynParamInt64Array;
   }
   //  asynParamUInt32Digital,
   //  asynParamOctet,
