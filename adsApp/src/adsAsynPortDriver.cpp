@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <math.h>
 #include <sys/time.h>
+#include <memory>
 
 #include <epicsTypes.h>
 #include <epicsTime.h>
@@ -571,6 +572,7 @@ void adsAsynPortDriver::bulkReadThread()
     long status;
     uint32_t cnt, readSize;
     asynUser *asynTraceUser=getTraceAsynUser();
+    asynPrint(asynTraceUser,ASYN_TRACE_FLOW, "%s:%s: Starting bulk read.\n",driverName,functionName);
     while (!bulkOK) {
         usleep(1000000);
     }
@@ -655,6 +657,7 @@ void adsAsynPortDriver::bulkReadThread()
 #ifdef MCB_DEBUG
         printf("ELAPSED: %g\n", bulk_elapsed_us / 1000000.0);
 #endif
+        asynPrint(asynTraceUser,ASYN_TRACE_FLOW, "%s:%s: Bulk read complete. Elapsed time: %g\n",driverName,functionName, bulk_elapsed_us / 1000000.0);
         // Always sleep at least 1 to let other threads acquire the ads lock
         usleep(std::max(bulk_delay_us - bulk_elapsed_us, 1));
     }
