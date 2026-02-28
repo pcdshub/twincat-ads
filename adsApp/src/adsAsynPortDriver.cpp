@@ -275,6 +275,7 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
   // Extra Debugging from the beginning: pasynTrace->setTraceMask(pasynUserSelf, 0x11);
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
 
+  adsLock();
   pAdsParamArray_ = new adsParamInfo *[paramTableSize];
   memset(pAdsParamArray_, 0, sizeof(*pAdsParamArray_));
   adsParamArrayCount_ = 0;
@@ -292,7 +293,6 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
   routeAdded_ = 0;
   notConnectedCounter_ = 0;
   oneAmsConnectionOKold_ = 0;
-  adsUnlock();
 
   // Octet interface
   octetAsciiBuffer_.bufferSize = ADS_CMD_BUFFER_SIZE;
@@ -419,6 +419,7 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
     printf("%s:%s: epicsThreadCreate failure\n", driverName, functionName);
     return;
   }
+  adsUnlock();
   // try to connect, and hang until we succeed!
   for (;;)
   {
@@ -458,6 +459,9 @@ adsAsynPortDriver::~adsAsynPortDriver()
   const char *functionName = "~adsAsynPortDriver";
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
 
+  AdsPortCloseEx(adsPort_);
+  AdsPortCloseEx(cyclicThreadAdsClientPort_);
+
   free(ipaddr_);
   free(amsaddr_);
 
@@ -484,11 +488,6 @@ adsAsynPortDriver::~adsAsynPortDriver()
     delete pAdsParamArray_[i];
   }
   delete pAdsParamArray_;
-
-  for (amsPortInfo *port : amsPortList_)
-  {
-    delete port;
-  }
 }
 
 /** Cyclic thread for supervision of connection.
@@ -500,82 +499,109 @@ void adsAsynPortDriver::cyclicThread()
 {
   const char *functionName = "cyclicThread";
   double sampleTime = 0.5;
+
+  // Open a dedicated ads client port for the cyclic thread.
+  cyclicThreadAdsClientPort_ = AdsPortOpenEx();
+  if (isInvalidClientPortNumber(cyclicThreadAdsClientPort_))
+  {
+    // If we failed to open this port, then we are at the port limit, or our client side router is not working.
+    // In this case, we might as well exit and try again if we are in auto restart mode.
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: invalid cyclic thread ads client port opened. Port number received = %ld.\n", driverName, functionName, cyclicThreadAdsClientPort_);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "We are either at the client-side port number limit, or our client-side router is not working.\n");
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "Shutting down the ads ioc.\n");
+    exit(-1);
+  }
+
   while (1)
   {
+    if (!allowCallbackEpicsState)
+    {
+      continue; // Epics has not yet started, so don't start the cyclic thread yet.
+    }
     asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Sample time [s]= %lf.\n", driverName, functionName, sampleTime);
 
     epicsThreadSleep(sampleTime);
-    if (!allowCallbackEpicsState)
-    {
-      continue; // Epics not started
-    }
 
     uint16_t adsState = 0;
     // Check state of all used ams ports
     bool oneAmsConnectionOK = false;
     if (connectedAds_)
     {
-      for (amsPortInfo *port : amsPortList_)
+      for (auto adsServerPort : amsPortList_)
       {
         long error = 0;
-        asynStatus stat = adsReadStateLock(port->amsPort, &adsState, true, &error);
-        bool portConnected = (stat == asynSuccess && adsState == ADSSTATE_RUN);
-        port->adsStateOld = port->adsState;
+        asynStatus stat = adsReadState(cyclicThreadAdsClientPort_, adsServerPort->amsPort, &adsState, true, &error);
+        adsServerPort->connected = (stat == asynSuccess) && (adsState == ADSSTATE_RUN);
+        if (adsServerPort->connected)
+        {
+          adsServerPort->retryCount = 0;
+        }
+        if (adsServerPort->connectedOld != adsServerPort->connected)
+        {
+          asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Device \"%s\" %s (Ams-port %u, Ams router version %u.%u.%u).\n",
+                    driverName, functionName, adsServerPort->devName, adsServerPort->connected ? "connected" : "disconnected",
+                    adsServerPort->amsPort, adsServerPort->version.version, adsServerPort->version.revision, adsServerPort->version.build);
+        }
+        if (adsServerPort->adsStateOld != adsServerPort->adsState)
+        {
+          if (adsServerPort->paramInfo)
+          {
+            if (adsServerPort->paramInfo->dataSource == ADS_DATASOURCE_AMS_STATE)
+            {
+              void *pData = (void *)&adsServerPort->adsState;
+              adsUpdateParameterLock(adsServerPort->paramInfo, pData, 2);
+            }
+          }
+          asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Ams-port, %u, state change: \"%s\" -> \"%s\".\n",
+                    driverName, functionName, adsServerPort->amsPort,
+                    adsStateToString(adsServerPort->adsStateOld), adsStateToString(adsServerPort->adsState));
+        }
+        adsServerPort->adsStateOld = adsServerPort->adsState;
         if (stat == asynSuccess)
         {
-          port->adsState = (ADSSTATE)adsState;
+          adsServerPort->adsState = (ADSSTATE)adsState;
         }
         else
         {
-          port->adsState = ADSSTATE_INVALID;
+          adsServerPort->adsState = ADSSTATE_INVALID;
         }
 
-        port->connectedOld = port->connected;
-        port->connected = portConnected;
-        port->paramsOK = portConnected;
+        adsServerPort->connectedOld = adsServerPort->connected;
+        adsServerPort->paramsOK = adsServerPort->connected;
 
-        oneAmsConnectionOK = oneAmsConnectionOK || portConnected;
+        oneAmsConnectionOK = oneAmsConnectionOK || adsServerPort->connected;
 
-        if (port->connected && port->refreshNeeded)
+        if (adsServerPort->connected && adsServerPort->refreshNeeded)
         {
-          refreshParamsLock(port->amsPort);
+          refreshParamsLock(adsServerPort->amsPort);
         }
-        if (port->connectedOld && !port->connected)
+        if (adsServerPort->connectedOld && !adsServerPort->connected)
         {
-          invalidateParamsLock(port->amsPort);
-          port->refreshNeeded = true;
-          setAlarmPortLock(port->amsPort, COMM_ALARM, INVALID_ALARM);
+          invalidateParamsLock(adsServerPort->amsPort);
+          adsServerPort->refreshNeeded = true;
+          setAlarmPortLock(adsServerPort->amsPort, COMM_ALARM, INVALID_ALARM);
           asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
-                    "%s:%s: connection failed for port %s.\n",
-                    driverName, functionName, portName);
-          exit(-1);
-        }
-        if (!port->connectedOld && port->connected)
-        {
-          adsReadVersion(port);
-        }
-      }
-    }
-
-    // Printout state status
-    for (amsPortInfo *port : amsPortList_)
-    {
-      if (port->connectedOld != port->connected)
-      {
-        asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Device \"%s\" %s (Ams-port %u, Ams router version %u.%u.%u).\n", driverName, functionName, port->devName, port->connected ? "connected" : "disconnected", port->amsPort, port->version.version, port->version.revision, port->version.build);
-      }
-      if (port->adsStateOld != port->adsState)
-      {
-        // If Ams-router is a asyn paramter then update
-        if (port->paramInfo)
-        {
-          if (port->paramInfo->dataSource == ADS_DATASOURCE_AMS_STATE)
+                    "%s:%s: connection failed for port %d.\n",
+                    driverName, functionName, adsServerPort->amsPort);
+          if (adsServerPort->retryCount > 3)
           {
-            void *pData = (void *)&port->adsState;
-            adsUpdateParameterLock(port->paramInfo, pData, 2);
+            asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                      "%s:%s: shutting down ads ioc.\n",
+                      driverName, functionName);
+            exit(-1);
           }
+          adsServerPort->retryCount++;
+          asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                    "%s:%s: retrying connection for port %d. Retry count = %ld\n",
+                    driverName, functionName, adsServerPort->amsPort, adsServerPort->retryCount);
+          printf("%s:%s: retrying connection for port %d. Retry count = %ld\n",
+                 driverName, functionName, adsServerPort->amsPort, adsServerPort->retryCount);
         }
-        asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Ams-port, %u, state change: \"%s\" -> \"%s\".\n", driverName, functionName, port->amsPort, adsStateToString(port->adsStateOld), adsStateToString(port->adsState));
+        if (!adsServerPort->connectedOld && adsServerPort->connected)
+        {
+          adsReadVersion(cyclicThreadAdsClientPort_, adsServerPort);
+        }
       }
     }
 
@@ -618,21 +644,17 @@ void adsAsynPortDriver::bulkReadThread()
   long status;
   uint32_t cnt, readSize;
   asynUser *asynTraceUser = getTraceAsynUser();
-  asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "%s:%s: Starting bulk read.\n", driverName, functionName);
   while (!bulkOK)
   {
     usleep(1000000);
   }
   while (1)
   {
+    printf("%s:%s: Starting bulk read.\n", driverName, functionName);
     gettimeofday(&start, NULL);
     adsLock();
     for (int i = 0; bulk[i].cnt; i++)
     {
-      // Let other threads go, otherwise we can hold the lock for many timeouts
-      adsUnlock();
-      usleep(1);
-      adsLock();
       if (!bulkOK || !bulk[i].cnt)
       {
         break;
@@ -656,7 +678,9 @@ void adsAsynPortDriver::bulkReadThread()
                                       &bytesRead);
       if (status)
       {
-        printf("Sum read %d failed: status %ld\n", i, status);
+        printf("Sum read %d failed: status %ld, client port: %ld, netid: %d.%d.%d.%d.%d.%d, server port: %d\n", i, status,
+               adsPort_, amsServer.netId.b[0], amsServer.netId.b[1], amsServer.netId.b[2], amsServer.netId.b[3], amsServer.netId.b[4], amsServer.netId.b[5],
+               amsServer.port);
         continue;
       }
 
@@ -715,9 +739,9 @@ void adsAsynPortDriver::bulkReadThread()
 #ifdef MCB_DEBUG
     printf("ELAPSED: %g\n", bulk_elapsed_us / 1000000.0);
 #endif
-    asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "%s:%s: Bulk read complete. Elapsed time: %g\n", driverName, functionName, bulk_elapsed_us / 1000000.0);
-    // Always sleep at least 1 to let other threads acquire the ads lock
-    usleep(std::max(bulk_delay_us - bulk_elapsed_us, 1));
+    printf("%s:%s: Bulk read complete. Elapsed time: %g\n", driverName, functionName, bulk_elapsed_us / 1000000.0);
+    // Always sleep at least 10000ms to let other threads acquire the ads lock
+    usleep(std::max(bulk_delay_us - bulk_elapsed_us, 10000));
   }
 }
 
@@ -921,7 +945,7 @@ asynStatus adsAsynPortDriver::refreshParams(uint16_t amsPort)
     }
 
     // Renew symbols changed notification callbacks
-    for (amsPortInfo *port : amsPortList_)
+    for (auto port : amsPortList_)
     {
       if (port->amsPort == amsPort && port->refreshNeeded)
       {
@@ -1842,7 +1866,7 @@ asynStatus adsAsynPortDriver::parsePlcInfofromDrvInfo(const char *drvInfo, adsPa
   if (isThere)
   {
     addNewAmsPortToList(paramInfo->amsPort); // Only add if not already there
-    amsPortInfo *port = getAmsPortObject(paramInfo->amsPort);
+    auto port = getAmsPortObject(paramInfo->amsPort);
     if (!port)
     {
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, functionName, option, drvInfo);
@@ -1864,19 +1888,19 @@ asynStatus adsAsynPortDriver::parsePlcInfofromDrvInfo(const char *drvInfo, adsPa
  *
  * \return amsPortInfo object.
  */
-amsPortInfo *adsAsynPortDriver::getAmsPortObject(uint16_t amsPort)
+std::shared_ptr<amsPortInfo> adsAsynPortDriver::getAmsPortObject(uint16_t amsPort)
 {
   const char *functionName = "getAmsPortObject";
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort:%u\n", driverName, functionName, amsPort);
 
-  for (amsPortInfo *port : amsPortList_)
+  for (auto port : amsPortList_)
   {
     if (port->amsPort == amsPort)
     {
       return port;
     }
   }
-  return 0;
+  return nullptr;
 }
 /** Add new ams port to ams-port list.
  * \param[in] amsPort ams-port
@@ -1890,7 +1914,7 @@ asynStatus adsAsynPortDriver::addNewAmsPortToList(uint16_t amsPort)
 
   // See if new amsPort, then update list
   bool newAmsPort = true;
-  for (amsPortInfo *port : amsPortList_)
+  for (auto port : amsPortList_)
   {
     if (port->amsPort == amsPort)
     {
@@ -1905,13 +1929,20 @@ asynStatus adsAsynPortDriver::addNewAmsPortToList(uint16_t amsPort)
 
   try
   {
-    amsPortInfo *newPort = new amsPortInfo();
-    memset(newPort, 0, sizeof(amsPortInfo));
-    newPort->amsPort = amsPort;
-    newPort->adsState = (ADSSTATE)(ADSSTATE_MAXSTATES + 1); // Set unknown state..
-    newPort->adsStateOld = newPort->adsState;
-    newPort->refreshNeeded = false; // This is actually all initialized!!
-    amsPortList_.push_back(newPort);
+    amsPortList_.push_back(std::make_shared<amsPortInfo>());
+    amsPortList_.back()->amsPort = amsPort;
+    amsPortList_.back()->connected = 0;
+    amsPortList_.back()->connectedOld = 0;
+    amsPortList_.back()->paramsOK = 0;
+    amsPortList_.back()->version = AdsVersion();
+    memset(amsPortList_.back()->devName, 0, sizeof(amsPortList_.back()->devName));
+    amsPortList_.back()->adsState = (ADSSTATE)(ADSSTATE_MAXSTATES + 1);
+    amsPortList_.back()->adsStateOld = amsPortList_.back()->adsState;
+    amsPortList_.back()->paramInfo = nullptr;
+    amsPortList_.back()->hCallbackNotify = 0;
+    amsPortList_.back()->bCallbackNotifyValid = false;
+    amsPortList_.back()->refreshNeeded = false;
+    amsPortList_.back()->retryCount = 0;
   }
   catch (std::exception &e)
   {
@@ -1944,7 +1975,7 @@ bool adsAsynPortDriver::isCallbackAllowed(uint16_t amsPort)
   const char *functionName = "isCallbackAllowed";
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort:%u\n", driverName, functionName, amsPort);
 
-  for (amsPortInfo *port : amsPortList_)
+  for (auto port : amsPortList_)
   {
     if (port->amsPort == amsPort)
       return port->paramsOK;
@@ -3410,7 +3441,7 @@ asynStatus adsAsynPortDriver::adsGetSymHandleByName(adsParamInfo *paramInfo, boo
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsAddSymbolsChangedCallback(amsPortInfo *port)
+asynStatus adsAsynPortDriver::adsAddSymbolsChangedCallback(std::shared_ptr<amsPortInfo> port)
 {
   const char *functionName = "adsAddSymbolsChangedCallback";
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Ams-port %u.\n", driverName, functionName, port->amsPort);
@@ -3455,7 +3486,7 @@ asynStatus adsAsynPortDriver::adsAddSymbolsChangedCallback(amsPortInfo *port)
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsDelSymbolsChangedCallback(amsPortInfo *port)
+asynStatus adsAsynPortDriver::adsDelSymbolsChangedCallback(std::shared_ptr<amsPortInfo> port)
 {
   const char *functionName = "adsDelSymbolsChangedCallback";
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
@@ -3754,7 +3785,7 @@ asynStatus adsAsynPortDriver::adsConnect()
   const char *functionName = "adsConnect";
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
 
-  adsDelRoute(1);
+  adsDelRouteLock(1);
   // add local route to your ADS Master
   if (!routeAdded_)
   {
@@ -3762,7 +3793,7 @@ asynStatus adsAsynPortDriver::adsConnect()
 
     if (stat != asynSuccess)
     {
-      adsDelRoute(1);
+      adsDelRouteLock(1);
       if (adsPort_)
       {
         adsLock();
@@ -3813,7 +3844,7 @@ asynStatus adsAsynPortDriver::adsConnect()
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReadVersion(amsPortInfo *port)
+asynStatus adsAsynPortDriver::adsReadVersion(long adsClientPort, std::shared_ptr<amsPortInfo> port)
 {
   const char *functionName = "adsReadVersion";
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Ams-port %u\n", driverName, functionName, port->amsPort);
@@ -3823,9 +3854,7 @@ asynStatus adsAsynPortDriver::adsReadVersion(amsPortInfo *port)
   char devName[255];
   amsServer = {remoteNetId_, port->amsPort};
 
-  adsLock();
-  long status = AdsSyncReadDeviceInfoReqEx(adsPort_, &amsServer, devName, &version);
-  adsUnlock();
+  long status = AdsSyncReadDeviceInfoReqEx(adsClientPort, &amsServer, devName, &version);
   if (status)
   {
     asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: AdsSyncReadDeviceInfoReqEx failed with: %s (0x%lx).\n", driverName, functionName, adsErrorToString(status), status);
@@ -4109,7 +4138,7 @@ asynStatus adsAsynPortDriver::adsReadStateLock(uint16_t amsport, uint16_t *adsSt
   asynStatus stat;
   lock();
   long error = 0;
-  stat = adsReadState(amsport, adsState, blockErrorMsg, &error);
+  stat = adsReadState(adsPort_, amsport, adsState, blockErrorMsg, &error);
   unlock();
   return stat;
 }
@@ -4129,9 +4158,10 @@ asynStatus adsAsynPortDriver::adsReadStateLock(uint16_t amsport, uint16_t *adsSt
 asynStatus adsAsynPortDriver::adsReadStateLock(uint16_t amsport, uint16_t *adsState, bool blockErrorMsg, long *error)
 {
   asynStatus stat;
-  lock();
-  stat = adsReadState(amsport, adsState, blockErrorMsg, error);
-  unlock();
+  adsLock();
+  // If we are locking the mutex then we must be using the shared ads client port.
+  stat = adsReadState(adsPort_, amsport, adsState, blockErrorMsg, error);
+  adsUnlock();
   return stat;
 }
 
@@ -4141,14 +4171,15 @@ asynStatus adsAsynPortDriver::adsReadStateLock(uint16_t amsport, uint16_t *adsSt
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReadState(uint16_t *adsState)
+asynStatus adsAsynPortDriver::adsReadState(long adsClientPort, uint16_t *adsState)
 {
   long error = 0;
-  return adsReadState(amsportDefault_, adsState, false, &error);
+  return adsReadState(adsClientPort, amsportDefault_, adsState, false, &error);
 }
 
 /** Read state of amsport in TwinCAT
  *
+ * \param[in] adsClientPort specific ads client port assigned to the calling thread.
  * \param[in] amsport Ams-port.
  * \param[out] adsState State of ams-port (running, invalid, config..).
  * \param[in] blockErrorMsg Suppress error messages
@@ -4157,7 +4188,7 @@ asynStatus adsAsynPortDriver::adsReadState(uint16_t *adsState)
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReadState(uint16_t amsport, uint16_t *adsState, bool blockErrorMsg, long *error)
+asynStatus adsAsynPortDriver::adsReadState(long adsClientPort, uint16_t amsport, uint16_t *adsState, bool blockErrorMsg, long *error)
 {
 
   const char *functionName = "adsReadState";
@@ -4166,10 +4197,8 @@ asynStatus adsAsynPortDriver::adsReadState(uint16_t amsport, uint16_t *adsState,
   AmsAddr amsServer = {remoteNetId_, amsport};
 
   uint16_t devState;
-  adsLock();
-  const long status = AdsSyncReadStateReqEx(adsPort_, &amsServer, adsState, &devState);
+  const long status = AdsSyncReadStateReqEx(adsClientPort, &amsServer, adsState, &devState);
   *error = status;
-  adsUnlock();
   if (status)
   {
     if (!blockErrorMsg)

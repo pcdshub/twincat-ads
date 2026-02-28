@@ -1225,3 +1225,8 @@ int octetAscii2binary(const char *asciiBuffer, uint16_t dataType, void *binaryBu
 
   return error;
 }
+
+bool isInvalidClientPortNumber(long clientPortNumber)
+{
+  return (clientPortNumber) <= 0 || (clientPortNumber) > UINT16_MAX;
+}

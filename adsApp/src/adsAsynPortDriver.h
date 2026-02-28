@@ -8,6 +8,7 @@
 #include <dbCommon.h>
 #include <dbStaticLib.h>
 #include <epicsEvent.h>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <vector>
@@ -152,8 +153,8 @@ private:
   asynStatus adsDelDataCallback(adsParamInfo *paramInfo);
   asynStatus adsDelDataCallback(adsParamInfo *paramInfo,
                                 bool blockErrorMsg);
-  asynStatus adsAddSymbolsChangedCallback(amsPortInfo *port);
-  asynStatus adsDelSymbolsChangedCallback(amsPortInfo *port);
+  asynStatus adsAddSymbolsChangedCallback(std::shared_ptr<amsPortInfo> port);
+  asynStatus adsDelSymbolsChangedCallback(std::shared_ptr<amsPortInfo> port);
   asynStatus adsGetSymInfoByName(adsParamInfo *paramInfo);
   asynStatus adsGetSymInfoByName(uint16_t amsPort,
                                  const char *varName,
@@ -177,7 +178,7 @@ private:
   asynStatus adsReadParam(adsParamInfo *paramInfo,
                           long *error,
                           int updateAsynPar);
-  asynStatus adsReadState(uint16_t *adsState);
+  asynStatus adsReadState(long adsClientPort, uint16_t *adsState);
   asynStatus adsReadStateLock(uint16_t amsport,
                               uint16_t *adsState,
                               bool blockErrorMsg);
@@ -185,7 +186,8 @@ private:
                               uint16_t *adsState,
                               bool blockErrorMsg,
                               long *error);
-  asynStatus adsReadState(uint16_t amsport,
+  asynStatus adsReadState(long adsClientPort,
+                          uint16_t amsport,
                           uint16_t *adsState,
                           bool blockErrorMsg,
                           long *error);
@@ -202,7 +204,7 @@ private:
                                  void *epicsDataBuffer,
                                  size_t nEpicsBufferBytes,
                                  size_t *nBytesRead);
-  asynStatus adsReadVersion(amsPortInfo *port);
+  asynStatus adsReadVersion(long adsClientPort, std::shared_ptr<amsPortInfo> port);
   asynStatus updateParamInfoWithPLCInfo(adsParamInfo *paramInfo);
   asynStatus refreshParamTime(adsParamInfo *paramInfo);
   asynStatus setAlarmPortLock(uint16_t amsPort, int alarm, int severity);
@@ -210,7 +212,7 @@ private:
   asynStatus setAlarmParam(adsParamInfo *paramInfo, int alarm, int severity);
   asynStatus fireCallbacks(adsParamInfo *paramInfo);
   asynStatus addNewAmsPortToList(uint16_t amsPort);
-  amsPortInfo *getAmsPortObject(uint16_t amsPort);
+  std::shared_ptr<amsPortInfo> getAmsPortObject(uint16_t amsPort);
   void adsLock();
   void adsUnlock();
   asynStatus adsAddToBulkRead(adsParamInfo *paramInfo);
@@ -256,6 +258,7 @@ private:
   int adsTimeoutMS_;
   int connectedAds_;
   long adsPort_;
+  long cyclicThreadAdsClientPort_;
   int routeAdded_;
   int notConnectedCounter_;
   int oneAmsConnectionOKold_;
@@ -263,7 +266,7 @@ private:
   unsigned int priority_;
   AmsNetId remoteNetId_;
   adsParamInfo **pAdsParamArray_;
-  std::vector<amsPortInfo *> amsPortList_;
+  std::vector<std::shared_ptr<amsPortInfo>> amsPortList_;
   ADSTIMESOURCE defaultTimeSource_;
   std::mutex adsMutex;
 

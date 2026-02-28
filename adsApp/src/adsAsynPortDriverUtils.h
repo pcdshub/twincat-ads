@@ -114,6 +114,7 @@ typedef struct amsPortInfo
   uint32_t hCallbackNotify;
   bool bCallbackNotifyValid;
   bool refreshNeeded; // Communication broken update handles and callbacks
+  size_t retryCount;
 } amsPortInfo;
 
 // For info from symbolic name Actually this data type should be in the adslib (but missing)..
@@ -203,5 +204,7 @@ int octetAscii2binary(const char *asciiBuffer,
                       void *binaryBuffer,
                       uint32_t binaryBufferSize,
                       uint32_t *bytesProcessed);
+
+bool isInvalidClientPortNumber(long clientPortNumber);
 
 #endif /* ADSASYNPORTDRIVERUTILS_H_ */
