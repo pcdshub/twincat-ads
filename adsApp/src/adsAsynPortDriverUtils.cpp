@@ -11,6 +11,7 @@
 #include "adsAsynPortDriverUtils.h"
 #include "epicsTime.h"
 #include <initHooks.h>
+#include <sstream>
 #include <string.h>
 
 typedef struct
@@ -1226,7 +1227,55 @@ int octetAscii2binary(const char *asciiBuffer, uint16_t dataType, void *binaryBu
   return error;
 }
 
-bool isInvalidClientPortNumber(long clientPortNumber)
+bool isInvalidPortNumber(long clientPortNumber)
 {
   return (clientPortNumber) <= 0 || (clientPortNumber) > UINT16_MAX;
 }
+
+tsentry::tsentry() : amsPort(0), iHandleH(0), iHandleL(0), refreshNeeded(0) {}
+
+BulkReadRequestInfo::BulkReadRequestInfo() : iGroup(0), iOffset(0), iSize(0) {}
+
+BulkReadInfo::BulkReadInfo() : amsPort(0), readSize(0), refreshNeeded(0)
+{
+  reqInfo.clear();
+  asynParamIds.clear();
+}
+size_t BulkReadInfo::numberOfVariables() const
+{
+  return reqInfo.size();
+}
+
+std::string string_format(const char *fmt, ...)
+{
+  va_list args;
+
+  // First, determine the size needed
+  va_start(args, fmt);
+  int size = std::vsnprintf(nullptr, 0, fmt, args);
+  va_end(args);
+
+  if (size < 0)
+  {
+    throw std::runtime_error("Formatting error");
+  }
+
+  // Allocate string of the required size
+  std::vector<char> buffer(size + 1);
+
+  // Format into the buffer
+  va_start(args, fmt);
+  std::vsnprintf(buffer.data(), buffer.size(), fmt, args);
+  va_end(args);
+
+  return std::string(buffer.data(), size);
+}
+
+std::string amsNetIdToStr(const AmsNetId &amsNetId)
+{
+  std::stringstream ss;
+  ss << amsNetId.b[0] << "." << amsNetId.b[1] << "." << amsNetId.b[2] << "." << amsNetId.b[3] << "." << amsNetId.b[4] << "." << amsNetId.b[5];
+  return ss.str();
+}
+
+AmsClientPortEntry::AmsClientPortEntry(long port, int liveCount) : port(port), liveCount(liveCount) {}

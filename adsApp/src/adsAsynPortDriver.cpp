@@ -51,13 +51,12 @@ static initHookState currentEpicsState = initHookAtIocBuild;
  */
 static void getEpicsState(initHookState state)
 {
-  const char *functionName = "getEpicsState";
   static struct timeval start;
   struct timeval now, diff;
 
   if (!adsAsynPortObj)
   {
-    printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, functionName);
+    printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, __func__);
     return;
   }
 
@@ -65,6 +64,17 @@ static void getEpicsState(initHookState state)
 
   switch (state)
   {
+  case initHookAtIocBuild: /* Start of iocBuild/iocInit commands */
+    break;
+  case initHookAtBeginning:
+    break;
+  case initHookAfterCallbackInit:
+    break;
+  case initHookAfterCaLinkInit:
+    break;
+  case initHookAfterInitDrvSup:
+    break;
+  case initHookAfterInitRecSup:
     break;
   case initHookAfterInitDevSup:
     gettimeofday(&start, NULL);
@@ -74,25 +84,51 @@ static void getEpicsState(initHookState state)
     timersub(&now, &start, &diff);
     printf("Database initialization took %ld.%05ld seconds.\n", diff.tv_sec, diff.tv_usec);
     break;
+  case initHookAfterFinishDevSup:
+    break;
   case initHookAfterScanInit:
     allowCallbackEpicsState = 1;
 
     // make all callbacks if data arrived from callback before interrupts were registered (before allowCallbackEpicsState==1)
     if (!adsAsynPortObj)
     {
-      printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, functionName);
+      printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, __func__);
       return;
     }
     adsAsynPortObj->fireAllCallbacksLock();
-    adsAsynPortObj->bulkOK = 1;
+    adsAsynPortObj->setOkToProcessBulkReads(true);
     printf("Begin polling PLC!\n");
+    break;
+  case initHookAfterInitialProcess:
+    break;
+  case initHookAfterCaServerInit:
+    break;
+  case initHookAfterIocBuilt: /* End of iocBuild command */
+    break;
+  case initHookAtIocRun: /* Start of iocRun command */
+    break;
+  case initHookAfterDatabaseRunning:
+    break;
+  case initHookAfterCaServerRunning:
+    break;
+  case initHookAfterIocRunning: /* End of iocRun/iocInit commands */
+    break;
+  case initHookAtIocPause: /* Start of iocPause command */
+    break;
+  case initHookAfterCaServerPaused:
+    break;
+  case initHookAfterDatabasePaused:
+    break;
+  case initHookAfterIocPaused: /* End of iocPause command */
     break;
   default:
     break;
   }
 
   currentEpicsState = state;
-  asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER, "%s:%s: EPICS state: %s (%d). Allow ADS callbacks: %s.\n", driverName, functionName, epicsStateToString((int)state), (int)state, allowCallbackEpicsState ? "true" : "false");
+  asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER,
+            "%s:%s: EPICS state: %s (%d). Allow ADS callbacks: %s.\n",
+            driverName, __func__, epicsStateToString((int)state), (int)state, allowCallbackEpicsState ? "true" : "false");
 }
 
 /** Register EPICS hook function
@@ -112,19 +148,32 @@ int initHook(void)
  */
 static void adsSymbolsChangedCallback(const AmsAddr *pAddr, const AdsNotificationHeader *pNotification, uint32_t hUser)
 {
-  const char *functionName = "adsSymbolsChangedCallback";
-
   if (!adsAsynPortObj)
   {
-    printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, functionName);
+    printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, __func__);
     return;
   }
 
   asynUser *asynTraceUser = adsAsynPortObj->getTraceAsynUser();
-  asynPrint(asynTraceUser, ASYN_TRACE_INFO, "%s:%s: Symbols changed for Ams-port %u.\n", driverName, functionName, pAddr->port);
+
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
+  {
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*adsAsynPortObj);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    adsClientPort = adsAsynPortObj->getAdsClientPortNumberForThreadId(0);
+    asynPrint(asynTraceUser, ASYN_TRACE_ERROR,
+              "%s:%s: failed to get ads client port. Fallback to default client port.\n", driverName, __func__);
+  }
+
+  asynPrint(asynTraceUser, ASYN_TRACE_INFO, "%s:%s: Symbols changed for Ams-port %u.\n", driverName, __func__, pAddr->port);
 
   adsAsynPortObj->invalidateParamsLock(pAddr->port);
-  adsAsynPortObj->refreshParamsLock(pAddr->port);
+  adsAsynPortObj->refreshParamsLock(adsClientPort, pAddr->port);
 }
 
 /** Callback from ads lib for updated data.
@@ -136,18 +185,15 @@ static void adsSymbolsChangedCallback(const AmsAddr *pAddr, const AdsNotificatio
  */
 static void adsDataCallback(const AmsAddr *pAddr, const AdsNotificationHeader *pNotification, uint32_t hUser)
 {
-  const char *functionName = "adsDataCallback";
-
   if (!adsAsynPortObj)
   {
-    printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, functionName);
+    printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, __func__);
     return;
   }
 
   asynUser *asynTraceUser = adsAsynPortObj->getTraceAsynUser();
-  asynPrint(asynTraceUser, ASYN_TRACE_FLOW | ASYN_TRACEIO_DRIVER, "%s:%s:\n", driverName, functionName);
+  asynPrint(asynTraceUser, ASYN_TRACE_FLOW | ASYN_TRACEIO_DRIVER, "%s:%s:\n", driverName, __func__);
 
-  const uint8_t *data = reinterpret_cast<const uint8_t *>(pNotification + 1);
   struct timeval newTime;
   gettimeofday(&newTime, NULL);
 
@@ -160,42 +206,32 @@ static void adsDataCallback(const AmsAddr *pAddr, const AdsNotificationHeader *p
   // Ensure hUser is within range
   if (hUser > (uint32_t)(adsAsynPortObj->getParamTableSize() - 1))
   {
-    asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: hUser out of range: %u.\n", driverName, functionName, hUser);
+    asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: hUser out of range: %u.\n", driverName, __func__, hUser);
     return;
   }
 
   // Get paramInfo
-  adsParamInfo *paramInfo = adsAsynPortObj->getAdsParamInfo(hUser);
+  auto paramInfo = adsAsynPortObj->getAdsParamInfo(hUser);
   if (!paramInfo)
   {
-    asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: getAdsParamInfo() for hUser %u failed\n", driverName, functionName, hUser);
-    return;
-  }
-  if (adsAsynPortObj->datacbqueue.size() > MAXCBQSIZE)
-  {
-    asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: datacbqueue at max size, skip %s (%d)\n", driverName, functionName, paramInfo->drvInfo, paramInfo->paramIndex);
+    asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: getAdsParamInfo() for hUser %u failed\n", driverName, __func__, hUser);
     return;
   }
 
-  asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER, "Process callback for parameter %s (%d).\n", paramInfo->drvInfo, paramInfo->paramIndex);
+  asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER, "Process callback for parameter %s (%d).\n", paramInfo->drvInfo.c_str(), paramInfo->paramIndex);
   asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER, "hUser 0x%x, data size[b]: %d.\n", hUser, pNotification->cbSampleSize);
   asynPrint(asynTraceUser, ASYN_TRACEIO_DRIVER, "time stamp [100ns]: %ld, since last plc [ms]: %4.2lf, since last ioc [ms]: %4.2lf.\n",
             pNotification->nTimeStamp, ((double)(pNotification->nTimeStamp - oldTimeStamp)) / 10000.0, (((double)(micros_used)) / 1000.0));
   oldTimeStamp = pNotification->nTimeStamp;
 
   // Ensure hUser is equal to parameter index
-  if (hUser != (uint32_t)(paramInfo->paramIndex))
+  if ((int)hUser != paramInfo->paramIndex)
   {
-    asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: hUser not equal to parameter index (%u vs %d).\n", driverName, functionName, hUser, paramInfo->paramIndex);
+    asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: hUser not equal to parameter index (%u vs %d).\n", driverName, __func__, hUser, paramInfo->paramIndex);
     return;
   }
 
-  // Copy data into memory here because the data pointer will not stay valid forever
-  // This malloc is freed in dataCallbackThread
-  void *local_data = malloc(pNotification->cbSampleSize);
-  memcpy(local_data, data, pNotification->cbSampleSize);
-  adsAsynPortDriver::datacbinfo cbinfo = {paramInfo, local_data, *pNotification};
-  adsAsynPortObj->datacbqueue.push(cbinfo);
+  adsAsynPortObj->emplaceInDataCallbackQueue(*paramInfo, pNotification);
 }
 
 /** Start cyclic thread for supervision of connection.
@@ -271,48 +307,33 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
                      priority,                                                                                                                                                                                                           /* Default priority */
                      0)                                                                                                                                                                                                                  /* Default stack size*/
 {
-  const char *functionName = "adsAsynPortDriver";
   // Extra Debugging from the beginning: pasynTrace->setTraceMask(pasynUserSelf, 0x11);
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  adsLock();
-  pAdsParamArray_ = new adsParamInfo *[paramTableSize];
-  memset(pAdsParamArray_, 0, sizeof(*pAdsParamArray_));
-  adsParamArrayCount_ = 0;
-  paramTableSize_ = paramTableSize;
-  ipaddr_ = strdup(ipaddr);
-  amsaddr_ = strdup(amsaddr);
-  amsportDefault_ = amsport;
-  priority_ = priority;
-  autoConnect_ = autoConnect;
-  defaultSampleTimeMS_ = defaultSampleTimeMS;
-  defaultMaxDelayTimeMS_ = maxDelayTimeMS;
-  adsTimeoutMS_ = adsTimeoutMS;
-  connectedAds_ = 0;
-  defaultTimeSource_ = defaultTimeSource;
-  routeAdded_ = 0;
-  notConnectedCounter_ = 0;
-  oneAmsConnectionOKold_ = 0;
+  // The computer running this ioc is the client.
+  // The computer (most likely a plc) this client is connecting to is the server/remote.
+  // This terminology will be used throughout.
 
-  // Octet interface
-  octetAsciiBuffer_.bufferSize = ADS_CMD_BUFFER_SIZE;
-  octetAsciiBuffer_.bytesUsed = 0;
-  memset(&octetBinaryBuffer_, 0, ADS_CMD_BUFFER_SIZE);
-  octetReturnVarName_ = 0;
-
-  // ADS
-  adsPort_ = 0; // handle
-  remoteNetId_ = {0, 0, 0, 0, 0, 0};
-  amsPortList_.clear();
-
-  if (amsportDefault_ <= 0)
+  if (paramTableSize < 1)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Invalid default AMS port: %d\n", driverName, functionName, amsportDefault_);
-    return;
+    // If paramTableSize_==1 then only stream device or motor record can use the driver through the "default access" param below.
+    throw std::runtime_error(string_format("%s:%s: Param table size too small: %d\n", driverName, __func__, paramTableSize));
   }
-  addNewAmsPortToList(amsportDefault_);
+  adsParamArray_.reserve(paramTableSize);
 
-  int nvals = sscanf(amsaddr_, "%hhu.%hhu.%hhu.%hhu.%hhu.%hhu",
+  if (!ipaddr)
+  {
+    throw std::runtime_error(string_format("%s:%s: ip address passed was a null pointer.\n", driverName, __func__));
+  }
+  ipaddr_ = ipaddr;
+
+  if (!amsaddr)
+  {
+    throw std::runtime_error(string_format("%s:%s: ams address passed was a null pointer.\n", driverName, __func__));
+  }
+  amsaddr_ = amsaddr;
+  remoteNetId_ = {0, 0, 0, 0, 0, 0};
+  int nvals = sscanf(amsaddr_.c_str(), "%hhu.%hhu.%hhu.%hhu.%hhu.%hhu",
                      &remoteNetId_.b[0],
                      &remoteNetId_.b[1],
                      &remoteNetId_.b[2],
@@ -321,20 +342,60 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
                      &remoteNetId_.b[5]);
   if (nvals != 6)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: AMS address invalid %s.\n", driverName, functionName, amsaddr_);
-    return;
+    throw std::runtime_error(string_format("%s:%s: AMS address invalid %s.\n", driverName, __func__, amsaddr_));
   }
-
-  if (nvals != 6)
+  if (isInvalidPortNumber(amsport))
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Invalid AMS address: %s\n", driverName, functionName, amsaddr_);
-    return;
+    throw std::runtime_error(string_format("%s:%s: invalid default ams port: %d.\n", driverName, __func__, amsport));
   }
 
-  if (paramTableSize_ < 1)
-  { // If paramTableSize_==1 then only stream device or motor record can use the driver through the "default access" param below.
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Param table size to small: %d\n", driverName, functionName, paramTableSize_);
-    return;
+  amsportDefault_ = amsport;
+  addNewAmsPortToList(amsportDefault_);
+
+  priority_ = priority;
+  autoConnect_ = autoConnect;
+  defaultSampleTime_ms_ = defaultSampleTimeMS;
+  defaultMaxDelayTime_ms_ = maxDelayTimeMS;
+  adsTimeout_ms_ = adsTimeoutMS;
+  defaultTimeSource_ = defaultTimeSource;
+  {
+    std::lock_guard<std::mutex> lockGuard(adsAddDelRouteMutex_);
+    routeAdded_ = false;
+  }
+  amsPortList_.clear();
+
+  // Octet interface
+  octetAsciiBuffer_.bufferSize = ADS_CMD_BUFFER_SIZE;
+  octetAsciiBuffer_.bytesUsed = 0;
+  memset(&octetBinaryBuffer_, 0, ADS_CMD_BUFFER_SIZE);
+  octetReturnVarName_ = 0;
+
+  // Open a client side ads port.
+  // This doesn't require any communication with the server side, it is just to establish a unique
+  // identifier for the ads communication calls coming from this thread.
+  // All this really does is find the lowest available port number not currently open for the ads router on this client.
+  // It would only fail if we have run out of available port numbers, which is any number between
+  // 1 and UINT16_MAX = 65535 inclusive.
+  // Each thread will get its own port number, and we will just make sure to close them when we don't
+  // need them anymore. Most likely this class's destructor or earlier if we want.
+  // Open a default client port.
+  if (isInvalidPortNumber(addAdsClientPortNumberForThreadId(0)))
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open default ads client port: %d.\n", driverName, __func__));
+  }
+
+  // Create an ads client port that will automatically be closed when this function leaves scope.
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
+  {
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    adsClientPort = getAdsClientPortNumberForThreadId(0);
   }
 
   // Add first param for other access (like motor record or stream device).
@@ -342,110 +403,105 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
   asynStatus status = createParam("Default access", asynParamNotDefined, &index);
   if (status != asynSuccess)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: createParam for default access failed.\n", driverName, functionName);
-    return;
-  }
-  adsParamInfo *paramInfo = new adsParamInfo();
-  memset(paramInfo, 0, sizeof(adsParamInfo));
-  paramInfo->recordName = strdup("Any record");
-  paramInfo->recordType = strdup("No type");
-  paramInfo->scan = strdup("No scan");
-  paramInfo->dtyp = strdup("No dtyp");
-  paramInfo->inp = strdup("No inp");
-  paramInfo->out = strdup("No out");
-  paramInfo->drvInfo = strdup("No drvinfo");
-  paramInfo->asynType = asynParamNotDefined;
-  paramInfo->paramIndex = index; // also used as hUser for ads callback
-  paramInfo->plcAdrStr = strdup("No adr str");
-  pAdsParamArray_[0] = paramInfo;
-  adsParamArrayCount_++;
-
-  if (status != asynSuccess)
-  {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: createParam for default access failed.\n", driverName, functionName);
-    return;
+    throw std::runtime_error(string_format("%s:%s: createParam for default access failed.\n", driverName, __func__));
   }
 
-  //* Create the thread that computes the waveforms in the background */
+  adsParamArray_.emplace_back(adsParamInfo());
+  auto &paramInfo = adsParamArray_.back();
+  paramInfo.recordName = "Any record";
+  paramInfo.recordType = "No type";
+  paramInfo.scan = "No scan";
+  paramInfo.dtyp = "No dtyp";
+  paramInfo.inp = "No inp";
+  paramInfo.out = "No out";
+  paramInfo.drvInfo = "No drvinfo";
+  paramInfo.asynType = asynParamNotDefined;
+  paramInfo.paramIndex = index; // also used as hUser for ads callback
+  paramInfo.plcAdrStr = "No adr str";
+
+  // Create the thread that cyclically checks the state of the ads server
+  // Use hardcoded cycle time of 0.5s for now.
+  cyclicThreadCycleTime_s_ = 0.5;
   status = (asynStatus)(epicsThreadCreate("adsAsynPortDriverCyclicThread",
                                           epicsThreadPriorityMedium,
                                           epicsThreadGetStackSize(epicsThreadStackMedium),
                                           (EPICSTHREADFUNC)::cyclicThread, this) == NULL);
-
   if (status)
   {
-    printf("%s:%s: epicsThreadCreate failure\n", driverName, functionName);
-    return;
+    throw std::runtime_error(string_format("%s:%s: epicsThreadCreate failure for cyclicThread.\n", driverName, __func__));
   }
 
-  for (int i = 0; i < MAXBULK; i++)
-    bulk[i].cnt = 0; // Entry is currently unused!!
-  bulkTScnt = 0;
-  if (defaultSampleTimeMS_ < 1000)
+  bulkReadMaxTsEntrySize_ = 10;
+  // Beckhoff advises to not use more than 500 sub commands per bulk read.
+  // One sub command gets the value of one variable, so 500 sub commands is 500 variables.
+  MaxNumberOfSubCallsPerBulkRead_ = 500;
+
+  if (defaultSampleTime_ms_ < 1000)
   {
     printf("Default Sample Time of %d ms is too small, defaulting to 1Hz.\n",
-           defaultSampleTimeMS_);
-    bulk_delay_us = 1000000; // 1 Hz
+           defaultSampleTime_ms_);
+    bulkReadTimeDelay_us_ = 1000000; // 1 Hz
   }
   else
   {
-    printf("Default bulk read time: %d ms\n", defaultSampleTimeMS_);
-    bulk_delay_us = defaultSampleTimeMS_ * 1000;
+    printf("Default bulk read time: %d ms\n", defaultSampleTime_ms_);
+    bulkReadTimeDelay_us_ = defaultSampleTime_ms_ * 1000;
   }
-  bulkdatasize = 4 * 1024 * 1024; // This is excessive!
-  bulkdata = (uint8_t *)malloc(bulkdatasize);
-  bulkOK = 0;
-  bulk_elapsed_us = 0;
+
+  {
+    std::lock_guard<std::recursive_mutex> lockGuard(adsBulkInfoUpdateMutex_);
+    bulkReadData_.resize(4 * 1024 * 1024);
+    setOkToProcessBulkReads(false);
+    bulkReadTimeElapsed_us_ = 0;
+  }
 
   //* Create the thread that does the bulk reads */
   status = (asynStatus)(epicsThreadCreate("adsAsynPortDriverBulkReadThread",
                                           epicsThreadPriorityMedium,
                                           epicsThreadGetStackSize(epicsThreadStackMedium),
                                           (EPICSTHREADFUNC)::bulkReadThread, this) == NULL);
-
   if (status)
   {
-    printf("%s:%s: epicsThreadCreate failure\n", driverName, functionName);
-    return;
+    throw std::runtime_error(string_format("%s:%s: epicsThreadCreate failure for bulkReadThread.\n", driverName, __func__));
   }
+
   //* Create the thread that does the ADS subscription callbacks */
   status = (asynStatus)(epicsThreadCreate("adsAsynPortDriverDataCallbackThread",
                                           epicsThreadPriorityMedium,
                                           epicsThreadGetStackSize(epicsThreadStackMedium),
                                           (EPICSTHREADFUNC)::dataCallbackThread, this) == NULL);
-
   if (status)
   {
-    printf("%s:%s: epicsThreadCreate failure\n", driverName, functionName);
-    return;
+    throw std::runtime_error(string_format("%s:%s: epicsThreadCreate failure for dataCallbackThread.\n", driverName, __func__));
   }
-  adsUnlock();
-  // try to connect, and hang until we succeed!
-  for (;;)
+
+  // try to connect, and hang until we succeed.
+  while (true)
   {
+    asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+              "%s:%s: trying to connect to the ads server at ip = %s, amsnetid = %s...\n",
+              driverName, __func__, ipaddr_.c_str(), amsaddr_.c_str());
+    epicsThreadSleep(1.0);
     if (connect(pasynUserSelf) != asynSuccess)
     {
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
-                "%s:%s: connect failed for port %s.\n",
-                driverName, functionName, portName);
-      epicsThreadSleep(1.0);
+                "%s:%s: connect failed for the ads server at ip = %s, amsnetid = %s. Retrying in 1s...\n",
+                driverName, __func__, ipaddr_.c_str(), amsaddr_.c_str());
       continue;
     }
     long error = 0;
     uint16_t adsState = 0;
-    if (adsReadStateLock(amsport, &adsState, true, &error) != asynSuccess)
+    if (adsReadState(adsClientPort, amsport, adsState, true, error) != asynSuccess)
     {
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
-                "%s:%s: adsReadStateLock failed for port %s.\n",
-                driverName, functionName, portName);
-      disconnect(pasynUserSelf);
-      continue;
+                "%s:%s: connected to but failed to read the state of the ads server at ip = %s, amsnetid = %s. Retrying in 1s...\n",
+                driverName, __func__, ipaddr_.c_str(), amsaddr_.c_str());
     }
-    if (adsState == ADSSTATE_RUN)
+    else if (adsState == ADSSTATE_RUN)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
-                "%s:%s: connection established for port %s.\n",
-                driverName, functionName, portName);
+      asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+                "%s:%s: connection established for the ads server at ip = %s, amsnetid = %s.\n",
+                driverName, __func__, ipaddr_.c_str(), amsaddr_.c_str());
       return;
     }
   }
@@ -456,38 +512,19 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
  */
 adsAsynPortDriver::~adsAsynPortDriver()
 {
-  const char *functionName = "~adsAsynPortDriver";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  AdsPortCloseEx(adsPort_);
-  AdsPortCloseEx(cyclicThreadAdsClientPort_);
+  auto adsClientPort = getAdsClientPortNumberForThreadId(epicsThreadGetIdSelf());
 
-  free(ipaddr_);
-  free(amsaddr_);
-
-  for (int i = 0; i < adsParamArrayCount_; i++)
+  for (auto &adsParamInfo : adsParamArray_)
   {
-    if (!pAdsParamArray_[i])
-    {
-      continue;
-    }
-    adsDelDataCallback(pAdsParamArray_[i], true);       // Block error messages
-    adsReleaseSymbolicHandle(pAdsParamArray_[i], true); // Block error messages
-    free(pAdsParamArray_[i]->recordName);
-    free(pAdsParamArray_[i]->recordType);
-    free(pAdsParamArray_[i]->scan);
-    free(pAdsParamArray_[i]->dtyp);
-    free(pAdsParamArray_[i]->inp);
-    free(pAdsParamArray_[i]->out);
-    free(pAdsParamArray_[i]->drvInfo);
-    free(pAdsParamArray_[i]->plcAdrStr);
-    if (pAdsParamArray_[i]->plcDataIsArray)
-    {
-      free(pAdsParamArray_[i]->arrayDataBuffer);
-    }
-    delete pAdsParamArray_[i];
+    adsDelDataCallback(adsClientPort, adsParamInfo, true);       // Block error messages
+    adsReleaseSymbolicHandle(adsClientPort, adsParamInfo, true); // Block error messages
   }
-  delete pAdsParamArray_;
+
+  // For each entry still in the client port map, close the port if it is still open.
+  for (auto entry : threadIdToAmsClientPortMap_)
+    AdsPortCloseEx(entry.second.port);
 }
 
 /** Cyclic thread for supervision of connection.
@@ -497,275 +534,285 @@ adsAsynPortDriver::~adsAsynPortDriver()
  */
 void adsAsynPortDriver::cyclicThread()
 {
-  const char *functionName = "cyclicThread";
-  double sampleTime = 0.5;
-
-  // Open a dedicated ads client port for the cyclic thread.
-  cyclicThreadAdsClientPort_ = AdsPortOpenEx();
-  if (isInvalidClientPortNumber(cyclicThreadAdsClientPort_))
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
   {
-    // If we failed to open this port, then we are at the port limit, or our client side router is not working.
-    // In this case, we might as well exit and try again if we are in auto restart mode.
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
-              "%s:%s: invalid cyclic thread ads client port opened. Port number received = %ld.\n", driverName, functionName, cyclicThreadAdsClientPort_);
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "We are either at the client-side port number limit, or our client-side router is not working.\n");
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "Shutting down the ads ioc.\n");
-    exit(-1);
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
   }
 
-  while (1)
+  while (true)
   {
-    if (!allowCallbackEpicsState)
+    if (!allowCallbackEpicsState || !routeAdded_)
     {
+      epicsThreadSleep(cyclicThreadCycleTime_s_);
       continue; // Epics has not yet started, so don't start the cyclic thread yet.
     }
-    asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Sample time [s]= %lf.\n", driverName, functionName, sampleTime);
+    {
+      std::lock_guard<std::mutex> lockGuard(adsAddDelRouteMutex_);
+      if (!routeAdded_)
+      {
+        epicsThreadSleep(cyclicThreadCycleTime_s_);
+        continue; // Route is not added yet, so don't start the cyclic thread.
+      }
+    }
+    asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: cyclic thread started with sample time = %lfs.\n", driverName, __func__, cyclicThreadCycleTime_s_);
 
-    epicsThreadSleep(sampleTime);
+    epicsThreadSleep(cyclicThreadCycleTime_s_);
 
     uint16_t adsState = 0;
     // Check state of all used ams ports
-    bool oneAmsConnectionOK = false;
-    if (connectedAds_)
+    bool allStale = true;
+    for (auto &adsServerPort : amsPortList_)
     {
-      for (auto adsServerPort : amsPortList_)
+      long error = 0;
+      asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+                "%s:%s: cyclic thread reading state of port %u.\n",
+                driverName, __func__, adsServerPort.amsPort);
+      asynStatus stat = adsReadState(adsClientPort, adsServerPort.amsPort, adsState, true, error);
+      adsServerPort.connected = (stat == asynSuccess) && (adsState == ADSSTATE_RUN);
+      if (adsServerPort.connected)
       {
-        long error = 0;
-        asynStatus stat = adsReadState(cyclicThreadAdsClientPort_, adsServerPort->amsPort, &adsState, true, &error);
-        adsServerPort->connected = (stat == asynSuccess) && (adsState == ADSSTATE_RUN);
-        if (adsServerPort->connected)
+        adsServerPort.stale = false;
+        asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+                  "%s:%s: cyclic thread read state of %s for port %u.\n",
+                  driverName, __func__, adsStateToString(adsServerPort.adsState), adsServerPort.amsPort);
+        adsServerPort.retryCount = 0;
+      }
+      else
+      {
+        adsServerPort.retryCount++;
+      }
+      if (adsServerPort.connectedOld != adsServerPort.connected)
+      {
+        asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Device \"%s\" %s (Ams-port %u, Ams router version %u.%u.%u).\n",
+                  driverName, __func__, adsServerPort.devName, adsServerPort.connected ? "connected" : "disconnected",
+                  adsServerPort.amsPort, adsServerPort.version.version, adsServerPort.version.revision, adsServerPort.version.build);
+      }
+      if (adsServerPort.adsStateOld != adsServerPort.adsState)
+      {
+        if (adsServerPort.paramInfo)
         {
-          adsServerPort->retryCount = 0;
-        }
-        if (adsServerPort->connectedOld != adsServerPort->connected)
-        {
-          asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Device \"%s\" %s (Ams-port %u, Ams router version %u.%u.%u).\n",
-                    driverName, functionName, adsServerPort->devName, adsServerPort->connected ? "connected" : "disconnected",
-                    adsServerPort->amsPort, adsServerPort->version.version, adsServerPort->version.revision, adsServerPort->version.build);
-        }
-        if (adsServerPort->adsStateOld != adsServerPort->adsState)
-        {
-          if (adsServerPort->paramInfo)
+          if (adsServerPort.paramInfo->dataSource == ADS_DATASOURCE_AMS_STATE)
           {
-            if (adsServerPort->paramInfo->dataSource == ADS_DATASOURCE_AMS_STATE)
-            {
-              void *pData = (void *)&adsServerPort->adsState;
-              adsUpdateParameterLock(adsServerPort->paramInfo, pData, 2);
-            }
+            void *pData = (void *)&adsServerPort.adsState;
+            adsUpdateParameterLock(*adsServerPort.paramInfo, pData, 2);
           }
-          asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Ams-port, %u, state change: \"%s\" -> \"%s\".\n",
-                    driverName, functionName, adsServerPort->amsPort,
-                    adsStateToString(adsServerPort->adsStateOld), adsStateToString(adsServerPort->adsState));
         }
-        adsServerPort->adsStateOld = adsServerPort->adsState;
-        if (stat == asynSuccess)
-        {
-          adsServerPort->adsState = (ADSSTATE)adsState;
-        }
-        else
-        {
-          adsServerPort->adsState = ADSSTATE_INVALID;
-        }
-
-        adsServerPort->connectedOld = adsServerPort->connected;
-        adsServerPort->paramsOK = adsServerPort->connected;
-
-        oneAmsConnectionOK = oneAmsConnectionOK || adsServerPort->connected;
-
-        if (adsServerPort->connected && adsServerPort->refreshNeeded)
-        {
-          refreshParamsLock(adsServerPort->amsPort);
-        }
-        if (adsServerPort->connectedOld && !adsServerPort->connected)
-        {
-          invalidateParamsLock(adsServerPort->amsPort);
-          adsServerPort->refreshNeeded = true;
-          setAlarmPortLock(adsServerPort->amsPort, COMM_ALARM, INVALID_ALARM);
-          asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
-                    "%s:%s: connection failed for port %d.\n",
-                    driverName, functionName, adsServerPort->amsPort);
-          if (adsServerPort->retryCount > 3)
-          {
-            asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
-                      "%s:%s: shutting down ads ioc.\n",
-                      driverName, functionName);
-            exit(-1);
-          }
-          adsServerPort->retryCount++;
-          asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
-                    "%s:%s: retrying connection for port %d. Retry count = %ld\n",
-                    driverName, functionName, adsServerPort->amsPort, adsServerPort->retryCount);
-          printf("%s:%s: retrying connection for port %d. Retry count = %ld\n",
-                 driverName, functionName, adsServerPort->amsPort, adsServerPort->retryCount);
-        }
-        if (!adsServerPort->connectedOld && adsServerPort->connected)
-        {
-          adsReadVersion(cyclicThreadAdsClientPort_, adsServerPort);
-        }
+        asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Ams-port, %u, state change: \"%s\" -> \"%s\".\n",
+                  driverName, __func__, adsServerPort.amsPort,
+                  adsStateToString(adsServerPort.adsStateOld), adsStateToString(adsServerPort.adsState));
       }
-    }
-
-    if (!oneAmsConnectionOK)
-    {
-      notConnectedCounter_++;
-      if (notConnectedCounter_ < 100 || notConnectedCounter_ % 100 == 0)
+      adsServerPort.adsStateOld = adsServerPort.adsState;
+      if (stat == asynSuccess)
       {
-        asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Not connected counter: %d.\n", driverName, functionName, notConnectedCounter_);
+        adsServerPort.adsState = (ADSSTATE)adsState;
       }
-    }
-    if (oneAmsConnectionOK)
-    {
-      notConnectedCounter_ = 0;
-    }
+      else
+      {
+        adsServerPort.adsState = ADSSTATE_INVALID;
+      }
 
-    if (!oneAmsConnectionOK && autoConnect_)
-    {
-      if (oneAmsConnectionOKold_)
+      adsServerPort.connectedOld = adsServerPort.connected;
+      adsServerPort.paramsOK = adsServerPort.connected;
+
+      if (adsServerPort.connected && adsServerPort.refreshNeeded)
       {
-        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: No connection! Try to reconnect...\n", driverName, functionName);
+        refreshParamsLock(adsClientPort, adsServerPort.amsPort);
       }
-      connectedAds_ = 0;
-      if ((notConnectedCounter_ & 2) == 2)
+      if (adsServerPort.connectedOld && !adsServerPort.connected)
       {
-        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "cyclicThread: forcing disconnect.\n");
-        disconnectLock(pasynUserSelf);
+        invalidateParamsLock(adsServerPort.amsPort);
+        adsServerPort.refreshNeeded = true;
+        setAlarmPortLock(adsServerPort.amsPort, COMM_ALARM, INVALID_ALARM);
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                  "%s:%s: connection failed for port %u.\n",
+                  driverName, __func__, adsServerPort.amsPort);
+      }
+      if (!adsServerPort.connectedOld && adsServerPort.connected)
+      {
+        adsReadVersion(adsClientPort, adsServerPort);
+      }
+      if (adsServerPort.retryCount > 10)
+      {
+        adsServerPort.stale = true;
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                  "%s:%s: port %u marked stale. Perhaps it does not have an ads state to read.\n",
+                  driverName, __func__, adsServerPort.amsPort);
+      }
+      allStale = allStale && adsServerPort.stale;
+      if (allStale)
+      {
+        throw std::runtime_error(string_format(
+            "%s:%s: all ams server ports that this client wants to connect to are now marked stale. Giving up. Maybe try restarting the client...\n",
+            driverName, __func__));
       }
     }
-    oneAmsConnectionOKold_ = oneAmsConnectionOK;
   }
 }
 
 /* TBD - Poll at different rates depending on pollClass! */
 void adsAsynPortDriver::bulkReadThread()
 {
-  const char *functionName = "bulkReadThread";
   struct timeval start, now;
   uint32_t bytesRead;
   long status;
-  uint32_t cnt, readSize;
   asynUser *asynTraceUser = getTraceAsynUser();
-  while (!bulkOK)
-  {
-    usleep(1000000);
-  }
-  while (1)
-  {
-    printf("%s:%s: Starting bulk read.\n", driverName, functionName);
-    gettimeofday(&start, NULL);
-    adsLock();
-    for (int i = 0; bulk[i].cnt; i++)
-    {
-      if (!bulkOK || !bulk[i].cnt)
-      {
-        break;
-      }
-#ifdef MCB_DEBUG
-      static int first = 1;
-      if (first)
-      {
-        printf("Starting to poll!\n");
-        first = 0;
-      }
-#endif
-      bytesRead = 0;
-      cnt = bulk[i].cnt;
-      readSize = bulk[i].readSize;
-      AmsAddr amsServer = {remoteNetId_, bulk[i].amsPort};
-      status = AdsSyncReadWriteReqEx2(adsPort_, &amsServer,
-                                      ADSIGRP_SUMUP_READ, cnt,
-                                      readSize, bulkdata,
-                                      sizeof(bulk[i].sum[0]) * cnt, &bulk[i].sum,
-                                      &bytesRead);
-      if (status)
-      {
-        printf("Sum read %d failed: status %ld, client port: %ld, netid: %d.%d.%d.%d.%d.%d, server port: %d\n", i, status,
-               adsPort_, amsServer.netId.b[0], amsServer.netId.b[1], amsServer.netId.b[2], amsServer.netId.b[3], amsServer.netId.b[4], amsServer.netId.b[5],
-               amsServer.port);
-        continue;
-      }
 
-      uint32_t *stat = (uint32_t *)bulkdata;
-      uint8_t *srd = bulkdata + cnt * sizeof(uint32_t);
-      uint64_t nTimeStamp = 0;
-      /* The first *two* bulk parameters might be the timestamp! */
-      if (!stat[0] && !stat[1] && bulk[i].sum[0].iGroup == ADSIGRP_SYM_VALBYHND)
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
+  {
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
+  }
+
+  while (true)
+  {
+    while (!okToProcessBulkReads_)
+    {
+      epicsThreadSleep(0.5);
+      continue;
+    }
+    asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "%s:%s: Starting bulk read.\n", driverName, __func__);
+    gettimeofday(&start, NULL);
+    {
+      std::lock_guard<std::recursive_mutex> lockGuard(adsBulkInfoUpdateMutex_);
+      for (auto &bulkReadInfo : bulkReadInfo_)
       {
-        nTimeStamp = ((uint32_t *)srd)[0];
-        nTimeStamp = (nTimeStamp << 32) | ((uint32_t *)srd)[1];
-      }
-      else
-      {
-        /*
-         * Sigh.  now has the time since 1970-01-01 00:00:00 UTC, but
-         * we want 100ns increments since 1601-01-01!! So we grab the constant
-         * from adsAsynPortDriverUtils.cpp and convert.
-         */
-#define SEC_TO_UNIX_EPOCH 11644473600LL
-        nTimeStamp = now.tv_sec + SEC_TO_UNIX_EPOCH;
-        nTimeStamp = (nTimeStamp * 1000000 + now.tv_usec) * 10;
-      }
-      if (!stat[0])
-        srd += sizeof(uint32_t);
-      if (!stat[1])
-        srd += sizeof(uint32_t);
-      stat += 2;
-      for (uint32_t j = 2; j < cnt; j++)
-      {
-        adsParamInfo *paramInfo = getAdsParamInfo(bulk[i].paramID[j]);
-        if (!paramInfo)
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "%s:%s: bulk read count = %ld.\n", driverName, __func__, bulkReadInfo.numberOfVariables());
+        if (bulkReadInfo.numberOfVariables() <= 0)
+          continue;
+
+        bytesRead = 0;
+        AmsAddr amsServer = {remoteNetId_, bulkReadInfo.amsPort};
+        status = AdsSyncReadWriteReqEx2(adsClientPort,
+                                        &amsServer,
+                                        ADSIGRP_SUMUP_READ, bulkReadInfo.numberOfVariables(),
+                                        bulkReadInfo.readSize, bulkReadData_.data(),
+                                        sizeof(BulkReadRequestInfo) * bulkReadInfo.numberOfVariables(), bulkReadInfo.reqInfo.data(),
+                                        &bytesRead);
+
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "%s:%s: AdsSyncReadWriteReqEx2() with params:\n", driverName, __func__);
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "port: %lu\n", adsClientPort);
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "pAddr: amsNetId = %s, amsServerPort = %u\n", amsaddr_.c_str(), amsServer.port);
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "indexGroup: %u\n", ADSIGRP_SUMUP_READ);
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "indexOffset: %lu\n", bulkReadInfo.numberOfVariables());
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "readLength: %u\n", bulkReadInfo.readSize);
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "readDataLengthBytes: %lu\n", sizeof(uint8_t) * bulkReadData_.size());
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "writeLength: %lu\n", sizeof(BulkReadRequestInfo) * bulkReadInfo.numberOfVariables());
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "writeDataLengthBytes: %lu\n", sizeof(BulkReadRequestInfo) * bulkReadInfo.reqInfo.size());
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "bytesRead: %u\n", bytesRead);
+        if (status)
         {
-          asynPrint(asynTraceUser, ASYN_TRACE_ERROR,
-                    "%s:%s: getAdsParamInfo() for hUser %u failed\n",
-                    driverName, functionName, bulk[i].paramID[j]);
+          asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "Bulk read failed: status %ld, client port: %ld, netid: %s, server port: %d\n",
+                 status, adsClientPort, amsaddr_.c_str(), amsServer.port);
           continue;
         }
-        if (*stat++)
+
+        // The error code for each sub command is returned as the first sizeof(uint32_t) * numberOfVariables bytes.
+        // The bulkReadData.data() has type uint8_t, so each index of the vector represents one byte.
+        // By casting to a uint32_t, we can conveniently step along the error codes for each sub command.
+        // Remember, there is one sub command per variable.
+        uint32_t *errorCodePerVariable = (uint32_t *)bulkReadData_.data();
+
+        // The actual data returned from doing the bulk read is stored starting just after the error codes
+        // for each sub command. So bulkReadInfo.numberOfVariables() * sizeof(uint32_t) gives us the number
+        // of error code bytes, and so the dataPerVariable pointer points to the first byte that represents
+        // the returned data.
+        uint8_t *dataPerVariable = bulkReadData_.data() + bulkReadInfo.numberOfVariables() * sizeof(uint32_t);
+
+        uint64_t nTimeStamp = 0;
+        // The first two bulk parameters might represent the first 32 bits and last 32 bits respectively of a 64 bit time stamp.
+        if (!errorCodePerVariable[0] && !errorCodePerVariable[1] && bulkReadInfo.reqInfo[0].iGroup == ADSIGRP_SYM_VALBYHND)
         {
-          asynPrint(asynTraceUser, ASYN_TRACE_ERROR,
-                    "%s:%s: bulk read for %s (%d) failed\n",
-                    driverName, functionName, paramInfo->drvInfo, j);
-          exit(1);
+          // If there was no error in retrieving the time stamp, then piece the two 32 bit chunks together
+          // to get the timestamp value.
+          nTimeStamp = ((uint32_t *)dataPerVariable)[0];
+          nTimeStamp = (nTimeStamp << 32) | ((uint32_t *)dataPerVariable)[1];
         }
-        paramInfo->plcTimeStampRaw = nTimeStamp;
-        paramInfo->lastCallbackSize = paramInfo->plcSize;
-        adsUpdateParameter(paramInfo, srd);
-        srd += paramInfo->lastCallbackSize;
+        else
+        {
+          // Otherwise, just use the ioc timestamp.
+          // now has the time since 1970-01-01 00:00:00 UTC, but
+          // we want 100ns increments since 1601-01-01. So we convert.
+          nTimeStamp = now.tv_sec + SEC_TO_UNIX_EPOCH;
+          nTimeStamp = (nTimeStamp * 1000000 + now.tv_usec) * 10;
+        }
+
+        if (!errorCodePerVariable[0])
+          dataPerVariable += sizeof(uint32_t);
+
+        if (!errorCodePerVariable[1])
+          dataPerVariable += sizeof(uint32_t);
+
+        errorCodePerVariable += 2;
+
+        for (auto paramId : bulkReadInfo.asynParamIds)
+        {
+          auto paramInfo = getAdsParamInfo(paramId);
+          if (!paramInfo)
+          {
+            asynPrint(asynTraceUser, ASYN_TRACE_ERROR,
+                      "%s:%s: getAdsParamInfo() for hUser %u failed\n",
+                      driverName, __func__, paramId);
+            continue;
+          }
+          if (*errorCodePerVariable++)
+          {
+            asynPrint(asynTraceUser, ASYN_TRACE_ERROR,
+                      "%s:%s: bulk read for %s (%s) failed\n",
+                      driverName, __func__, paramInfo->drvInfo.c_str(), paramInfo->recordName.c_str());
+          }
+          paramInfo->plcTimeStampRaw = nTimeStamp;
+          paramInfo->lastCallbackSize = paramInfo->plcSize;
+          adsUpdateParameterLock(*paramInfo, dataPerVariable);
+          dataPerVariable += paramInfo->lastCallbackSize;
+        }
       }
     }
-    adsUnlock();
     gettimeofday(&now, NULL);
-    bulk_elapsed_us = (now.tv_sec - start.tv_sec) * 1000000 +
-                      (now.tv_usec - start.tv_usec);
-#ifdef MCB_DEBUG
-    printf("ELAPSED: %g\n", bulk_elapsed_us / 1000000.0);
-#endif
-    printf("%s:%s: Bulk read complete. Elapsed time: %g\n", driverName, functionName, bulk_elapsed_us / 1000000.0);
-    // Always sleep at least 10000ms to let other threads acquire the ads lock
-    usleep(std::max(bulk_delay_us - bulk_elapsed_us, 10000));
+    bulkReadTimeElapsed_us_ = (now.tv_sec - start.tv_sec) * 1000000 +
+                              (now.tv_usec - start.tv_usec);
+
+    printf("%s:%s: Bulk read complete. Elapsed time: %g\n", driverName, __func__, bulkReadTimeElapsed_us_ / 1000000.0);
+    // Always sleep at least 10ms to let other threads acquire the ads lock
+    usleep(std::max(bulkReadTimeDelay_us_ - bulkReadTimeElapsed_us_, 10000));
   }
 }
 
 /* Keeps possible slow data callbacks off of the ADS Recv queue*/
 void adsAsynPortDriver::dataCallbackThread()
 {
-  const char *functionName = "dataCallbackThread";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
-  while (1)
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
+  while (true)
   {
-    if (datacbqueue.empty() || !allowCallbackEpicsState)
-    {
-      usleep(10000);
+    usleep(10000);
+    if (!allowCallbackEpicsState)
       continue;
+    {
+      std::lock_guard<std::mutex> lockGuard(dataCbQueueMutex_);
+      if (datacbqueue.empty())
+        continue;
+      auto &info = datacbqueue.front();
+      asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Callback queue has %ld elements\n", driverName, __func__, datacbqueue.size());
+      asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Run callback for parameter %s (%d).\n", driverName, __func__, info.paramInfo.drvInfo.c_str(), info.paramInfo.paramIndex);
+      info.paramInfo.plcTimeStampRaw = info.notification.nTimeStamp;
+      info.paramInfo.lastCallbackSize = info.notification.cbSampleSize;
+      adsUpdateParameterLock(info.paramInfo, info.data.data());
+      datacbqueue.pop();
     }
-    adsAsynPortDriver::datacbinfo *info = &datacbqueue.front();
-    asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Callback queue has %ld elements\n", driverName, functionName, datacbqueue.size());
-    asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: Run callback for parameter %s (%d).\n", driverName, functionName, info->paramInfo->drvInfo, info->paramInfo->paramIndex);
-    info->paramInfo->plcTimeStampRaw = info->pNotification.nTimeStamp;
-    info->paramInfo->lastCallbackSize = info->pNotification.cbSampleSize;
-    adsUpdateParameterLock(info->paramInfo, info->data);
-    // This free is for the malloc in adsDataCallback
-    free(info->data);
-    datacbqueue.pop();
   }
 }
 
@@ -778,12 +825,11 @@ void adsAsynPortDriver::dataCallbackThread()
  */
 void adsAsynPortDriver::report(FILE *fp, int details)
 {
-  const char *functionName = "report";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   if (!fp)
   {
-    printf("%s:%s: ERROR: File NULL.\n", driverName, functionName);
+    printf("%s:%s: ERROR: File NULL.\n", driverName, __func__);
     return;
   }
 
@@ -791,16 +837,16 @@ void adsAsynPortDriver::report(FILE *fp, int details)
   {
     fprintf(fp, "General information:\n");
     fprintf(fp, "  Port:                        %s\n", portName);
-    fprintf(fp, "  Ip-address:                  %s\n", ipaddr_);
-    fprintf(fp, "  Ams-address:                 %s\n", amsaddr_);
+    fprintf(fp, "  Ip-address:                  %s\n", ipaddr_.c_str());
+    fprintf(fp, "  Ams-address:                 %s\n", amsaddr_.c_str());
     fprintf(fp, "  Default Ams-port :           %d\n", amsportDefault_);
     fprintf(fp, "  Auto-connect:                %s\n", autoConnect_ ? "true" : "false");
     fprintf(fp, "  Priority:                    %d\n", priority_);
-    fprintf(fp, "  Param. table size:           %d\n", paramTableSize_);
-    fprintf(fp, "  Param. count:                %d\n", adsParamArrayCount_);
-    fprintf(fp, "  ADS command timeout [ms]:    %d\n", adsTimeoutMS_);
-    fprintf(fp, "  Default sample time [ms]     %d\n", defaultSampleTimeMS_);
-    fprintf(fp, "  Default max delay time [ms]: %d\n", defaultMaxDelayTimeMS_);
+    fprintf(fp, "  Param. table size:           %ld\n", adsParamArray_.size());
+    fprintf(fp, "  Param. count:                %ld\n", adsParamArray_.size());
+    fprintf(fp, "  ADS command timeout [ms]:    %d\n", adsTimeout_ms_);
+    fprintf(fp, "  Default sample time [ms]     %d\n", defaultSampleTime_ms_);
+    fprintf(fp, "  Default max delay time [ms]: %d\n", defaultMaxDelayTime_ms_);
     fprintf(fp, "  Default time source:         %s\n", (defaultTimeSource_ == ADS_TIME_BASE_PLC) ? ADS_OPTION_TIMEBASE_PLC : ADS_OPTION_TIMEBASE_EPICS);
     fprintf(fp, "  NOTE: Several records can be linked to the same parameter.\n");
     fprintf(fp, "\n");
@@ -809,54 +855,49 @@ void adsAsynPortDriver::report(FILE *fp, int details)
   {
     // print all parameters
     fprintf(fp, "Parameter details:\n");
-    for (int i = 0; i < adsParamArrayCount_; i++)
+    for (size_t i = 0; i < adsParamArray_.size(); i++)
     {
-      if (!pAdsParamArray_[i])
-      {
-        fprintf(fp, "%s:%s: ERROR: Parameter array null at index %d\n", driverName, functionName, i);
-        return;
-      }
-      adsParamInfo *paramInfo = pAdsParamArray_[i];
-      fprintf(fp, "  Parameter %d:\n", i);
+      auto &paramInfo = adsParamArray_[i];
+      fprintf(fp, "  Parameter %lu:\n", i);
       if (i == 0)
       {
         fprintf(fp, "    Parameter 0 (pasynUser->reason==0) is reserved for Asyn octet interface (Motor Record and Stream Device access).\n");
         fprintf(fp, "\n");
         continue;
       }
-      fprintf(fp, "    Param name:                %s\n", paramInfo->drvInfo);
-      fprintf(fp, "    Param index:               %d\n", paramInfo->paramIndex);
-      fprintf(fp, "    Param type:                %s (%d)\n", asynTypeToString((long)paramInfo->asynType), paramInfo->asynType);
-      fprintf(fp, "    Param sample time [ms]:    %lf\n", paramInfo->sampleTimeMS);
-      fprintf(fp, "    Param max delay time [ms]: %lf\n", paramInfo->maxDelayTimeMS);
-      fprintf(fp, "    Param isIOIntr:            %s\n", paramInfo->isIOIntr ? "true" : "false");
-      fprintf(fp, "    Param asyn addr:           %d\n", paramInfo->asynAddr);
-      fprintf(fp, "    Param time source:         %s\n", (paramInfo->timeBase == ADS_TIME_BASE_PLC) ? ADS_OPTION_TIMEBASE_PLC : ADS_OPTION_TIMEBASE_EPICS);
-      fprintf(fp, "    Param plc time:            %us:%uns\n", paramInfo->plcTimeStamp.secPastEpoch, paramInfo->plcTimeStamp.nsec);
-      fprintf(fp, "    Param epics time:          %us:%uns\n", paramInfo->epicsTimestamp.secPastEpoch, paramInfo->epicsTimestamp.nsec);
-      fprintf(fp, "    Param array buffer alloc:  %s\n", paramInfo->arrayDataBuffer ? "true" : "false");
-      fprintf(fp, "    Param array buffer size:   %lu\n", paramInfo->arrayDataBufferSize);
-      fprintf(fp, "    Param alarm:               %d\n", paramInfo->alarmStatus);
-      fprintf(fp, "    Param severity:            %d\n", paramInfo->alarmSeverity);
-      fprintf(fp, "    Param data source:         %s\n", paramInfo->dataSource == ADS_DATASOURCE_PLC ? "PLC" : "DRIVER");
-      fprintf(fp, "    Plc ams port:              %d\n", paramInfo->amsPort);
-      fprintf(fp, "    Plc adr str:               %s\n", paramInfo->plcAdrStr);
-      fprintf(fp, "    Plc adr str is ADR cmd:    %s\n", paramInfo->isAdrCommand ? "true" : "false");
-      fprintf(fp, "    Plc abs adr valid:         %s\n", paramInfo->plcAbsAdrValid ? "true" : "false");
-      fprintf(fp, "    Plc abs adr group:         16#%x\n", paramInfo->plcAbsAdrGroup);
-      fprintf(fp, "    Plc abs adr offset:        16#%x\n", paramInfo->plcAbsAdrOffset);
-      fprintf(fp, "    Plc data type:             %s\n", adsTypeToString(paramInfo->plcDataType));
-      fprintf(fp, "    Plc data type size:        %zu\n", adsTypeSize(paramInfo->plcDataType));
-      fprintf(fp, "    Plc data size:             %u\n", paramInfo->plcSize);
-      fprintf(fp, "    Plc data is array:         %s\n", paramInfo->plcDataIsArray ? "true" : "false");
-      fprintf(fp, "    Plc data type warning:     %s\n", paramInfo->plcDataTypeWarn ? "true" : "false");
-      fprintf(fp, "    Ads hCallbackNotify:       %u\n", paramInfo->hCallbackNotify);
-      fprintf(fp, "    Ads CallbackNotify valid:  %s\n", paramInfo->bCallbackNotifyValid ? "true" : "false");
-      fprintf(fp, "    Ads hSymbHndle:            %u\n", paramInfo->hSymbolicHandle);
-      fprintf(fp, "    Ads hSymbHndleValid:       %s\n", paramInfo->bSymbolicHandleValid ? "true" : "false");
-      fprintf(fp, "    Record name:               %s\n", paramInfo->recordName);
-      fprintf(fp, "    Record type:               %s\n", paramInfo->recordType);
-      fprintf(fp, "    Record dtyp:               %s\n", paramInfo->dtyp);
+      fprintf(fp, "    Param name:                %s\n", paramInfo.drvInfo.c_str());
+      fprintf(fp, "    Param index:               %d\n", paramInfo.paramIndex);
+      fprintf(fp, "    Param type:                %s (%d)\n", asynTypeToString((long)paramInfo.asynType), paramInfo.asynType);
+      fprintf(fp, "    Param sample time [ms]:    %lf\n", paramInfo.sampleTimeMS);
+      fprintf(fp, "    Param max delay time [ms]: %lf\n", paramInfo.maxDelayTimeMS);
+      fprintf(fp, "    Param isIOIntr:            %s\n", paramInfo.isIOIntr ? "true" : "false");
+      fprintf(fp, "    Param asyn addr:           %d\n", paramInfo.asynAddr);
+      fprintf(fp, "    Param time source:         %s\n", (paramInfo.timeBase == ADS_TIME_BASE_PLC) ? ADS_OPTION_TIMEBASE_PLC : ADS_OPTION_TIMEBASE_EPICS);
+      fprintf(fp, "    Param plc time:            %us:%uns\n", paramInfo.plcTimeStamp.secPastEpoch, paramInfo.plcTimeStamp.nsec);
+      fprintf(fp, "    Param epics time:          %us:%uns\n", paramInfo.epicsTimestamp.secPastEpoch, paramInfo.epicsTimestamp.nsec);
+      fprintf(fp, "    Param array buffer alloc:  %s\n", paramInfo.arrayDataBuffer.size() ? "true" : "false");
+      fprintf(fp, "    Param array buffer size:   %lu\n", paramInfo.arrayDataBuffer.size());
+      fprintf(fp, "    Param alarm:               %d\n", paramInfo.alarmStatus);
+      fprintf(fp, "    Param severity:            %d\n", paramInfo.alarmSeverity);
+      fprintf(fp, "    Param data source:         %s\n", paramInfo.dataSource == ADS_DATASOURCE_PLC ? "PLC" : "DRIVER");
+      fprintf(fp, "    Plc ams port:              %d\n", paramInfo.amsPort);
+      fprintf(fp, "    Plc adr str:               %s\n", paramInfo.plcAdrStr.c_str());
+      fprintf(fp, "    Plc adr str is ADR cmd:    %s\n", paramInfo.isAdrCommand ? "true" : "false");
+      fprintf(fp, "    Plc abs adr valid:         %s\n", paramInfo.plcAbsAdrValid ? "true" : "false");
+      fprintf(fp, "    Plc abs adr group:         16#%x\n", paramInfo.plcAbsAdrGroup);
+      fprintf(fp, "    Plc abs adr offset:        16#%x\n", paramInfo.plcAbsAdrOffset);
+      fprintf(fp, "    Plc data type:             %s\n", adsTypeToString(paramInfo.plcDataType));
+      fprintf(fp, "    Plc data type size:        %zu\n", adsTypeSize(paramInfo.plcDataType));
+      fprintf(fp, "    Plc data size:             %u\n", paramInfo.plcSize);
+      fprintf(fp, "    Plc data is array:         %s\n", paramInfo.plcDataIsArray ? "true" : "false");
+      fprintf(fp, "    Plc data type warning:     %s\n", paramInfo.plcDataTypeWarn ? "true" : "false");
+      fprintf(fp, "    Ads hCallbackNotify:       %u\n", paramInfo.hCallbackNotify);
+      fprintf(fp, "    Ads CallbackNotify valid:  %s\n", paramInfo.bCallbackNotifyValid ? "true" : "false");
+      fprintf(fp, "    Ads hSymbHndle:            %u\n", paramInfo.hSymbolicHandle);
+      fprintf(fp, "    Ads hSymbHndleValid:       %s\n", paramInfo.bSymbolicHandleValid ? "true" : "false");
+      fprintf(fp, "    Record name:               %s\n", paramInfo.recordName.c_str());
+      fprintf(fp, "    Record type:               %s\n", paramInfo.recordType.c_str());
+      fprintf(fp, "    Record dtyp:               %s\n", paramInfo.dtyp.c_str());
       fprintf(fp, "\n");
     }
   }
@@ -881,14 +922,7 @@ asynStatus adsAsynPortDriver::disconnectLock(asynUser *pasynUser)
  */
 asynStatus adsAsynPortDriver::disconnect(asynUser *pasynUser)
 {
-  const char *functionName = "disconnect";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
-
-  asynStatus disconnectStatus = adsDisconnect();
-  if (disconnectStatus)
-  {
-    return asynError;
-  }
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   return asynPortDriver::disconnect(pasynUser);
 }
@@ -897,9 +931,9 @@ asynStatus adsAsynPortDriver::disconnect(asynUser *pasynUser)
  * connection failure to a ams port.
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::refreshParams()
+asynStatus adsAsynPortDriver::refreshParams(long adsClientPort)
 {
-  return refreshParams(0);
+  return refreshParams(adsClientPort, 0);
 }
 
 /** Refreshes all parameters for a specific amsport (with asyn lock()).
@@ -908,10 +942,10 @@ asynStatus adsAsynPortDriver::refreshParams()
  * Thread safe.
  */
 
-asynStatus adsAsynPortDriver::refreshParamsLock(uint16_t amsPort)
+asynStatus adsAsynPortDriver::refreshParamsLock(long adsClientPort, uint16_t amsPort)
 {
   lock();
-  asynStatus stat = refreshParams(amsPort);
+  asynStatus stat = refreshParams(adsClientPort, amsPort);
   unlock();
   return stat;
 }
@@ -920,44 +954,37 @@ asynStatus adsAsynPortDriver::refreshParamsLock(uint16_t amsPort)
  * \param[in] amsPort ams port.
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::refreshParams(uint16_t amsPort)
+asynStatus adsAsynPortDriver::refreshParams(long adsClientPort, uint16_t amsPort)
 {
-  const char *functionName = "refreshParams";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  if (connectedAds_)
+  std::lock_guard<std::recursive_mutex> lockGuard(adsBulkInfoUpdateMutex_);
+  if (adsParamArray_.size() > 1)
   {
-    if (adsParamArrayCount_ > 1)
+    // Renew data notification callbacks
+    for (size_t i = 1; i < adsParamArray_.size(); i++)
     {
-      // Renew data notification callbacks
-      for (int i = 1; i < adsParamArrayCount_; i++)
-      { // Skip first param since used for motorrecord or stream device
-        if (!pAdsParamArray_[i])
-        {
-          continue;
-        }
-        adsParamInfo *paramInfo = pAdsParamArray_[i];
-        if ((amsPort == 0 || paramInfo->amsPort == amsPort) && paramInfo->refreshNeeded)
-        {
-          updateParamInfoWithPLCInfo(paramInfo);
-        }
-      }
-    }
-
-    // Renew symbols changed notification callbacks
-    for (auto port : amsPortList_)
-    {
-      if (port->amsPort == amsPort && port->refreshNeeded)
+      // Skip first param since used for motorrecord or stream device
+      auto &paramInfo = adsParamArray_[i];
+      if ((amsPort == 0 || paramInfo.amsPort == amsPort) && paramInfo.refreshNeeded)
       {
-        if (port->bCallbackNotifyValid)
-        {
-          adsDelSymbolsChangedCallback(port);
-        }
-        adsAddSymbolsChangedCallback(port);
+        updateParamInfoWithPLCInfo(adsClientPort, paramInfo);
       }
     }
   }
-  bulkOK = 1;
+  // Renew symbols changed notification callbacks
+  for (auto &port : amsPortList_)
+  {
+    if (port.amsPort == amsPort && port.refreshNeeded)
+    {
+      if (port.bCallbackNotifyValid)
+      {
+        adsDelSymbolsChangedCallback(adsClientPort, port);
+      }
+      adsAddSymbolsChangedCallback(adsClientPort, port);
+    }
+  }
+  setOkToProcessBulkReads(true);
   return asynSuccess;
 }
 
@@ -980,36 +1007,35 @@ asynStatus adsAsynPortDriver::invalidateParamsLock(uint16_t amsPort)
  */
 asynStatus adsAsynPortDriver::invalidateParams(uint16_t amsPort)
 {
-  const char *functionName = "invalidateParams";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  bulkOK = 0;
-  if (adsParamArrayCount_ > 1)
+  std::lock_guard<std::recursive_mutex> lockGuard(adsBulkInfoUpdateMutex_);
+
+  setOkToProcessBulkReads(false);
+  for (size_t i = 1; i < adsParamArray_.size(); i++)
   {
-    for (int i = 1; i < adsParamArrayCount_; i++)
-    { // Skip first param since used for motorrecord or stream device
-      if (!pAdsParamArray_[i])
-      {
-        continue;
-      }
-      adsParamInfo *paramInfo = pAdsParamArray_[i];
-      if (amsPort == 0 || paramInfo->amsPort == amsPort)
-      {
-        paramInfo->refreshNeeded = true;
-      }
+    // Skip first param since used for motorrecord or stream device
+    auto &paramInfo = adsParamArray_[i];
+    if (amsPort == 0 || paramInfo.amsPort == amsPort)
+    {
+      paramInfo.refreshNeeded = true;
     }
   }
-  for (int i = 0; i < bulkTScnt; i++)
+  for (auto &bulkTs : bulkTs_)
   {
-    if (amsPort == 0 || bulkTS[i].amsPort == amsPort)
-      bulkTS[i].refreshNeeded = 1;
+    if (amsPort == 0 || bulkTs.amsPort == amsPort)
+      bulkTs.refreshNeeded = true;
   }
-  for (int i = 0; i < MAXBULK; i++)
+  for (auto &bulkReadInfo : bulkReadInfo_)
   {
-    if (bulk[i].cnt == 0) // Quit if unused!
-      break;
-    if (amsPort == 0 || bulk[i].amsPort == amsPort)
-      bulk[i].readSize = 4 * sizeof(uint32_t); // Initialize to just the timestamp!
+    if (amsPort == 0 || bulkReadInfo.amsPort == amsPort)
+    {
+      // 4 bytes for error code of first 32 bits of time stamp
+      // 4 bytes for error code of second 32 bits of time stamp
+      // 4 bytes for first 32 bits of time stamp
+      // 4 bytes for second 32 bits of time stamp
+      bulkReadInfo.readSize = 4 * sizeof(uint32_t);
+    }
   }
   return asynSuccess;
 }
@@ -1033,24 +1059,30 @@ asynStatus adsAsynPortDriver::connectLock(asynUser *pasynUser)
  */
 asynStatus adsAsynPortDriver::connect(asynUser *pasynUser)
 {
-  const char *functionName = "connect";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: %s\n", driverName, functionName, epicsThreadGetNameSelf());
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: thread: %s\n", driverName, __func__, epicsThreadGetNameSelf());
 
-  bool err = false;
-  asynStatus stat = adsConnect();
-
-  if (stat != asynSuccess)
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
   {
-    return asynError;
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
   }
 
-  if (asynPortDriver::connect(pasynUser) != asynSuccess)
-  {
-    return asynError;
-  }
+  auto result = adsConnect(adsClientPort);
+  if (result != asynSuccess)
+    return result;
 
-  connectedAds_ = 1;
-  return err ? asynError : asynSuccess;
+  result = asynPortDriver::connect(pasynUser);
+  if (result != asynSuccess)
+    return result;
+
+  return asynSuccess;
 }
 
 /** Validates drvInfo string
@@ -1061,8 +1093,7 @@ asynStatus adsAsynPortDriver::connect(asynUser *pasynUser)
  */
 asynStatus adsAsynPortDriver::validateDrvInfo(const char *drvInfo)
 {
-  const char *functionName = "validateDrvInfo";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, functionName, drvInfo);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, __func__, drvInfo);
 
   if (strlen(drvInfo) == 0)
   {
@@ -1105,10 +1136,22 @@ asynStatus adsAsynPortDriver::validateDrvInfo(const char *drvInfo)
  */
 asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser, const char *drvInfo, const char **pptypeName, size_t *psize)
 {
-  const char *functionName = "drvUserCreate";
   static int vcnt = 0;
 
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, functionName, drvInfo);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, __func__, drvInfo);
+
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
+  {
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
+  }
 
   if (validateDrvInfo(drvInfo) != asynSuccess)
   {
@@ -1119,73 +1162,49 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser, const char *drv
   asynStatus status = findParam(drvInfo, &index);
   if (status == asynSuccess)
   {
-    asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: Parameter index found at: %d for %s. \n", driverName, functionName, index, drvInfo);
-    if (!pAdsParamArray_[index])
+    asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: Parameter index found at: %d for %s. \n", driverName, __func__, index, drvInfo);
+    if (adsParamArray_[index].dataSource == ADS_DATASOURCE_AMS_STATE)
     {
-      asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s:pAdsParamArray_[%d]==NULL (drvInfo=%s).", driverName, functionName, index, drvInfo);
-      return asynError;
-    }
-
-    if (pAdsParamArray_[index]->dataSource == ADS_DATASOURCE_AMS_STATE)
-    { // Local variable (not in PLC) like AMS port state.
-
+      // Local variable (not in PLC) like AMS port state.
       return asynPortDriver::drvUserCreate(pasynUser, drvInfo, pptypeName, psize);
     }
-
-    if (!connectedAds_)
+    if (adsReadParam(adsClientPort, adsParamArray_[index]) != asynSuccess)
     {
-      // try to connect without error handling
-      connect(pasynUser);
-    }
-
-    if (connectedAds_)
-    {
-      status = adsReadParam(pAdsParamArray_[index]);
-      if (status != asynSuccess)
-      {
-        return asynError;
-      }
+      asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: adsReadParam() failed.", driverName, __func__);
+      return asynError;
     }
     return asynPortDriver::drvUserCreate(pasynUser, drvInfo, pptypeName, psize);
   }
 
   if (!vcnt++)
-    printf("Linking EPICS PVs to PLC variables...\n");
+    asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: linking EPICS PVs to PLC variables...\n", driverName, __func__);
   if (vcnt % 1000 == 0)
-    printf("%d...\n", vcnt);
-
-  // Ensure space left in param table
-  if (adsParamArrayCount_ >= (paramTableSize_ - 1))
-  {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Parameter table full. Parameter with drvInfo %s will be discarded.", driverName, functionName, drvInfo);
-    return asynError;
-  }
+    asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: %d...\n", driverName, __func__, vcnt);
 
   // Collect data from drvInfo string and recordpasynUser->reason=index;
-  adsParamInfo *paramInfo = new adsParamInfo();
-  memset(paramInfo, 0, sizeof(adsParamInfo));
-  paramInfo->sampleTimeMS = defaultSampleTimeMS_;
-  paramInfo->maxDelayTimeMS = defaultMaxDelayTimeMS_;
-  paramInfo->refreshNeeded = 1;
-  paramInfo->bulkIndex = -1;
-  paramInfo->bulkOffset = -1;
+  adsParamArray_.emplace_back();
+  auto &paramInfo = adsParamArray_.back();
+  paramInfo.sampleTimeMS = defaultSampleTime_ms_;
+  paramInfo.maxDelayTimeMS = defaultMaxDelayTime_ms_;
+  paramInfo.refreshNeeded = true;
+  paramInfo.bulkIndex = -1;
+  paramInfo.bulkOffset = -1;
 
-  status = getRecordInfoFromDrvInfo(drvInfo, paramInfo);
-  if (status != asynSuccess)
+  if (getRecordInfoFromDrvInfo(drvInfo, paramInfo) != asynSuccess)
   {
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: getRecordInfoFromDrvInfo() failed.", driverName, __func__);
     return asynError;
   }
 
-  status = createParam(drvInfo, paramInfo->asynType, &index);
-  if (status != asynSuccess)
+  if (createParam(drvInfo, paramInfo.asynType, &index) != asynSuccess)
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: createParam() failed.", driverName, functionName);
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: createParam() failed.", driverName, __func__);
     return asynError;
   }
-  asynPrint(pasynUser, ASYN_TRACE_INFO, "%s:%s: Parameter created: \"%s\" (index %d).\n", driverName, functionName, drvInfo, index);
+  asynPrint(pasynUser, ASYN_TRACE_INFO, "%s:%s: Parameter created: \"%s\" (index %d).\n", driverName, __func__, drvInfo, index);
 
   // Set default value for basic types...
-  switch (paramInfo->asynType)
+  switch (paramInfo.asynType)
   {
   case asynParamInt32:
     setIntegerParam(index, 0);
@@ -1200,39 +1219,30 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser, const char *drv
     break;
   }
 
-  paramInfo->paramIndex = index;
+  paramInfo.paramIndex = index;
 
   int addr = 0;
-  status = getAddress(pasynUser, &addr);
-  if (status != asynSuccess)
+  if (getAddress(pasynUser, &addr) != asynSuccess)
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: getAddress() failed.", driverName, functionName);
-    return (status);
-  }
-
-  paramInfo->asynAddr = addr;
-
-  status = parsePlcInfofromDrvInfo(drvInfo, paramInfo);
-  if (status != asynSuccess)
-  {
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: getAddress() failed.", driverName, __func__);
     return asynError;
   }
-  pasynUser->timeout = (paramInfo->maxDelayTimeMS * 2) / 1000;
 
-  pAdsParamArray_[adsParamArrayCount_] = paramInfo;
-  adsParamArrayCount_++;
+  paramInfo.asynAddr = addr;
 
-  if (!connectedAds_)
+  if (parsePlcInfofromDrvInfo(drvInfo, paramInfo) != asynSuccess)
   {
-    // try to connect without error handling
-    connect(pasynUser);
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: parsePlcInfofromDrvInfo() failed.", driverName, __func__);
+    return asynError;
   }
+  pasynUser->timeout = (paramInfo.maxDelayTimeMS * 2) / 1000;
 
-  if (connectedAds_ && !(paramInfo->dataSource == ADS_DATASOURCE_AMS_STATE))
-  { // Do not read info from PLC if local variable (like ams-port state)
-    status = updateParamInfoWithPLCInfo(paramInfo);
-    if (status != asynSuccess)
+  if (paramInfo.dataSource != ADS_DATASOURCE_AMS_STATE)
+  {
+    // Do not read info from PLC if local variable (like ams-port state)
+    if (updateParamInfoWithPLCInfo(adsClientPort, paramInfo) != asynSuccess)
     {
+      asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: updateParamInfoWithPLCInfo() failed.", driverName, __func__);
       return asynError;
     }
   }
@@ -1245,33 +1255,30 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser, const char *drv
  * If the PLC variable is an array then a buffer is allocated in the paramInfo to
  * hold the information.
  */
-asynStatus adsAsynPortDriver::updateParamInfoWithPLCInfo(adsParamInfo *paramInfo)
+asynStatus adsAsynPortDriver::updateParamInfoWithPLCInfo(long adsClientPort, adsParamInfo &paramInfo)
 {
-  const char *functionName = "updateParamInfoWithPLCInfo";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: : %s\n", driverName, functionName, paramInfo->drvInfo);
-
-  asynStatus status;
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: : %s\n", driverName, __func__, paramInfo.drvInfo.c_str());
 
   // Do not read information from PLC if "variable" in driver (like ams router state)
-  if (paramInfo->dataSource != ADS_DATASOURCE_PLC)
+  if (paramInfo.dataSource != ADS_DATASOURCE_PLC)
   {
-    paramInfo->refreshNeeded = false;
+    paramInfo.refreshNeeded = false;
     return asynSuccess;
   }
 
-  // Read symbolic information if needed (to get paramInfo->plcSize)
-  if (!paramInfo->isAdrCommand)
+  // Read symbolic information if needed (to get paramInfo.plcSize)
+  if (!paramInfo.isAdrCommand)
   {
-    status = adsGetSymInfoByName(paramInfo);
-    if (status != asynSuccess)
+    if (adsGetSymInfoByName(adsClientPort, paramInfo) != asynSuccess)
     {
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymInfoByName() failed.", driverName, __func__);
       return asynError;
     }
   }
 
   // Check if array
   bool isArray = false;
-  switch (paramInfo->plcDataType)
+  switch (paramInfo.plcDataType)
   {
   case ADST_VOID:
     isArray = false;
@@ -1289,60 +1296,46 @@ asynStatus adsAsynPortDriver::updateParamInfoWithPLCInfo(adsParamInfo *paramInfo
     isArray = false;
     break;
   default:
-    isArray = paramInfo->plcSize > adsTypeSize(paramInfo->plcDataType);
+    isArray = paramInfo.plcSize > adsTypeSize(paramInfo.plcDataType);
     break;
   }
-  paramInfo->plcDataIsArray = isArray;
+  paramInfo.plcDataIsArray = isArray;
 
   // Allocate memory for array
   if (isArray)
   {
-    if (paramInfo->plcSize != paramInfo->arrayDataBufferSize && paramInfo->arrayDataBuffer)
-    { // new size of array
-      free(paramInfo->arrayDataBuffer);
-      paramInfo->arrayDataBuffer = NULL;
-    }
-    if (!paramInfo->arrayDataBuffer)
-    {
-      paramInfo->arrayDataBuffer = calloc(paramInfo->plcSize, 1);
-      paramInfo->arrayDataBufferSize = paramInfo->plcSize;
-      if (!paramInfo->arrayDataBuffer)
-      {
-        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to allocate memory for array data for %s.\n.", driverName, functionName, paramInfo->drvInfo);
-        unlock();
-        return asynError;
-      }
-      memset(paramInfo->arrayDataBuffer, 0, paramInfo->plcSize);
-    }
+    paramInfo.arrayDataBuffer.resize(paramInfo.plcSize);
+    memset(paramInfo.arrayDataBuffer.data(), 0, paramInfo.plcSize);
   }
 
-  if (!paramInfo->isAdrCommand)
+  if (!paramInfo.isAdrCommand)
   {
-    adsReleaseSymbolicHandle(paramInfo, true); // try to delete
-    status = adsGetSymHandleByName(paramInfo);
-    if (status != asynSuccess)
+    adsReleaseSymbolicHandle(adsClientPort, paramInfo, true); // try to delete
+    if (adsGetSymHandleByName(adsClientPort, paramInfo) != asynSuccess)
     {
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymHandleByName() failed.", driverName, __func__);
       return asynError;
     }
   }
 
-  if (paramInfo->isIOIntr)
+  if (paramInfo.isIOIntr)
   {
-    /* If it's not a bulk read or if it's really big, just subscribe to it! */
-    if (!paramInfo->isBulkRead || paramInfo->plcSize > 1024 * 1024)
+    // If it's not a bulk read or if it's really big, just subscribe to it.
+    if (!paramInfo.isBulkRead || paramInfo.plcSize > 1024 * 1024)
     {
-      adsDelDataCallback(paramInfo, true); // try to delete
-      status = adsAddDataCallback(paramInfo);
-      if (status != asynSuccess)
+      adsDelDataCallback(adsClientPort, paramInfo, true); // try to delete
+      if (adsAddDataCallback(adsClientPort, paramInfo) != asynSuccess)
       {
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsAddDataCallback() failed.", driverName, __func__);
         return asynError;
       }
     }
     else
-    { /* Otherwise, put it in a bulk read! */
-      status = adsAddToBulkRead(paramInfo);
-      if (status != asynSuccess)
+    {
+      // Otherwise, put it in a bulk read.
+      if (adsAddToBulkRead(paramInfo) != asynSuccess)
       {
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsAddToBulkRead() failed.", driverName, __func__);
         return asynError;
       }
     }
@@ -1350,160 +1343,181 @@ asynStatus adsAsynPortDriver::updateParamInfoWithPLCInfo(adsParamInfo *paramInfo
 
   // Make first read
   long errorCode = 0;
-  status = adsReadParam(paramInfo, &errorCode, 0);
-  if (status != asynSuccess)
+  if (adsReadParam(adsClientPort, paramInfo, errorCode, 0) != asynSuccess)
   {
     // Try read again
-    asynStatus stat = adsReadParam(paramInfo, &errorCode, 0);
-    if (stat != asynSuccess)
+    if (adsReadParam(adsClientPort, paramInfo, errorCode, 0) != asynSuccess)
     {
-      paramInfo->refreshNeeded = true;
+      paramInfo.refreshNeeded = true;
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsReadParam() failed.", driverName, __func__);
       return asynError;
     }
   }
 
-  paramInfo->refreshNeeded = false;
+  paramInfo.refreshNeeded = false;
   return asynSuccess;
 }
 
 void adsAsynPortDriver::poll_info(char *name)
 {
-  int i;
-  printf("Bulk read loop: desired period = %gs, last loop time = %gs\n", bulk_delay_us / 1000000.0, bulk_elapsed_us / 1000000.0);
-  for (i = 0; bulk[i].cnt && i < MAXBULK; i++)
-    ;
-  printf("Bulk read count = %d\n", i);
+  std::lock_guard<std::recursive_mutex> lockGuard(adsBulkInfoUpdateMutex_);
+  size_t i;
+  printf("Bulk read loop: desired period = %gs, last loop time = %gs\n", bulkReadTimeDelay_us_ / 1000000.0, bulkReadTimeElapsed_us_ / 1000000.0);
+  printf("Bulk read count = %lu\n", bulkReadInfo_.size());
   if (name[0] == 0)
     name = 0;
-  for (i = 0; bulk[i].cnt && i < MAXBULK; i++)
+  for (i = 0; i < bulkReadInfo_.size(); i++)
   {
-    printf("Bulk Read #%d:\n", i);
+    printf("Bulk Read #%lu:\n", i);
     if (!name)
     {
       printf("    0: MAIN.fbSystemTime.timeLoDW (G=0x%x, O=0x%x, S=%d)\n",
-             bulk[i].sum[0].iGroup, bulk[i].sum[0].iOffset, bulk[i].sum[0].iSize);
+             bulkReadInfo_[i].reqInfo[0].iGroup, bulkReadInfo_[i].reqInfo[0].iOffset, bulkReadInfo_[i].reqInfo[0].iSize);
       printf("    1: MAIN.fbSystemTime.timeHiDW (G=0x%x, O=0x%x, S=%d)\n",
-             bulk[i].sum[1].iGroup, bulk[i].sum[1].iOffset, bulk[i].sum[1].iSize);
+             bulkReadInfo_[i].reqInfo[1].iGroup, bulkReadInfo_[i].reqInfo[1].iOffset, bulkReadInfo_[i].reqInfo[1].iSize);
     }
-    for (int j = 2; j < bulk[i].cnt; j++)
+    for (size_t j = 2; j < bulkReadInfo_[i].numberOfVariables(); j++)
     {
-      adsParamInfo *paramInfo = getAdsParamInfo(bulk[i].paramID[j]);
+      auto paramInfo = getAdsParamInfo(bulkReadInfo_[i].asynParamIds[j]);
       if (!paramInfo)
         continue;
-      if (!name || strstr(paramInfo->plcAdrStr, name))
-        printf("  %3d: %s (G=0x%x, O=0x%x, S=%d, TS=%d.%09d)\n", j, paramInfo->plcAdrStr,
-               bulk[i].sum[j].iGroup, bulk[i].sum[j].iOffset, bulk[i].sum[j].iSize,
+      if (!name || strstr(paramInfo->plcAdrStr.c_str(), name))
+        printf("  %3lu: %s (G=0x%x, O=0x%x, S=%d, TS=%d.%09d)\n", j, paramInfo->plcAdrStr.c_str(),
+               bulkReadInfo_[i].reqInfo[j].iGroup, bulkReadInfo_[i].reqInfo[j].iOffset, bulkReadInfo_[i].reqInfo[j].iSize,
                paramInfo->epicsTimestamp.secPastEpoch, paramInfo->epicsTimestamp.nsec);
     }
   }
 }
 
-/* TBD - Use paramInfo->pollClass to separate into different poll rates!! */
-asynStatus adsAsynPortDriver::adsAddToBulkRead(adsParamInfo *paramInfo)
+/* TBD - Use paramInfo.pollClass to separate into different poll rates!! */
+asynStatus adsAsynPortDriver::adsAddToBulkRead(adsParamInfo &paramInfo)
 {
-  adsLock(); // Prevent reads while we change this!
-  if (paramInfo->bulkIndex < 0)
-  { /* Not assigned yet, find one! */
-    int i;
-    for (i = 0; i < MAXBULK; i++)
+  std::lock_guard<std::recursive_mutex> lockGuard(adsBulkInfoUpdateMutex_);
+
+  if (paramInfo.bulkIndex < 0)
+  {
+    // Not assigned yet, find one.
+    size_t i;
+    for (i = 0; i < bulkReadInfo_.size(); i++)
     {
-      /* Look for an unused entry or a non-full entry for this port. */
-      if (bulk[i].cnt == 0 || (bulk[i].cnt != BULKSIZ &&
-                               bulk[i].amsPort == paramInfo->amsPort))
+      // Look for an unused entry or a non-full entry for this port.
+      if (bulkReadInfo_[i].numberOfVariables() == 0 ||
+          (bulkReadInfo_[i].numberOfVariables() < MaxNumberOfSubCallsPerBulkRead_ &&
+           bulkReadInfo_[i].amsPort == paramInfo.amsPort))
         break;
     }
-    if (i == MAXBULK)
+    if (i >= bulkReadInfo_.size())
     {
-      adsUnlock();
-      return asynError; // No room at the inn.
+      bulkReadInfo_.emplace_back();
     }
-    if (!bulk[i].cnt)
-    { // First variable in this bulk request!
-      bulk[i].amsPort = paramInfo->amsPort;
-      int j = adsFindBulkTimeStamp(paramInfo->amsPort);
-      if (bulkTS[j].refreshNeeded)
-      {                                 /* No TS variables!! */
-        bulk[i].sum[0].iGroup = 0x4020; // %M
-        bulk[i].sum[0].iOffset = 0;
-        bulk[i].sum[0].iSize = sizeof(uint32_t);
-        bulk[i].sum[1].iGroup = 0x4020; // %M
-        bulk[i].sum[1].iOffset = 0;
-        bulk[i].sum[1].iSize = sizeof(uint32_t);
+    if (!bulkReadInfo_[i].numberOfVariables())
+    {
+      // First variable in this bulk request.
+      bulkReadInfo_[i].amsPort = paramInfo.amsPort;
+      bulkReadInfo_[i].reqInfo.resize(2);
+      auto &first32BitsOfTimestampReqInfo = bulkReadInfo_[i].reqInfo.back();
+      auto &last32BitsOfTimestampReqInfo = bulkReadInfo_[i].reqInfo.back();
+      int j = adsGetBulkTimeStamp(paramInfo.amsPort);
+      if (bulkTs_[j].refreshNeeded)
+      {
+        // The timestamp variables will occupy the first two
+        // indices of the bulk read.
+        first32BitsOfTimestampReqInfo.iGroup = 0x4020;
+        first32BitsOfTimestampReqInfo.iOffset = 0;
+        first32BitsOfTimestampReqInfo.iSize = sizeof(uint32_t);
+        last32BitsOfTimestampReqInfo.iGroup = 0x4020;
+        last32BitsOfTimestampReqInfo.iOffset = 0;
+        last32BitsOfTimestampReqInfo.iSize = sizeof(uint32_t);
       }
       else
       {
-        bulk[i].sum[0].iGroup = ADSIGRP_SYM_VALBYHND;
-        bulk[i].sum[0].iOffset = bulkTS[j].iHandleH;
-        bulk[i].sum[0].iSize = sizeof(uint32_t);
-        bulk[i].sum[1].iGroup = ADSIGRP_SYM_VALBYHND;
-        bulk[i].sum[1].iOffset = bulkTS[j].iHandleL;
-        bulk[i].sum[1].iSize = sizeof(uint32_t);
+        first32BitsOfTimestampReqInfo.iGroup = ADSIGRP_SYM_VALBYHND;
+        first32BitsOfTimestampReqInfo.iOffset = bulkTs_[j].iHandleH;
+        first32BitsOfTimestampReqInfo.iSize = sizeof(uint32_t);
+        last32BitsOfTimestampReqInfo.iGroup = ADSIGRP_SYM_VALBYHND;
+        last32BitsOfTimestampReqInfo.iOffset = bulkTs_[j].iHandleL;
+        last32BitsOfTimestampReqInfo.iSize = sizeof(uint32_t);
       }
-      bulk[i].cnt = 2;
-      bulk[i].readSize = 4 * sizeof(uint32_t);
+      bulkReadInfo_[i].readSize = 4 * sizeof(uint32_t);
     }
-    paramInfo->bulkIndex = i;
-    paramInfo->bulkOffset = bulk[i].cnt;
-    bulk[i].paramID[bulk[i].cnt++] = paramInfo->paramIndex;
+    paramInfo.bulkIndex = i;
+    paramInfo.bulkOffset = bulkReadInfo_[i].numberOfVariables();
+    bulkReadInfo_[i].asynParamIds.emplace_back(paramInfo.paramIndex);
+    bulkReadInfo_[i].reqInfo.emplace_back();
+
+    // Update the parameter information.
+    uint32_t group, offset;
+    if (paramInfo.isAdrCommand)
+    {
+      group = paramInfo.plcAbsAdrGroup;
+      offset = paramInfo.plcAbsAdrOffset;
+    }
+    else
+    {
+      group = ADSIGRP_SYM_VALBYHND;
+      offset = paramInfo.hSymbolicHandle;
+    }
+    bulkReadInfo_[paramInfo.bulkIndex].reqInfo[paramInfo.bulkOffset].iGroup = group;
+    bulkReadInfo_[paramInfo.bulkIndex].reqInfo[paramInfo.bulkOffset].iOffset = offset;
+    bulkReadInfo_[paramInfo.bulkIndex].reqInfo[paramInfo.bulkOffset].iSize = paramInfo.plcSize;
+
+    // Increase the bulk read total number of bytes by the number of bytes plc will give us
+    // for this variable plus 4 bytes for the error code.
+    bulkReadInfo_[paramInfo.bulkIndex].readSize += paramInfo.plcSize + sizeof(uint32_t);
   }
-  /* Update the information for a previously allocated element.  Possibly *just*
-     allocated, but that's still previously! */
-  uint32_t group, offset;
-  if (paramInfo->isAdrCommand)
-  {
-    group = paramInfo->plcAbsAdrGroup;
-    offset = paramInfo->plcAbsAdrOffset;
-  }
-  else
-  {
-    group = ADSIGRP_SYM_VALBYHND;
-    offset = paramInfo->hSymbolicHandle;
-  }
-  bulk[paramInfo->bulkIndex].sum[paramInfo->bulkOffset].iGroup = group;
-  bulk[paramInfo->bulkIndex].sum[paramInfo->bulkOffset].iOffset = offset;
-  bulk[paramInfo->bulkIndex].sum[paramInfo->bulkOffset].iSize = paramInfo->plcSize;
-  bulk[paramInfo->bulkIndex].readSize += paramInfo->plcSize + sizeof(uint32_t);
-  adsUnlock();
   return asynSuccess;
 }
 
-// Assume locked!!
-int adsAsynPortDriver::adsFindBulkTimeStamp(uint16_t amsPort)
+int adsAsynPortDriver::adsGetBulkTimeStamp(uint16_t amsPort)
 {
-  int i;
-  for (i = 0; i < bulkTScnt; i++)
+  std::lock_guard<std::recursive_mutex> lockGuard(adsBulkInfoUpdateMutex_);
+  size_t i;
+  for (i = 0; i < bulkTs_.size(); i++)
   {
-    if (amsPort == bulkTS[i].amsPort)
+    if (amsPort == bulkTs_[i].amsPort)
       break;
   }
-  if (i == bulkTScnt)
+  if (i >= bulkTs_.size())
   {
-    bulkTScnt++;
-    bulkTS[i].amsPort = amsPort;
-    bulkTS[i].refreshNeeded = 1;
+    bulkTs_.emplace_back();
+    bulkTs_.back().amsPort = amsPort;
+    bulkTs_.back().refreshNeeded = true;
   }
 #define TSLO "MAIN.fbSystemTime.timeLoDW"
 #define TSHI "MAIN.fbSystemTime.timeHiDW"
-  if (bulkTS[i].refreshNeeded)
+  if (bulkTs_[i].refreshNeeded)
   {
+    long adsClientPort = 0;
+    std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+    try
+    {
+      adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+      adsClientPort = adsClientPortGuard->getAdsClientPort();
+    }
+    catch (std::runtime_error &e)
+    {
+      throw std::runtime_error(string_format(
+          "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
+    }
+
     long statL, statH;
     AmsAddr amsServer = {remoteNetId_, amsPort};
-    statH = AdsSyncReadWriteReqEx2(adsPort_,
+    statH = AdsSyncReadWriteReqEx2(adsClientPort,
                                    &amsServer,
                                    ADSIGRP_SYM_HNDBYNAME,
                                    0,
-                                   sizeof(uint32_t), &bulkTS[i].iHandleH,
+                                   sizeof(uint32_t), &bulkTs_[i].iHandleH,
                                    strlen(TSHI), TSHI,
                                    nullptr);
-    statL = AdsSyncReadWriteReqEx2(adsPort_,
+    statL = AdsSyncReadWriteReqEx2(adsClientPort,
                                    &amsServer,
                                    ADSIGRP_SYM_HNDBYNAME,
                                    0,
-                                   sizeof(uint32_t), &bulkTS[i].iHandleL,
+                                   sizeof(uint32_t), &bulkTs_[i].iHandleL,
                                    strlen(TSLO), TSLO,
                                    nullptr);
     if (!statH && !statL)
-      bulkTS[i].refreshNeeded = 0;
+      bulkTs_[i].refreshNeeded = false;
   }
   return i;
 }
@@ -1513,14 +1527,13 @@ int adsAsynPortDriver::adsFindBulkTimeStamp(uint16_t amsPort)
  * \param[in/out] paramInfo Parameter information structure.
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo, adsParamInfo *paramInfo)
+asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo, adsParamInfo &paramInfo)
 {
-  const char *functionName = "getRecordInfoFromDrvInfo";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, functionName, drvInfo);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, __func__, drvInfo);
 
   bool isInput = false;
   bool isOutput = false;
-  paramInfo->amsPort = amsportDefault_;
+  paramInfo.amsPort = amsportDefault_;
   DBENTRY *pdbentry;
   pdbentry = dbAllocEntry(pdbbase);
   long status = dbFirstRecordType(pdbentry);
@@ -1532,23 +1545,23 @@ asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo, adsP
   }
   while (!status)
   {
-    paramInfo->recordType = strdup(dbGetRecordTypeName(pdbentry));
+    paramInfo.recordType = strdup(dbGetRecordTypeName(pdbentry));
     status = dbFirstRecord(pdbentry);
     while (!status)
     {
-      paramInfo->recordName = strdup(dbGetRecordName(pdbentry));
+      paramInfo.recordName = strdup(dbGetRecordName(pdbentry));
       if (!dbIsAlias(pdbentry))
       {
         status = dbFindField(pdbentry, "INP");
         if (!status)
         {
-          paramInfo->inp = strdup(dbGetString(pdbentry));
+          paramInfo.inp = strdup(dbGetString(pdbentry));
           isInput = true;
           char port[ADS_MAX_FIELD_CHAR_LENGTH];
           int adr;
           int timeout;
           char currdrvInfo[ADS_MAX_FIELD_CHAR_LENGTH];
-          int nvals = sscanf(paramInfo->inp, "@asyn(%[^,],%d,%d)%s", port, &adr, &timeout, currdrvInfo);
+          int nvals = sscanf(paramInfo.inp.c_str(), "@asyn(%[^,],%d,%d)%s", port, &adr, &timeout, currdrvInfo);
           if (nvals == 4)
           {
             // Ensure correct port and drvinfo
@@ -1565,13 +1578,13 @@ asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo, adsP
         status = dbFindField(pdbentry, "OUT");
         if (!status)
         {
-          paramInfo->out = strdup(dbGetString(pdbentry));
+          paramInfo.out = strdup(dbGetString(pdbentry));
           isOutput = true;
           char port[ADS_MAX_FIELD_CHAR_LENGTH];
           int adr;
           int timeout;
           char currdrvInfo[ADS_MAX_FIELD_CHAR_LENGTH];
-          int nvals = sscanf(paramInfo->out, "@asyn(%[^,],%d,%d)%s", port, &adr, &timeout, currdrvInfo);
+          int nvals = sscanf(paramInfo.out.c_str(), "@asyn(%[^,],%d,%d)%s", port, &adr, &timeout, currdrvInfo);
           if (nvals == 4)
           {
             // Ensure correct port and drvinfo
@@ -1593,17 +1606,17 @@ asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo, adsP
           status = dbFindField(pdbentry, "DTYP");
           if (!status)
           {
-            paramInfo->dtyp = strdup(dbGetString(pdbentry));
-            paramInfo->asynType = dtypStringToAsynType(dbGetString(pdbentry));
+            paramInfo.dtyp = dbGetString(pdbentry);
+            paramInfo.asynType = dtypStringToAsynType(dbGetString(pdbentry));
           }
           else
           {
-            paramInfo->dtyp = 0;
-            paramInfo->asynType = asynParamNotDefined;
+            paramInfo.dtyp = "";
+            paramInfo.asynType = asynParamNotDefined;
           }
 
           // drvInput (not a field)
-          paramInfo->drvInfo = strdup(drvInfo);
+          paramInfo.drvInfo = drvInfo;
           dbFreeEntry(pdbentry);
           return asynSuccess; // The correct record was found and the paramInfo structure is filled
         }
@@ -1612,28 +1625,24 @@ asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo, adsP
           // Not correct record. Do cleanup.
           if (isInput)
           {
-            free(paramInfo->inp);
-            paramInfo->inp = 0;
+            paramInfo.inp = "";
           }
           if (isOutput)
           {
-            free(paramInfo->out);
-            paramInfo->out = 0;
+            paramInfo.out = "";
           }
-          paramInfo->drvInfo = 0;
-          paramInfo->scan = 0;
-          paramInfo->dtyp = 0;
+          paramInfo.drvInfo = "";
+          paramInfo.scan = "";
+          paramInfo.dtyp = "";
           isInput = false;
           isOutput = false;
         }
       }
       status = dbNextRecord(pdbentry);
-      free(paramInfo->recordName);
-      paramInfo->recordName = 0;
+      paramInfo.recordName = "";
     }
     status = dbNextRecordType(pdbentry);
-    free(paramInfo->recordType);
-    paramInfo->recordType = 0;
+    paramInfo.recordType = "";
   }
   dbFreeEntry(pdbentry);
   return asynError;
@@ -1652,23 +1661,22 @@ asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo, adsP
  * - ".AMSPORTSTATE." (Read/write AMS-port state)\n
  * - ".ADR.*" (absolute access)\n
  */
-asynStatus adsAsynPortDriver::parsePlcInfofromDrvInfo(const char *drvInfo, adsParamInfo *paramInfo)
+asynStatus adsAsynPortDriver::parsePlcInfofromDrvInfo(const char *drvInfo, adsParamInfo &paramInfo)
 {
-  const char *functionName = "parsePlcInfofromDrvInfo";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, functionName, drvInfo);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, __func__, drvInfo);
 
   // Check if input or output
-  paramInfo->isIOIntr = false;
+  paramInfo.isIOIntr = false;
   const char *temp = strrchr(drvInfo, '?');
   if (temp)
   {
     if (strlen(temp) == 1)
     {
-      paramInfo->isIOIntr = true; // All inputs will be created I/O intr
+      paramInfo.isIOIntr = true; // All inputs will be created I/O intr
     }
   }
 
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: drvInfo %s is %s\n", driverName, functionName, drvInfo, paramInfo->isIOIntr ? "I/O Intr (end with ?)" : " not I/O Intr (end with =)");
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: drvInfo %s is %s\n", driverName, __func__, drvInfo, paramInfo.isIOIntr ? "I/O Intr (end with ?)" : " not I/O Intr (end with =)");
 
   // take part after last "/" if option or complete string..
   char buffer[ADS_MAX_FIELD_CHAR_LENGTH];
@@ -1679,53 +1687,54 @@ asynStatus adsAsynPortDriver::parsePlcInfofromDrvInfo(const char *drvInfo, adsPa
     int nvals = sscanf(drvInfoEnd, "/%s", buffer);
     if (nvals == 1)
     {
-      paramInfo->plcAdrStr = strdup(buffer);
-      paramInfo->plcAdrStr[strlen(paramInfo->plcAdrStr) - 1] = 0; // Strip ? or = from end
+      paramInfo.plcAdrStr = buffer;
+      paramInfo.plcAdrStr.pop_back(); // Strip ? or = from end
     }
     else
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse PLC address string from drvInfo (%s)\n", driverName, functionName, drvInfo);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse PLC address string from drvInfo (%s)\n", driverName, __func__, drvInfo);
       return asynError;
     }
   }
   else
-  {                                                             // No options
-    paramInfo->plcAdrStr = strdup(drvInfo);                     // Symbolic or .ADR.
-    paramInfo->plcAdrStr[strlen(paramInfo->plcAdrStr) - 1] = 0; // Strip ? or = from end
+  {                                 // No options
+    paramInfo.plcAdrStr = drvInfo;  // Symbolic or .ADR.
+    paramInfo.plcAdrStr.pop_back(); // Strip ? or = from end
   }
 
   // Check if .ADR. command
   const char *option = ADS_ADR_COMMAND_PREFIX;
-  paramInfo->plcAbsAdrValid = false;
-  paramInfo->isAdrCommand = false;
+  paramInfo.plcAbsAdrValid = false;
+  paramInfo.isAdrCommand = false;
   const char *isThere = strstr(drvInfo, option);
   if (isThere)
   {
     if (strlen(isThere) < (strlen(option) + strlen("16#%x,16#%x,%u,%u")))
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s command from drvInfo (%s). String to short.\n", driverName, functionName, option, drvInfo);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s command from drvInfo (%s). String to short.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
-    paramInfo->isAdrCommand = true;
+    paramInfo.isAdrCommand = true;
 
     int nvals = sscanf(isThere + strlen(option), "16#%x,16#%x,%u,%u",
-                       &paramInfo->plcAbsAdrGroup,
-                       &paramInfo->plcAbsAdrOffset,
-                       &paramInfo->plcSize,
-                       &paramInfo->plcDataType);
+                       &paramInfo.plcAbsAdrGroup,
+                       &paramInfo.plcAbsAdrOffset,
+                       &paramInfo.plcSize,
+                       &paramInfo.plcDataType);
 
     if (nvals == 4)
     {
-      paramInfo->plcAbsAdrValid = true;
+      paramInfo.plcAbsAdrValid = true;
     }
     else
     {
-      paramInfo->plcAbsAdrValid = false;
-      paramInfo->plcAbsAdrGroup = -1;
-      paramInfo->plcAbsAdrOffset = -1;
-      paramInfo->plcSize = -1;
-      paramInfo->plcDataType = -1;
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s command from drvInfo (%s). Wrong format.\n", driverName, functionName, option, drvInfo);
+      paramInfo.plcAbsAdrValid = false;
+      paramInfo.plcAbsAdrGroup = -1;
+      paramInfo.plcAbsAdrOffset = -1;
+      paramInfo.plcSize = -1;
+      paramInfo.plcDataType = -1;
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s command from drvInfo (%s). Wrong format.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
   }
@@ -1737,69 +1746,75 @@ asynStatus adsAsynPortDriver::parsePlcInfofromDrvInfo(const char *drvInfo, adsPa
   {
     if (strlen(isThere) < (strlen(option) + strlen("=0/")))
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). String to short.\n", driverName, functionName, option, drvInfo);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s option from drvInfo (%s). String to short.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
 
-    int nvals = sscanf(isThere + strlen(option), "=%lf/", &paramInfo->maxDelayTimeMS);
+    int nvals = sscanf(isThere + strlen(option), "=%lf/", &paramInfo.maxDelayTimeMS);
 
     if (nvals != 1)
     {
-      paramInfo->maxDelayTimeMS = defaultMaxDelayTimeMS_;
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, functionName, option, drvInfo);
+      paramInfo.maxDelayTimeMS = defaultMaxDelayTime_ms_;
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
   }
 
   // Check if ADS_OPTION_T_SAMPLE_RATE_MS option
   option = ADS_OPTION_T_SAMPLE_RATE_MS;
-  paramInfo->sampleTimeMS = defaultSampleTimeMS_;
+  paramInfo.sampleTimeMS = defaultSampleTime_ms_;
   isThere = strstr(drvInfo, option);
   if (isThere)
   {
     if (strlen(isThere) < (strlen(option) + strlen("=0/")))
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). String to short.\n", driverName, functionName, option, drvInfo);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s option from drvInfo (%s). String to short.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
 
-    int nvals = sscanf(isThere + strlen(option), "=%lf/", &paramInfo->sampleTimeMS);
+    int nvals = sscanf(isThere + strlen(option), "=%lf/", &paramInfo.sampleTimeMS);
 
     if (nvals != 1)
     {
-      paramInfo->sampleTimeMS = defaultSampleTimeMS_;
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, functionName, option, drvInfo);
+      paramInfo.sampleTimeMS = defaultSampleTime_ms_;
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
   }
 
   // Check if ADS_OPTION_POLLRATE option
   option = ADS_OPTION_POLLRATE;
-  paramInfo->isBulkRead = false;
-  paramInfo->pollClass = 1.0;
+  paramInfo.isBulkRead = false;
+  paramInfo.pollClass = 1.0;
   isThere = strstr(drvInfo, option);
   if (isThere)
   {
     if (strlen(isThere) < (strlen(option) + strlen("=0/")))
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). String to short.\n", driverName, functionName, option, drvInfo);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s option from drvInfo (%s). String to short.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
-    paramInfo->isBulkRead = true;
+    paramInfo.isBulkRead = true;
 
-    int nvals = sscanf(isThere + strlen(option), "=%lf/", &paramInfo->pollClass);
+    int nvals = sscanf(isThere + strlen(option), "=%lf/", &paramInfo.pollClass);
 
     if (nvals != 1)
     {
-      paramInfo->pollClass = 1.0;
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, functionName, option, drvInfo);
+      paramInfo.pollClass = 1.0;
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
   }
 
   // Check if ADS_OPTION_TIMEBASE option
   option = ADS_OPTION_TIMEBASE;
-  paramInfo->timeBase = defaultTimeSource_;
+  paramInfo.timeBase = defaultTimeSource_;
   isThere = strstr(drvInfo, option);
   if (isThere)
   {
@@ -1811,37 +1826,40 @@ asynStatus adsAsynPortDriver::parsePlcInfofromDrvInfo(const char *drvInfo, adsPa
     }
     if (strlen(isThere) < (strlen(option) + strlen("=/") + minLen))
     { // Allowed "PLC" or "EPICS"
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). String to short.\n", driverName, functionName, option, drvInfo);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s option from drvInfo (%s). String to short.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
 
     int nvals = sscanf(isThere + strlen(option), "=%[^/]/", buffer);
     if (nvals != 1)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, functionName, option, drvInfo);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
 
     if (strcmp(ADS_OPTION_TIMEBASE_PLC, buffer) == 0)
     {
-      paramInfo->timeBase = ADS_TIME_BASE_PLC;
+      paramInfo.timeBase = ADS_TIME_BASE_PLC;
     }
 
     if (strcmp(ADS_OPTION_TIMEBASE_EPICS, buffer) == 0)
     {
-      paramInfo->timeBase = ADS_TIME_BASE_EPICS;
+      paramInfo.timeBase = ADS_TIME_BASE_EPICS;
     }
   }
 
   // Check if ADS_OPTION_ADSPORT option
   option = ADS_OPTION_ADSPORT;
-  paramInfo->amsPort = amsportDefault_;
+  paramInfo.amsPort = amsportDefault_;
   isThere = strstr(drvInfo, option);
   if (isThere)
   {
     if (strlen(isThere) < (strlen(option) + strlen("=0/")))
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). String to short.\n", driverName, functionName, option, drvInfo);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s option from drvInfo (%s). String to short.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
     int nvals;
@@ -1849,58 +1867,61 @@ asynStatus adsAsynPortDriver::parsePlcInfofromDrvInfo(const char *drvInfo, adsPa
     nvals = sscanf(isThere + strlen(option), "=%d/", &val);
     if (nvals == 1)
     {
-      paramInfo->amsPort = (uint16_t)val;
+      paramInfo.amsPort = (uint16_t)val;
     }
     else
     {
-      paramInfo->amsPort = amsportDefault_;
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, functionName, option, drvInfo);
+      paramInfo.amsPort = amsportDefault_;
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
   }
 
   // Check if ADS_AMS_STATE_COMMAND option Local variable/parameter (not in PLC)
   option = ADS_AMS_STATE_COMMAND;
-  paramInfo->dataSource = ADS_DATASOURCE_PLC;
+  paramInfo.dataSource = ADS_DATASOURCE_PLC;
   isThere = strstr(drvInfo, option);
   if (isThere)
   {
-    addNewAmsPortToList(paramInfo->amsPort); // Only add if not already there
-    auto port = getAmsPortObject(paramInfo->amsPort);
-    if (!port)
+    addNewAmsPortToList(paramInfo.amsPort); // Only add if not already there
+    int amsPortInfoIndex = 0;
+    if (getAmsPortObject(paramInfo.amsPort, amsPortInfoIndex) != asynSuccess)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, functionName, option, drvInfo);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed to parse %s option from drvInfo (%s). Wrong format.\n", driverName, __func__, option, drvInfo);
       return asynError;
     }
-    paramInfo->dataSource = ADS_DATASOURCE_AMS_STATE; // This information is accessible in driver (not PLC)
-    paramInfo->plcDataType = ADST_UINT16;
-    paramInfo->plcSize = 2;
-    paramInfo->plcDataIsArray = false;
-    paramInfo->timeBase = ADS_TIME_BASE_EPICS;
-    port->paramInfo = paramInfo;
+    paramInfo.dataSource = ADS_DATASOURCE_AMS_STATE; // This information is accessible in driver (not PLC)
+    paramInfo.plcDataType = ADST_UINT16;
+    paramInfo.plcSize = 2;
+    paramInfo.plcDataIsArray = false;
+    paramInfo.timeBase = ADS_TIME_BASE_EPICS;
+    amsPortList_[amsPortInfoIndex].paramInfo = &paramInfo;
   }
 
-  return addNewAmsPortToList(paramInfo->amsPort); // Only add if not already there
+  return addNewAmsPortToList(paramInfo.amsPort); // Only add if not already there
 }
 
 /** Get ams port information object from ams-port list.
  * \param[in] amsPort ams-port
+ * \param[in] amsPortInfo amsPortInfo
  *
- * \return amsPortInfo object.
+ * \return asynStatus
  */
-std::shared_ptr<amsPortInfo> adsAsynPortDriver::getAmsPortObject(uint16_t amsPort)
+asynStatus adsAsynPortDriver::getAmsPortObject(uint16_t amsPort, int &index)
 {
-  const char *functionName = "getAmsPortObject";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort:%u\n", driverName, functionName, amsPort);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort:%u\n", driverName, __func__, amsPort);
 
-  for (auto port : amsPortList_)
+  for (size_t i = 0; i < amsPortList_.size(); i++)
   {
-    if (port->amsPort == amsPort)
+    if (amsPortList_[i].amsPort == amsPort)
     {
-      return port;
+      index = i;
+      return asynSuccess;
     }
   }
-  return nullptr;
+  return asynError;
 }
 /** Add new ams port to ams-port list.
  * \param[in] amsPort ams-port
@@ -1909,47 +1930,41 @@ std::shared_ptr<amsPortInfo> adsAsynPortDriver::getAmsPortObject(uint16_t amsPor
  */
 asynStatus adsAsynPortDriver::addNewAmsPortToList(uint16_t amsPort)
 {
-  const char *functionName = "addNewAmsPortToList";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort:%u\n", driverName, functionName, amsPort);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort:%u\n", driverName, __func__, amsPort);
 
   // See if new amsPort, then update list
-  bool newAmsPort = true;
-  for (auto port : amsPortList_)
+  for (auto &port : amsPortList_)
   {
-    if (port->amsPort == amsPort)
+    if (port.amsPort == amsPort)
     {
-      newAmsPort = false;
+      return asynSuccess;
     }
-  }
-
-  if (!newAmsPort)
-  {
-    return asynSuccess;
   }
 
   try
   {
-    amsPortList_.push_back(std::make_shared<amsPortInfo>());
-    amsPortList_.back()->amsPort = amsPort;
-    amsPortList_.back()->connected = 0;
-    amsPortList_.back()->connectedOld = 0;
-    amsPortList_.back()->paramsOK = 0;
-    amsPortList_.back()->version = AdsVersion();
-    memset(amsPortList_.back()->devName, 0, sizeof(amsPortList_.back()->devName));
-    amsPortList_.back()->adsState = (ADSSTATE)(ADSSTATE_MAXSTATES + 1);
-    amsPortList_.back()->adsStateOld = amsPortList_.back()->adsState;
-    amsPortList_.back()->paramInfo = nullptr;
-    amsPortList_.back()->hCallbackNotify = 0;
-    amsPortList_.back()->bCallbackNotifyValid = false;
-    amsPortList_.back()->refreshNeeded = false;
-    amsPortList_.back()->retryCount = 0;
+    amsPortList_.emplace_back();
+    auto &amsPortInfo = amsPortList_.back();
+    amsPortInfo.amsPort = amsPort;
+    amsPortInfo.connected = 0;
+    amsPortInfo.connectedOld = 0;
+    amsPortInfo.paramsOK = 0;
+    amsPortInfo.version = AdsVersion();
+    memset(amsPortInfo.devName, 0, sizeof(amsPortInfo.devName));
+    amsPortInfo.adsState = (ADSSTATE)(ADSSTATE_MAXSTATES + 1);
+    amsPortInfo.adsStateOld = amsPortInfo.adsState;
+    amsPortInfo.paramInfo = nullptr;
+    amsPortInfo.hCallbackNotify = 0;
+    amsPortInfo.bCallbackNotifyValid = false;
+    amsPortInfo.refreshNeeded = false;
+    amsPortInfo.retryCount = 0;
   }
   catch (std::exception &e)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to add new amsPort to list. Exception: %s.\n", driverName, functionName, e.what());
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to add new amsPort to list. Exception: %s.\n", driverName, __func__, e.what());
     return asynError;
   }
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Added new amsPort to amsPortList: %d .\n", driverName, functionName, amsPort);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Added new amsPort to amsPortList: %d .\n", driverName, __func__, amsPort);
 
   return asynSuccess;
 }
@@ -1960,9 +1975,12 @@ asynStatus adsAsynPortDriver::addNewAmsPortToList(uint16_t amsPort)
  * \return true if parameter information and ams-port connection is OK
  *  otherwise false.
  */
-bool adsAsynPortDriver::isCallbackAllowed(adsParamInfo *paramInfo)
+bool adsAsynPortDriver::isCallbackAllowed(adsParamInfo &paramInfo)
 {
-  return !paramInfo->refreshNeeded;
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+            "%s:%s: isCallbackAllowed = %d\n", driverName, __func__, !paramInfo.refreshNeeded);
+
+  return !paramInfo.refreshNeeded;
 }
 
 /** Checks if callback is allowed for a certain ams-port.
@@ -1972,13 +1990,12 @@ bool adsAsynPortDriver::isCallbackAllowed(adsParamInfo *paramInfo)
  */
 bool adsAsynPortDriver::isCallbackAllowed(uint16_t amsPort)
 {
-  const char *functionName = "isCallbackAllowed";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort:%u\n", driverName, functionName, amsPort);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort = %u\n", driverName, __func__, amsPort);
 
   for (auto port : amsPortList_)
   {
-    if (port->amsPort == amsPort)
-      return port->paramsOK;
+    if (port.amsPort == amsPort)
+      return port.paramsOK;
   }
   return false;
 }
@@ -2010,8 +2027,20 @@ bool adsAsynPortDriver::isCallbackAllowed(uint16_t amsPort)
  */
 asynStatus adsAsynPortDriver::readOctet(asynUser *pasynUser, char *value, size_t maxChars, size_t *nActual, int *eomReason)
 {
-  const char *functionName = "readOctet";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
+
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
+  {
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
+  }
 
   size_t thisRead = 0;
   int reason = 0;
@@ -2019,13 +2048,13 @@ asynStatus adsAsynPortDriver::readOctet(asynUser *pasynUser, char *value, size_t
 
   *value = '\0';
   lock();
-  int error = octetCMDreadIt(value, maxChars);
+  int error = octetCMDreadIt(adsClientPort, value, maxChars);
   if (error)
   {
     status = asynError;
     asynPrint(pasynUser, ASYN_TRACE_ERROR,
               "%s:%s: error, CMDreadIt failed (0x%x).\n",
-              driverName, functionName, error);
+              driverName, __func__, error);
     unlock();
     return asynError;
   }
@@ -2059,7 +2088,7 @@ asynStatus adsAsynPortDriver::readOctet(asynUser *pasynUser, char *value, size_t
             portName,
             (unsigned long)thisRead, value);
   unlock();
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:%s\n", driverName, functionName, value);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:%s\n", driverName, __func__, value);
 
   return status;
 }
@@ -2071,10 +2100,9 @@ asynStatus adsAsynPortDriver::readOctet(asynUser *pasynUser, char *value, size_t
  *
  * \return 0 for success or error code.
  */
-int adsAsynPortDriver::octetCMDreadIt(char *outbuf, size_t outlen)
+int adsAsynPortDriver::octetCMDreadIt(long adsClientPort, char *outbuf, size_t outlen)
 {
-  const char *functionName = "octetCMDreadIt";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Buffer: %s, size: %d\n", driverName, functionName, outbuf, (int)outlen);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Buffer: %s, size: %d\n", driverName, __func__, outbuf, (int)outlen);
 
   int ret;
   if (!outbuf || !outlen)
@@ -2123,8 +2151,20 @@ int adsAsynPortDriver::octetCMDreadIt(char *outbuf, size_t outlen)
  */
 asynStatus adsAsynPortDriver::writeOctet(asynUser *pasynUser, const char *value, size_t maxChars, size_t *nActual)
 {
-  const char *functionName = "writeOctet";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: %s\n", driverName, functionName, value);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: %s\n", driverName, __func__, value);
+
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
+  {
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
+  }
 
   size_t thisWrite = 0;
   asynStatus status = asynError;
@@ -2142,7 +2182,7 @@ asynStatus adsAsynPortDriver::writeOctet(asynUser *pasynUser, const char *value,
     return asynSuccess;
   }
   // lock();
-  int errorCode = octetCMDwriteIt(value, maxChars);
+  int errorCode = octetCMDwriteIt(adsClientPort, value, maxChars);
   if (errorCode)
   {
     /*Return asyn error if communication is down (all client errors) otherwise asynSuccess
@@ -2172,10 +2212,9 @@ asynStatus adsAsynPortDriver::writeOctet(asynUser *pasynUser, const char *value,
  *
  * \return 0 for success or error code.
  */
-int adsAsynPortDriver::octetCMDwriteIt(const char *inbuf, size_t inlen)
+int adsAsynPortDriver::octetCMDwriteIt(long adsClientPort, const char *inbuf, size_t inlen)
 {
-  const char *functionName = "octetCMDwriteIt";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Write command: %s, length: %d\n", driverName, functionName, inbuf, (int)inlen);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Write command: %s, length: %d\n", driverName, __func__, inbuf, (int)inlen);
 
   int had_cr = 0;
   int had_lf = 0;
@@ -2201,7 +2240,7 @@ int adsAsynPortDriver::octetCMDwriteIt(const char *inbuf, size_t inlen)
     }
   }
 
-  errorCode = octetCmdHandleInputLine(new_buf, &octetAsciiBuffer_);
+  errorCode = octetCmdHandleInputLine(adsClientPort, new_buf, &octetAsciiBuffer_);
   free(new_buf);
 
   octetCmdBuf_printf(&octetAsciiBuffer_, "%s%s", had_cr ? "\r" : "", had_lf ? "\n" : "");
@@ -2209,10 +2248,9 @@ int adsAsynPortDriver::octetCMDwriteIt(const char *inbuf, size_t inlen)
   return errorCode;
 }
 
-int adsAsynPortDriver::octetCmdHandleInputLine(const char *input_line, adsOctetOutputBufferType *buffer)
+int adsAsynPortDriver::octetCmdHandleInputLine(long adsClientPort, const char *input_line, adsOctetOutputBufferType *buffer)
 {
-  const char *functionName = "octetCmdHandleInputLine";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Input line: %s\n", driverName, functionName, input_line);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Input line: %s\n", driverName, __func__, input_line);
 
   const char **my_argv = NULL;
   char **my_sepv = NULL;
@@ -2223,7 +2261,7 @@ int adsAsynPortDriver::octetCmdHandleInputLine(const char *input_line, adsOctetO
   int errorCodeLatch = 0;
   for (int i = 1; i <= argc; i++)
   {
-    int errorCode = octetMotorHandleOneArg(my_argv[i], buffer); // Continue with next cmd even if error
+    int errorCode = octetMotorHandleOneArg(adsClientPort, my_argv[i], buffer); // Continue with next cmd even if error
     if (errorCode && !errorCodeLatch)
     { // latch first error code for stacked commands
       errorCodeLatch = errorCode;
@@ -2250,10 +2288,9 @@ int adsAsynPortDriver::octetCmdHandleInputLine(const char *input_line, adsOctetO
  *
  * \return 0 for success or error code.
  */
-int adsAsynPortDriver::octetMotorHandleOneArg(const char *myarg_1, adsOctetOutputBufferType *buffer)
+int adsAsynPortDriver::octetMotorHandleOneArg(long adsClientPort, const char *myarg_1, adsOctetOutputBufferType *buffer)
 {
-  const char *functionName = "octetMotorHandleOneArg";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Command: %s\n", driverName, functionName, myarg_1);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Command: %s\n", driverName, __func__, myarg_1);
 
   // const char *myarg = myarg_1;
   int err_code = 0;
@@ -2292,7 +2329,7 @@ int adsAsynPortDriver::octetMotorHandleOneArg(const char *myarg_1, adsOctetOutpu
   {
     myarg_1 = adr;
 
-    err_code = octetMotorHandleADRCmd(myarg_1, amsPort, buffer);
+    err_code = octetMotorHandleADRCmd(adsClientPort, myarg_1, amsPort, buffer);
     if (err_code == -1 || err_code == 0)
     {
       return 0;
@@ -2310,7 +2347,7 @@ int adsAsynPortDriver::octetMotorHandleOneArg(const char *myarg_1, adsOctetOutpu
     // Copy variable name
     strncpy(variableName, myarg_1, adr - myarg_1);
     adr++; // Jump over '='
-    err_code = octetAdsWriteByName(amsPort, variableName, adr, buffer);
+    err_code = octetAdsWriteByName(adsClientPort, amsPort, variableName, adr, buffer);
     if (err_code)
     {
       OCTET_RETURN_ERROR(buffer, err_code, "%s", adsErrorToString(err_code));
@@ -2326,7 +2363,7 @@ int adsAsynPortDriver::octetMotorHandleOneArg(const char *myarg_1, adsOctetOutpu
     // Copy variable name
     strncpy(variableName, myarg_1, adr - myarg_1);
     variableName[adr - myarg_1] = 0;
-    err_code = octetAdsReadByName(amsPort, variableName, buffer);
+    err_code = octetAdsReadByName(adsClientPort, amsPort, variableName, buffer);
     if (err_code)
     {
       OCTET_RETURN_ERROR(buffer, err_code, "%s", adsErrorToString(err_code));
@@ -2349,10 +2386,9 @@ int adsAsynPortDriver::octetMotorHandleOneArg(const char *myarg_1, adsOctetOutpu
  *
  * \note:  see octetAdsWriteByGroupOffset for more information.\n
  */
-int adsAsynPortDriver::octetMotorHandleADRCmd(const char *arg, uint16_t amsport, adsOctetOutputBufferType *buffer)
+int adsAsynPortDriver::octetMotorHandleADRCmd(long adsClientPort, const char *arg, uint16_t amsport, adsOctetOutputBufferType *buffer)
 {
-  const char *functionName = "octetMotorHandleADRCmd";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Command: %s, amsPort: %d\n", driverName, functionName, arg, (int)amsport);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Command: %s, amsPort: %d\n", driverName, __func__, arg, (int)amsport);
 
   const char *myarg_1 = NULL;
   unsigned group_no = 0;
@@ -2368,7 +2404,7 @@ int adsAsynPortDriver::octetMotorHandleADRCmd(const char *arg, uint16_t amsport,
 
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: nvals=%d amsport=%u group_no=0x%x offset_in_group=0x%x len_in_PLC=%u type_in_PLC=%u\n",
             driverName,
-            functionName,
+            __func__,
             nvals,
             amsport,
             group_no,
@@ -2378,7 +2414,7 @@ int adsAsynPortDriver::octetMotorHandleADRCmd(const char *arg, uint16_t amsport,
 
   if (nvals != 4)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse .ADR. command.\n", driverName, functionName);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed to parse .ADR. command.\n", driverName, __func__);
     return __LINE__;
   }
 
@@ -2388,7 +2424,7 @@ int adsAsynPortDriver::octetMotorHandleADRCmd(const char *arg, uint16_t amsport,
   {
     myarg_1++; /* Jump over '=' */
 
-    int error = octetAdsWriteByGroupOffset(amsport, (uint32_t)group_no, (uint32_t)offset_in_group, (uint16_t)type_in_PLC, (uint32_t)len_in_PLC, myarg_1, buffer);
+    int error = octetAdsWriteByGroupOffset(adsClientPort, amsport, (uint32_t)group_no, (uint32_t)offset_in_group, (uint16_t)type_in_PLC, (uint32_t)len_in_PLC, myarg_1, buffer);
     if (error)
     {
       OCTET_RETURN_ERROR(buffer, error, "%s", adsErrorToString(error));
@@ -2409,7 +2445,7 @@ int adsAsynPortDriver::octetMotorHandleADRCmd(const char *arg, uint16_t amsport,
     info.iGroup = group_no;
     info.iOffset = offset_in_group;
 
-    int error = octetAdsReadByGroupOffset(amsport, &info, buffer);
+    int error = octetAdsReadByGroupOffset(adsClientPort, amsport, &info, buffer);
     if (error)
     {
       OCTET_RETURN_ERROR(buffer, error, "%s", adsErrorToString(error));
@@ -2428,22 +2464,21 @@ int adsAsynPortDriver::octetMotorHandleADRCmd(const char *arg, uint16_t amsport,
  *
  * \return 0 for success or error code.
  */
-int adsAsynPortDriver::octetAdsReadByName(uint16_t amsPort, const char *variableAddr, adsOctetOutputBufferType *outBuffer)
+int adsAsynPortDriver::octetAdsReadByName(long adsClientPort, uint16_t amsPort, const char *variableAddr, adsOctetOutputBufferType *outBuffer)
 {
-  const char *functionName = "octetAdsReadByName";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable:%s, amsPort %u\n", driverName, functionName, variableAddr, amsPort);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable:%s, amsPort %u\n", driverName, __func__, variableAddr, amsPort);
 
   adsSymbolEntry infoStruct;
   memset(&infoStruct, 0, sizeof(infoStruct));
 
   long errorCode = 0;
-  asynStatus stat = adsGetSymInfoByName(amsPort, variableAddr, &infoStruct, &errorCode);
+  asynStatus stat = adsGetSymInfoByName(adsClientPort, amsPort, variableAddr, infoStruct, &errorCode);
   if (stat != asynSuccess)
   {
     return errorCode;
   }
 
-  return octetAdsReadByGroupOffset(amsPort, &infoStruct, outBuffer);
+  return octetAdsReadByGroupOffset(adsClientPort, amsPort, &infoStruct, outBuffer);
 }
 
 /** Write a variable to PLC by symbolic addressing.\
@@ -2456,22 +2491,21 @@ int adsAsynPortDriver::octetAdsReadByName(uint16_t amsPort, const char *variable
  *
  * \return 0 for success or error code.
  */
-int adsAsynPortDriver::octetAdsWriteByName(uint16_t amsPort, const char *variableAddr, const char *asciiValueToWrite, adsOctetOutputBufferType *outBuffer)
+int adsAsynPortDriver::octetAdsWriteByName(long adsClientPort, uint16_t amsPort, const char *variableAddr, const char *asciiValueToWrite, adsOctetOutputBufferType *outBuffer)
 {
-  const char *functionName = "octetAdsWriteByName";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable: %s, value: %s.\n", driverName, functionName, variableAddr, asciiValueToWrite);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable: %s, value: %s.\n", driverName, __func__, variableAddr, asciiValueToWrite);
 
   adsSymbolEntry infoStruct;
   memset(&infoStruct, 0, sizeof(infoStruct));
 
   long errorCode = 0;
-  asynStatus stat = adsGetSymInfoByName(amsPort, variableAddr, &infoStruct, &errorCode);
+  asynStatus stat = adsGetSymInfoByName(adsClientPort, amsPort, variableAddr, infoStruct, &errorCode);
   if (stat != asynSuccess)
   {
     return errorCode;
   }
 
-  return octetAdsWriteByGroupOffset(amsPort, infoStruct.iGroup, infoStruct.iOffset, infoStruct.dataType, infoStruct.size, asciiValueToWrite, outBuffer);
+  return octetAdsWriteByGroupOffset(adsClientPort, amsPort, infoStruct.iGroup, infoStruct.iOffset, infoStruct.dataType, infoStruct.size, asciiValueToWrite, outBuffer);
 }
 
 /**Read a variable from PLC by absolute addressing.\
@@ -2483,10 +2517,9 @@ int adsAsynPortDriver::octetAdsWriteByName(uint16_t amsPort, const char *variabl
  *
  * \return 0 for success or error code.
  */
-int adsAsynPortDriver::octetAdsReadByGroupOffset(uint16_t amsPort, adsSymbolEntry *info, adsOctetOutputBufferType *outBuffer)
+int adsAsynPortDriver::octetAdsReadByGroupOffset(long adsClientPort, uint16_t amsPort, adsSymbolEntry *info, adsOctetOutputBufferType *outBuffer)
 {
-  const char *functionName = "octetAdsReadByGroupOffset";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort: %d, group: %d, offset: %d, dataType: %s (%d), dataSize: %d.\n", driverName, functionName, (int)amsPort, (int)info->iGroup, (int)info->iOffset, adsTypeToString(info->dataType), (int)info->dataType, (int)info->size);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort: %d, group: %d, offset: %d, dataType: %s (%d), dataSize: %d.\n", driverName, __func__, (int)amsPort, (int)info->iGroup, (int)info->iOffset, adsTypeToString(info->dataType), (int)info->dataType, (int)info->size);
 
   uint32_t bytesRead = 0;
   AmsAddr amsServer = {remoteNetId_, amsPort};
@@ -2495,29 +2528,25 @@ int adsAsynPortDriver::octetAdsReadByGroupOffset(uint16_t amsPort, adsSymbolEntr
   if (info->size > ADS_CMD_BUFFER_SIZE)
   {
     dataSize = ADS_CMD_BUFFER_SIZE;
-    asynPrint(pasynUserSelf, ASYN_TRACE_WARNING, "%s:%s: Read buffer size smaller than size in plc.\n", driverName, functionName);
+    asynPrint(pasynUserSelf, ASYN_TRACE_WARNING, "%s:%s: Read buffer size smaller than size in plc.\n", driverName, __func__);
   }
 
-  adsLock();
   memset(&octetBinaryBuffer_, 0, ADS_CMD_BUFFER_SIZE);
 
-  int error = AdsSyncReadReqEx2(adsPort_, &amsServer, info->iGroup, info->iOffset, dataSize, &octetBinaryBuffer_, &bytesRead);
+  int error = AdsSyncReadReqEx2(adsClientPort, &amsServer, info->iGroup, info->iOffset, dataSize, &octetBinaryBuffer_, &bytesRead);
 
   if (error)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ADS read failed with: %s (0x%x).\n", driverName, functionName, adsErrorToString(error), error);
-    adsUnlock();
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ADS read failed with: %s (0x%x).\n", driverName, __func__, adsErrorToString(error), error);
     return error;
   }
 
   error = octetBinary2ascii(octetReturnVarName_, &octetBinaryBuffer_, ADS_CMD_BUFFER_SIZE, info, outBuffer);
   if (error)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary to ASCII conversion failed with: %d\n", driverName, functionName, error);
-    adsUnlock();
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Binary to ASCII conversion failed with: %d\n", driverName, __func__, error);
     return error;
   }
-  adsUnlock();
   return 0;
 }
 
@@ -2555,23 +2584,20 @@ int adsAsynPortDriver::octetAdsReadByGroupOffset(uint16_t amsPort, adsSymbolEntr
  *   The data will be considered to be an array if dataSize is bigger than the\n
  *   size of the the type.
  */
-int adsAsynPortDriver::octetAdsWriteByGroupOffset(uint16_t amsPort, uint32_t group, uint32_t offset, uint16_t dataType, uint32_t dataSize, const char *asciiValueToWrite, adsOctetOutputBufferType *asciiResponseBuffer)
+int adsAsynPortDriver::octetAdsWriteByGroupOffset(long adsClientPort, uint16_t amsPort, uint32_t group, uint32_t offset, uint16_t dataType, uint32_t dataSize, const char *asciiValueToWrite, adsOctetOutputBufferType *asciiResponseBuffer)
 {
-  const char *functionName = "octetAdsWriteByGroupOffset";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort: %d, group: %d, offset: %d, dataType: %s (%d), dataSize: %d.\n", driverName, functionName, (int)amsPort, (int)group, (int)offset, adsTypeToString(dataType), (int)dataType, (int)dataSize);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort: %d, group: %d, offset: %d, dataType: %s (%d), dataSize: %d.\n", driverName, __func__, (int)amsPort, (int)group, (int)offset, adsTypeToString(dataType), (int)dataType, (int)dataSize);
 
   uint32_t bytesToWrite = 0;
   AmsAddr amsServer = {remoteNetId_, amsPort};
 
-  adsLock();
   memset(&octetBinaryBuffer_, 0, ADS_CMD_BUFFER_SIZE);
 
   int error = octetAscii2binary(asciiValueToWrite, dataType, &octetBinaryBuffer_, ADS_CMD_BUFFER_SIZE, &bytesToWrite);
   if (error)
   {
-    adsUnlock();
     octetCmdBuf_printf(asciiResponseBuffer, "Error: %x", error);
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ASCII to binary conversion failed with: %d.\n", driverName, functionName, error);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ASCII to binary conversion failed with: %d.\n", driverName, __func__, error);
     return error;
   }
 
@@ -2580,16 +2606,14 @@ int adsAsynPortDriver::octetAdsWriteByGroupOffset(uint16_t amsPort, uint32_t gro
     bytesToWrite = dataSize;
   }
 
-  error = AdsSyncWriteReqEx(adsPort_, &amsServer, group, offset, bytesToWrite, &octetBinaryBuffer_);
+  error = AdsSyncWriteReqEx(adsClientPort, &amsServer, group, offset, bytesToWrite, &octetBinaryBuffer_);
 
   if (error)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ADS write failed with: %s (0x%x).\n", driverName, functionName, adsErrorToString(error), error);
-    adsUnlock();
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ADS write failed with: %s (0x%x).\n", driverName, __func__, adsErrorToString(error), error);
     return error;
   }
 
-  adsUnlock();
   return 0;
 }
 
@@ -2602,30 +2626,42 @@ int adsAsynPortDriver::octetAdsWriteByGroupOffset(uint16_t amsPort, uint32_t gro
  */
 asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
 {
-  const char *functionName = "writeInt32";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
-  adsParamInfo *paramInfo;
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
+
   int paramIndex = pasynUser->reason;
 
-  if (!pAdsParamArray_[paramIndex])
+  if (paramIndex < 0 || (size_t)paramIndex > adsParamArray_.size())
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL\n", driverName, functionName);
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: invalid parameter index = %d\n", driverName, __func__, paramIndex);
     pasynUser->alarmStatus = WRITE_ALARM;
     callParamCallbacks();
     return asynError;
   }
 
-  paramInfo = pAdsParamArray_[paramIndex];
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
+  {
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
+  }
+
+  auto &paramInfo = adsParamArray_[paramIndex];
 
   // Special case. Check if write ams port state
-  if (paramInfo->dataSource == ADS_DATASOURCE_AMS_STATE)
+  if (paramInfo.dataSource == ADS_DATASOURCE_AMS_STATE)
   {
-    if (adsWriteState(paramInfo->amsPort, (uint16_t)value) != asynSuccess)
+    if (adsWriteState(adsClientPort, paramInfo.amsPort, (uint16_t)value) != asynSuccess)
     {
       return setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
     }
     // Write OK -> reset write alarm
-    if (paramInfo->alarmStatus == WRITE_ALARM)
+    if (paramInfo.alarmStatus == WRITE_ALARM)
     {
       return setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
     }
@@ -2635,7 +2671,7 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
   uint8_t buffer[8]; // largest datatype is 8bytes
   uint32_t maxBytesToWrite = 0;
   // Convert epicsInt32 to plctype if possible..
-  switch (paramInfo->plcDataType)
+  switch (paramInfo.plcDataType)
   {
   case ADST_INT8:
     int8_t *ADST_INT8Var;
@@ -2690,36 +2726,36 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
     maxBytesToWrite = 1;
     break;
   default:
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (epicsInt32 and %s). Write canceled.\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType));
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (epicsInt32 and %s). Write canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType));
     return asynError;
     break;
   }
 
   // Warning. Risk of loss of data..
-  if (sizeof(value) > maxBytesToWrite || sizeof(value) > paramInfo->plcSize)
+  if (sizeof(value) > maxBytesToWrite || sizeof(value) > paramInfo.plcSize)
   {
-    asynPrint(pasynUser, ASYN_TRACE_WARNING, "%s:%s: WARNING. EPICS datatype size larger than PLC datatype size (%ld vs %d bytes).\n", driverName, functionName, sizeof(value), paramInfo->plcSize);
-    paramInfo->plcDataTypeWarn = true;
+    asynPrint(pasynUser, ASYN_TRACE_WARNING, "%s:%s: WARNING. EPICS datatype size larger than PLC datatype size (%ld vs %d bytes).\n", driverName, __func__, sizeof(value), paramInfo.plcSize);
+    paramInfo.plcDataTypeWarn = true;
   }
 
   // Ensure that PLC datatype and number of bytes to write match
-  if (maxBytesToWrite != paramInfo->plcSize || maxBytesToWrite == 0)
+  if (maxBytesToWrite != paramInfo.plcSize || maxBytesToWrite == 0)
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types size missmatch (%s and %d bytes). Write canceled.\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), maxBytesToWrite);
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types size missmatch (%s and %d bytes). Write canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType), maxBytesToWrite);
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
     callParamCallbacks();
     return asynError;
   }
 
   // Do the write
-  if (adsWriteParam(paramInfo, (const void *)buffer, maxBytesToWrite) != asynSuccess)
+  if (adsWriteParam(adsClientPort, paramInfo, (const void *)buffer, maxBytesToWrite) != asynSuccess)
   {
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
     callParamCallbacks();
     return asynError;
   }
   // Only reset if write alarm
-  if (paramInfo->alarmStatus == WRITE_ALARM)
+  if (paramInfo.alarmStatus == WRITE_ALARM)
   {
     setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
   }
@@ -2729,29 +2765,41 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
 
 asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
 {
-  const char *functionName = "writeInt64";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
-  adsParamInfo *paramInfo;
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
+
   int paramIndex = pasynUser->reason;
 
-  if (!pAdsParamArray_[paramIndex])
+  if (paramIndex < 0 || (size_t)paramIndex > adsParamArray_.size())
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL\n", driverName, functionName);
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: invalid parameter index = %d\n", driverName, __func__, paramIndex);
     pasynUser->alarmStatus = WRITE_ALARM;
     callParamCallbacks();
     return asynError;
   }
 
-  paramInfo = pAdsParamArray_[paramIndex];
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
+  {
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
+  }
+
+  auto &paramInfo = adsParamArray_[paramIndex];
 
   // Special case: AMS port state
-  if (paramInfo->dataSource == ADS_DATASOURCE_AMS_STATE)
+  if (paramInfo.dataSource == ADS_DATASOURCE_AMS_STATE)
   {
-    if (adsWriteState(paramInfo->amsPort, (uint16_t)value) != asynSuccess)
+    if (adsWriteState(adsClientPort, paramInfo.amsPort, (uint16_t)value) != asynSuccess)
     {
       return setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
     }
-    if (paramInfo->alarmStatus == WRITE_ALARM)
+    if (paramInfo.alarmStatus == WRITE_ALARM)
     {
       return setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
     }
@@ -2761,7 +2809,7 @@ asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
   uint8_t buffer[8]; // 8 bytes for int64_t/uint64_t/double
   uint32_t maxBytesToWrite = 0;
 
-  switch (paramInfo->plcDataType)
+  switch (paramInfo.plcDataType)
   {
   case ADST_INT64:
   {
@@ -2778,36 +2826,36 @@ asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
     break;
   }
   default:
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (epicsInt64 and %s). Write canceled.\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType));
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (epicsInt64 and %s). Write canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType));
     return asynError;
   }
 
   // Sanity: Check PLC buffer sizes
-  if (sizeof(value) > maxBytesToWrite || sizeof(value) > paramInfo->plcSize)
+  if (sizeof(value) > maxBytesToWrite || sizeof(value) > paramInfo.plcSize)
   {
     asynPrint(pasynUser, ASYN_TRACE_WARNING, "%s:%s: WARNING. EPICS datatype size larger than PLC datatype size (%ld vs %d bytes).\n",
-              driverName, functionName, sizeof(value), paramInfo->plcSize);
-    paramInfo->plcDataTypeWarn = true;
+              driverName, __func__, sizeof(value), paramInfo.plcSize);
+    paramInfo.plcDataTypeWarn = true;
   }
 
   // Ensure match
-  if (maxBytesToWrite != paramInfo->plcSize || maxBytesToWrite == 0)
+  if (maxBytesToWrite != paramInfo.plcSize || maxBytesToWrite == 0)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types size mismatch (%s and %d bytes). Write canceled.\n",
-              driverName, functionName, adsTypeToString(paramInfo->plcDataType), maxBytesToWrite);
+              driverName, __func__, adsTypeToString(paramInfo.plcDataType), maxBytesToWrite);
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
     callParamCallbacks();
     return asynError;
   }
 
   // Write the value
-  if (adsWriteParam(paramInfo, buffer, maxBytesToWrite) != asynSuccess)
+  if (adsWriteParam(adsClientPort, paramInfo, buffer, maxBytesToWrite) != asynSuccess)
   {
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
     callParamCallbacks();
     return asynError;
   }
-  if (paramInfo->alarmStatus == WRITE_ALARM)
+  if (paramInfo.alarmStatus == WRITE_ALARM)
   {
     setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
   }
@@ -2824,31 +2872,43 @@ asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
  */
 asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 value)
 {
-  const char *functionName = "writeFloat64";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  adsParamInfo *paramInfo;
   int paramIndex = pasynUser->reason;
 
-  if (!pAdsParamArray_[paramIndex])
+  if (paramIndex < 0 || (size_t)paramIndex > adsParamArray_.size())
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL\n", driverName, functionName);
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL\n", driverName, __func__);
     pasynUser->alarmStatus = WRITE_ALARM;
     pasynUser->alarmSeverity = INVALID_ALARM;
     callParamCallbacks();
     return asynError;
   }
-  paramInfo = pAdsParamArray_[paramIndex];
+
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
+  {
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
+  }
+
+  auto &paramInfo = adsParamArray_[paramIndex];
 
   // Special case. Check if write ams port state
-  if (paramInfo->dataSource == ADS_DATASOURCE_AMS_STATE)
+  if (paramInfo.dataSource == ADS_DATASOURCE_AMS_STATE)
   {
-    if (adsWriteState(paramInfo->amsPort, (uint16_t)value) != asynSuccess)
+    if (adsWriteState(adsClientPort, paramInfo.amsPort, (uint16_t)value) != asynSuccess)
     {
       return setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
     }
     // Write OK -> reset write alarm
-    if (paramInfo->alarmStatus == WRITE_ALARM)
+    if (paramInfo.alarmStatus == WRITE_ALARM)
     {
       return setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
     }
@@ -2858,7 +2918,7 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
   uint8_t buffer[8]; // largest datatype is 8bytes
   uint32_t maxBytesToWrite = 0;
   // Convert epicsFloat64 to plctype if possible..
-  switch (paramInfo->plcDataType)
+  switch (paramInfo.plcDataType)
   {
   case ADST_INT8:
     int8_t *ADST_INT8Var;
@@ -2925,29 +2985,29 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
     maxBytesToWrite = 1;
     break;
   default:
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (epicsInt32 and %s). Write canceled.\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType));
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (epicsInt32 and %s). Write canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType));
     return asynError;
     break;
   }
 
   // Warning. Risk of loss of data..
-  if (sizeof(value) > maxBytesToWrite || sizeof(value) > paramInfo->plcSize)
+  if (sizeof(value) > maxBytesToWrite || sizeof(value) > paramInfo.plcSize)
   {
-    asynPrint(pasynUser, ASYN_TRACE_WARNING, "%s:%s: WARNING. EPICS datatype size larger than PLC datatype size (%ld vs %d bytes).\n", driverName, functionName, sizeof(value), paramInfo->plcDataType);
-    paramInfo->plcDataTypeWarn = true;
+    asynPrint(pasynUser, ASYN_TRACE_WARNING, "%s:%s: WARNING. EPICS datatype size larger than PLC datatype size (%ld vs %d bytes).\n", driverName, __func__, sizeof(value), paramInfo.plcDataType);
+    paramInfo.plcDataTypeWarn = true;
   }
 
   // Ensure that PLC datatype and number of bytes to write match
-  if (maxBytesToWrite != paramInfo->plcSize || maxBytesToWrite == 0)
+  if (maxBytesToWrite != paramInfo.plcSize || maxBytesToWrite == 0)
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types size mismatch (%s and %d bytes). Write canceled.\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), maxBytesToWrite);
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types size mismatch (%s and %d bytes). Write canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType), maxBytesToWrite);
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
     callParamCallbacks();
     return asynError;
   }
 
   // Do the write
-  if (adsWriteParam(paramInfo, (const void *)buffer, maxBytesToWrite) != asynSuccess)
+  if (adsWriteParam(adsClientPort, paramInfo, (const void *)buffer, maxBytesToWrite) != asynSuccess)
   {
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
     callParamCallbacks();
@@ -2955,7 +3015,7 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
   }
 
   // Only reset if write alarm
-  if (paramInfo->alarmStatus == WRITE_ALARM)
+  if (paramInfo.alarmStatus == WRITE_ALARM)
   {
     setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
   }
@@ -2976,57 +3036,56 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
  */
 asynStatus adsAsynPortDriver::adsGenericArrayRead(asynUser *pasynUser, long allowedType, void *epicsDataBuffer, size_t nEpicsBufferBytes, size_t *nBytesRead)
 {
-  const char *functionName = "adsGenericArrayRead";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   int paramIndex = pasynUser->reason;
 
-  if (!pAdsParamArray_[paramIndex] || paramIndex >= paramTableSize_)
+  if (paramIndex < 0 || (size_t)paramIndex > adsParamArray_.size())
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL or index (pasynUser->reason) our of range\n", driverName, functionName);
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL or index (pasynUser->reason) our of range\n", driverName, __func__);
     pasynUser->alarmStatus = READ_ALARM;
     pasynUser->alarmSeverity = INVALID_ALARM;
     return asynError;
   }
 
-  adsParamInfo *paramInfo = pAdsParamArray_[paramIndex];
+  auto &paramInfo = adsParamArray_[paramIndex];
 
   // Only support same datatype as in PLC
   //  Allow LWORD/ULINT as signed INT64
-  bool extendedAllowedType = (paramInfo->plcDataType == allowedType) ||
-                             (paramInfo->plcDataType == ADST_UINT64 && allowedType == ADST_INT64);
+  bool extendedAllowedType = (paramInfo.plcDataType == allowedType) ||
+                             (paramInfo.plcDataType == ADST_UINT64 && allowedType == ADST_INT64);
 
   if (!extendedAllowedType)
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (%s vs %s). Read canceled.\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), adsTypeToString(allowedType));
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (%s vs %s). Read canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType), adsTypeToString(allowedType));
     setAlarmParam(paramInfo, READ_ALARM, INVALID_ALARM);
     return asynError;
   }
 
   size_t bytesToWrite = nEpicsBufferBytes;
-  if (paramInfo->plcSize < nEpicsBufferBytes)
+  if (paramInfo.plcSize < nEpicsBufferBytes)
   {
-    bytesToWrite = paramInfo->plcSize;
+    bytesToWrite = paramInfo.plcSize;
   }
 
-  if (!paramInfo->arrayDataBuffer || !epicsDataBuffer)
+  if (paramInfo.arrayDataBuffer.empty() || !epicsDataBuffer)
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Buffer(s) NULL. Read canceled.\n", driverName, functionName);
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Buffer(s) NULL. Read canceled.\n", driverName, __func__);
     setAlarmParam(paramInfo, READ_ALARM, INVALID_ALARM);
     return asynError;
   }
 
-  memcpy(epicsDataBuffer, paramInfo->arrayDataBuffer, bytesToWrite);
+  memcpy(epicsDataBuffer, paramInfo.arrayDataBuffer.data(), bytesToWrite);
   *nBytesRead = bytesToWrite;
 
   // Only reset if read alarm
-  if (paramInfo->alarmStatus == READ_ALARM)
+  if (paramInfo.alarmStatus == READ_ALARM)
   {
     setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
   }
 
   // update timestamp
-  pasynUser->timestamp = paramInfo->epicsTimestamp;
+  pasynUser->timestamp = paramInfo.epicsTimestamp;
 
   return asynSuccess;
 }
@@ -3041,41 +3100,53 @@ asynStatus adsAsynPortDriver::adsGenericArrayRead(asynUser *pasynUser, long allo
  */
 asynStatus adsAsynPortDriver::adsGenericArrayWrite(asynUser *pasynUser, long allowedType, const void *data, size_t nEpicsBufferBytes)
 {
-  const char *functionName = "adsGenericArrayWrite";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   int paramIndex = pasynUser->reason;
 
-  if (!pAdsParamArray_[paramIndex] || paramIndex >= paramTableSize_)
+  if (paramIndex < 0 || (size_t)paramIndex > adsParamArray_.size())
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL or index (pasynUser->reason) our of range\n", driverName, functionName);
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL or index (pasynUser->reason) our of range\n", driverName, __func__);
     pasynUser->alarmStatus = WRITE_ALARM;
     pasynUser->alarmSeverity = INVALID_ALARM;
     return asynError;
   }
 
-  adsParamInfo *paramInfo = pAdsParamArray_[paramIndex];
+  long adsClientPort = 0;
+  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
+  try
+  {
+    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
+    adsClientPort = adsClientPortGuard->getAdsClientPort();
+  }
+  catch (std::runtime_error &e)
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
+  }
+
+  auto &paramInfo = adsParamArray_[paramIndex];
 
   // Only support same datatype as in PLC
   //  Allow LWORD/ULINT as signed INT64
-  bool extendedAllowedType = (paramInfo->plcDataType == allowedType) ||
-                             (paramInfo->plcDataType == ADST_UINT64 && allowedType == ADST_INT64);
+  bool extendedAllowedType = (paramInfo.plcDataType == allowedType) ||
+                             (paramInfo.plcDataType == ADST_UINT64 && allowedType == ADST_INT64);
 
   if (!extendedAllowedType)
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (%s vs %s). Write canceled.\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), adsTypeToString(allowedType));
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (%s vs %s). Write canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType), adsTypeToString(allowedType));
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
     return asynError;
   }
 
   size_t bytesToWrite = nEpicsBufferBytes;
-  if (paramInfo->plcSize < nEpicsBufferBytes)
+  if (paramInfo.plcSize < nEpicsBufferBytes)
   {
-    bytesToWrite = paramInfo->plcSize;
+    bytesToWrite = paramInfo.plcSize;
   }
 
   // Write to ADS
-  asynStatus stat = adsWriteParam(paramInfo, data, bytesToWrite);
+  asynStatus stat = adsWriteParam(adsClientPort, paramInfo, data, bytesToWrite);
   if (stat != asynSuccess)
   {
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
@@ -3083,13 +3154,13 @@ asynStatus adsAsynPortDriver::adsGenericArrayWrite(asynUser *pasynUser, long all
   }
 
   // copy data to buffer;
-  if (paramInfo->arrayDataBuffer)
+  if (!paramInfo.arrayDataBuffer.empty())
   {
-    memcpy(paramInfo->arrayDataBuffer, data, bytesToWrite);
+    memcpy(paramInfo.arrayDataBuffer.data(), data, bytesToWrite);
   }
 
   // Only reset if write alarm
-  if (paramInfo->alarmStatus == WRITE_ALARM)
+  if (paramInfo.alarmStatus == WRITE_ALARM)
   {
     setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
   }
@@ -3108,23 +3179,26 @@ asynStatus adsAsynPortDriver::adsGenericArrayWrite(asynUser *pasynUser, long all
  */
 asynStatus adsAsynPortDriver::readInt8Array(asynUser *pasynUser, epicsInt8 *value, size_t nElements, size_t *nIn)
 {
-  const char *functionName = "readInt8Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  if (!pAdsParamArray_[pasynUser->reason])
+  auto paramIndex = pasynUser->reason;
+
+  if (paramIndex < 0 || (size_t)paramIndex > adsParamArray_.size())
   {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL\n", driverName, functionName);
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: index (pasynUser->reason) out of range\n", driverName, __func__);
     return asynError;
   }
+
+  auto &paramInfo = adsParamArray_[paramIndex];
 
   long allowedType = ADST_INT8;
 
   // Also allow string and bool array as int8array (special case)
-  if (pAdsParamArray_[pasynUser->reason]->plcDataType == ADST_STRING)
+  if (paramInfo.plcDataType == ADST_STRING)
   {
     allowedType = ADST_STRING;
   }
-  else if (pAdsParamArray_[pasynUser->reason]->plcDataType == ADST_BIT)
+  else if (paramInfo.plcDataType == ADST_BIT)
   {
     allowedType = ADST_BIT;
   }
@@ -3149,17 +3223,26 @@ asynStatus adsAsynPortDriver::readInt8Array(asynUser *pasynUser, epicsInt8 *valu
  */
 asynStatus adsAsynPortDriver::writeInt8Array(asynUser *pasynUser, epicsInt8 *value, size_t nElements)
 {
-  const char *functionName = "writeInt8Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
+
+  auto paramIndex = pasynUser->reason;
+
+  if (paramIndex < 0 || (size_t)paramIndex > adsParamArray_.size())
+  {
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: index (pasynUser->reason) out of range\n", driverName, __func__);
+    return asynError;
+  }
+
+  auto &paramInfo = adsParamArray_[paramIndex];
 
   long allowedType = ADST_INT8;
 
   // Also allow string and bool array as int8array (special case)
-  if (pAdsParamArray_[pasynUser->reason]->plcDataType == ADST_STRING)
+  if (paramInfo.plcDataType == ADST_STRING)
   {
     allowedType = ADST_STRING;
   }
-  else if (pAdsParamArray_[pasynUser->reason]->plcDataType == ADST_BIT)
+  else if (paramInfo.plcDataType == ADST_BIT)
   {
     allowedType = ADST_BIT;
   }
@@ -3178,8 +3261,7 @@ asynStatus adsAsynPortDriver::writeInt8Array(asynUser *pasynUser, epicsInt8 *val
  */
 asynStatus adsAsynPortDriver::readInt16Array(asynUser *pasynUser, epicsInt16 *value, size_t nElements, size_t *nIn)
 {
-  const char *functionName = "readInt16Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   long allowedType = ADST_INT16;
 
@@ -3203,8 +3285,7 @@ asynStatus adsAsynPortDriver::readInt16Array(asynUser *pasynUser, epicsInt16 *va
  */
 asynStatus adsAsynPortDriver::writeInt16Array(asynUser *pasynUser, epicsInt16 *value, size_t nElements)
 {
-  const char *functionName = "writeInt16Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   long allowedType = ADST_INT16;
 
@@ -3222,8 +3303,7 @@ asynStatus adsAsynPortDriver::writeInt16Array(asynUser *pasynUser, epicsInt16 *v
  */
 asynStatus adsAsynPortDriver::readInt32Array(asynUser *pasynUser, epicsInt32 *value, size_t nElements, size_t *nIn)
 {
-  const char *functionName = "readInt32Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   long allowedType = ADST_INT32;
 
@@ -3247,8 +3327,7 @@ asynStatus adsAsynPortDriver::readInt32Array(asynUser *pasynUser, epicsInt32 *va
  */
 asynStatus adsAsynPortDriver::writeInt32Array(asynUser *pasynUser, epicsInt32 *value, size_t nElements)
 {
-  const char *functionName = "writeInt32Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   long allowedType = ADST_INT32;
 
@@ -3266,8 +3345,7 @@ asynStatus adsAsynPortDriver::writeInt32Array(asynUser *pasynUser, epicsInt32 *v
  */
 asynStatus adsAsynPortDriver::readFloat32Array(asynUser *pasynUser, epicsFloat32 *value, size_t nElements, size_t *nIn)
 {
-  const char *functionName = "readFloat32Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   long allowedType = ADST_REAL32;
 
@@ -3291,8 +3369,7 @@ asynStatus adsAsynPortDriver::readFloat32Array(asynUser *pasynUser, epicsFloat32
  */
 asynStatus adsAsynPortDriver::writeFloat32Array(asynUser *pasynUser, epicsFloat32 *value, size_t nElements)
 {
-  const char *functionName = "writeFloat32Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   long allowedType = ADST_REAL32;
   return adsGenericArrayWrite(pasynUser, allowedType, (const void *)value, nElements * sizeof(epicsFloat32));
@@ -3300,8 +3377,7 @@ asynStatus adsAsynPortDriver::writeFloat32Array(asynUser *pasynUser, epicsFloat3
 
 asynStatus adsAsynPortDriver::readInt64Array(asynUser *pasynUser, epicsInt64 *value, size_t nElements, size_t *nIn)
 {
-  const char *functionName = "readInt64Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   long allowedType = ADST_INT64;
 
@@ -3317,8 +3393,7 @@ asynStatus adsAsynPortDriver::readInt64Array(asynUser *pasynUser, epicsInt64 *va
 
 asynStatus adsAsynPortDriver::writeInt64Array(asynUser *pasynUser, epicsInt64 *value, size_t nElements)
 {
-  const char *functionName = "writeInt64Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   long allowedType = ADST_INT64;
 
@@ -3336,8 +3411,7 @@ asynStatus adsAsynPortDriver::writeInt64Array(asynUser *pasynUser, epicsInt64 *v
  */
 asynStatus adsAsynPortDriver::readFloat64Array(asynUser *pasynUser, epicsFloat64 *value, size_t nElements, size_t *nIn)
 {
-  const char *functionName = "readFloat64Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   long allowedType = ADST_REAL64;
 
@@ -3361,8 +3435,7 @@ asynStatus adsAsynPortDriver::readFloat64Array(asynUser *pasynUser, epicsFloat64
  */
 asynStatus adsAsynPortDriver::writeFloat64Array(asynUser *pasynUser, epicsFloat64 *value, size_t nElements)
 {
-  const char *functionName = "writeFloat64Array";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   long allowedType = ADST_REAL64;
   return adsGenericArrayWrite(pasynUser, allowedType, (const void *)value, nElements * nElements * sizeof(epicsFloat64));
@@ -3374,8 +3447,7 @@ asynStatus adsAsynPortDriver::writeFloat64Array(asynUser *pasynUser, epicsFloat6
  */
 asynUser *adsAsynPortDriver::getTraceAsynUser()
 {
-  const char *functionName = "getTraceAsynUser";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   return pasynUserSelf;
 }
@@ -3386,9 +3458,9 @@ asynUser *adsAsynPortDriver::getTraceAsynUser()
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsGetSymHandleByName(adsParamInfo *paramInfo)
+asynStatus adsAsynPortDriver::adsGetSymHandleByName(long adsClientPort, adsParamInfo &paramInfo)
 {
-  return adsGetSymHandleByName(paramInfo, false);
+  return adsGetSymHandleByName(adsClientPort, paramInfo, false);
 }
 
 /** Get handle to symbolic plc variable.
@@ -3399,38 +3471,37 @@ asynStatus adsAsynPortDriver::adsGetSymHandleByName(adsParamInfo *paramInfo)
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsGetSymHandleByName(adsParamInfo *paramInfo, bool blockErrorMsg)
+asynStatus adsAsynPortDriver::adsGetSymHandleByName(long adsClientPort, adsParamInfo &paramInfo, bool blockErrorMsg)
 {
-  const char *functionName = "adsGetSymHandleByName";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo->amsPort};
+  amsServer = {remoteNetId_, paramInfo.amsPort};
 
   uint32_t symbolHandle = 0;
-  adsLock();
-  const long handleStatus = AdsSyncReadWriteReqEx2(adsPort_,
+  const long handleStatus = AdsSyncReadWriteReqEx2(adsClientPort,
                                                    &amsServer,
                                                    ADSIGRP_SYM_HNDBYNAME,
                                                    0,
-                                                   sizeof(paramInfo->hSymbolicHandle),
+                                                   sizeof(paramInfo.hSymbolicHandle),
                                                    &symbolHandle,
-                                                   strlen(paramInfo->plcAdrStr),
-                                                   paramInfo->plcAdrStr,
+                                                   paramInfo.plcAdrStr.length(),
+                                                   paramInfo.plcAdrStr.c_str(),
                                                    nullptr);
-  adsUnlock();
   if (handleStatus)
   {
     if (!blockErrorMsg)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Create handle for %s failed with: %s (0x%lx)\n", driverName, functionName, paramInfo->plcAdrStr, adsErrorToString(handleStatus), handleStatus);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Create handle for %s failed with: %s (0x%lx)\n",
+                driverName, __func__, paramInfo.plcAdrStr.c_str(), adsErrorToString(handleStatus), handleStatus);
     }
     return asynError;
   }
 
   // Add handle succeded
-  paramInfo->hSymbolicHandle = symbolHandle;
-  paramInfo->bSymbolicHandleValid = true;
+  paramInfo.hSymbolicHandle = symbolHandle;
+  paramInfo.bSymbolicHandleValid = true;
 
   return asynSuccess;
 }
@@ -3441,41 +3512,38 @@ asynStatus adsAsynPortDriver::adsGetSymHandleByName(adsParamInfo *paramInfo, boo
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsAddSymbolsChangedCallback(std::shared_ptr<amsPortInfo> port)
+asynStatus adsAsynPortDriver::adsAddSymbolsChangedCallback(long adsClientPort, amsPortInfo &port)
 {
-  const char *functionName = "adsAddSymbolsChangedCallback";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Ams-port %u.\n", driverName, functionName, port->amsPort);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Ams-port %u.\n", driverName, __func__, port.amsPort);
 
   AmsAddr amsServer;
-  amsServer = {remoteNetId_, port->amsPort};
+  amsServer = {remoteNetId_, port.amsPort};
 
   AdsNotificationAttrib attrib;
   attrib.cbLength = 1;
-  attrib.nTransMode = ADSTRANS_SERVERONCHA;                      // Add option
-  attrib.nMaxDelay = (uint32_t)(defaultMaxDelayTimeMS_ * 10000); // 100ms
-  attrib.nCycleTime = (uint32_t)(defaultSampleTimeMS_ * 10000);
+  attrib.nTransMode = ADSTRANS_SERVERONCHA;                       // Add option
+  attrib.nMaxDelay = (uint32_t)(defaultMaxDelayTime_ms_ * 10000); // 100ms
+  attrib.nCycleTime = (uint32_t)(defaultSampleTime_ms_ * 10000);
 
   uint32_t hNotify = 0;
-  adsLock();
-  long addStatus = AdsSyncAddDeviceNotificationReqEx(adsPort_,
+  long addStatus = AdsSyncAddDeviceNotificationReqEx(adsClientPort,
                                                      &amsServer,
                                                      ADSIGRP_SYM_VERSION,
                                                      0,
                                                      &attrib,
                                                      &adsSymbolsChangedCallback,
-                                                     (uint32_t)port->amsPort, // Use amsPort as hUser
+                                                     (uint32_t)port.amsPort, // Use amsPort as hUser
                                                      &hNotify);
-  adsUnlock();
   if (addStatus)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Add device notification failed with: %s (0x%lx)\n", driverName, functionName, adsErrorToString(addStatus), addStatus);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Add device notification failed with: %s (0x%lx)\n", driverName, __func__, adsErrorToString(addStatus), addStatus);
     return asynError;
   }
 
   // Add was successful
-  port->hCallbackNotify = hNotify;
-  port->bCallbackNotifyValid = true;
-  port->refreshNeeded = false;
+  port.hCallbackNotify = hNotify;
+  port.bCallbackNotifyValid = true;
+  port.refreshNeeded = false;
 
   return asynSuccess;
 }
@@ -3486,23 +3554,20 @@ asynStatus adsAsynPortDriver::adsAddSymbolsChangedCallback(std::shared_ptr<amsPo
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsDelSymbolsChangedCallback(std::shared_ptr<amsPortInfo> port)
+asynStatus adsAsynPortDriver::adsDelSymbolsChangedCallback(long adsClientPort, amsPortInfo &port)
 {
-  const char *functionName = "adsDelSymbolsChangedCallback";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   AmsAddr amsServer;
-  amsServer = {remoteNetId_, port->amsPort};
+  amsServer = {remoteNetId_, port.amsPort};
 
-  adsLock();
-  const long delStatus = AdsSyncDelDeviceNotificationReqEx(adsPort_, &amsServer, port->hCallbackNotify);
-  adsUnlock();
-  port->bCallbackNotifyValid = false;
-  port->hCallbackNotify = -1;
+  const long delStatus = AdsSyncDelDeviceNotificationReqEx(adsClientPort, &amsServer, port.hCallbackNotify);
+  port.bCallbackNotifyValid = false;
+  port.hCallbackNotify = -1;
 
   if (delStatus)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Delete device notification failed with: %s (0x%lx)\n", driverName, functionName, adsErrorToString(delStatus), delStatus);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Delete device notification failed with: %s (0x%lx)\n", driverName, __func__, adsErrorToString(delStatus), delStatus);
     return asynError;
   }
 
@@ -3515,92 +3580,89 @@ asynStatus adsAsynPortDriver::adsDelSymbolsChangedCallback(std::shared_ptr<amsPo
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsAddDataCallback(adsParamInfo *paramInfo)
+asynStatus adsAsynPortDriver::adsAddDataCallback(long adsClientPort, adsParamInfo &paramInfo)
 {
-  const char *functionName = "adsAddDataCallback";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   uint32_t group = 0;
   uint32_t offset = 0;
 
-  paramInfo->bCallbackNotifyValid = false;
+  paramInfo.bCallbackNotifyValid = false;
 
   AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo->amsPort};
+  amsServer = {remoteNetId_, paramInfo.amsPort};
 
-  if (paramInfo->isAdrCommand)
+  if (paramInfo.isAdrCommand)
   { // Abs access (ADR command)
-    if (!paramInfo->plcAbsAdrValid)
+    if (!paramInfo.plcAbsAdrValid)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Absolute address in paramInfo not valid.\n", driverName, functionName);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Absolute address in paramInfo not valid.\n", driverName, __func__);
       return asynError;
     }
 
-    group = paramInfo->plcAbsAdrGroup;
-    offset = paramInfo->plcAbsAdrOffset;
+    group = paramInfo.plcAbsAdrGroup;
+    offset = paramInfo.plcAbsAdrOffset;
   }
   else
   { // Symbolic access
 
     // Read symbolic information if needed (to get paramInfo->plcSize)
-    if (!paramInfo->plcAbsAdrValid)
+    if (!paramInfo.plcAbsAdrValid)
     {
-      asynStatus statusInfo = adsGetSymInfoByName(paramInfo);
+      asynStatus statusInfo = adsGetSymInfoByName(adsClientPort, paramInfo);
       if (statusInfo != asynSuccess)
       {
-        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymInfoByName failed.\n", driverName, functionName);
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymInfoByName failed.\n", driverName, __func__);
         return asynError;
       }
     }
 
     // Get symbolic handle if needed
-    if (!paramInfo->bSymbolicHandleValid)
+    if (!paramInfo.bSymbolicHandleValid)
     {
-      asynStatus statusHandle = adsGetSymHandleByName(paramInfo);
+      asynStatus statusHandle = adsGetSymHandleByName(adsClientPort, paramInfo);
       if (statusHandle != asynSuccess)
       {
-        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymHandleByName failed.\n", driverName, functionName);
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymHandleByName failed.\n", driverName, __func__);
         return asynError;
       }
     }
 
     group = ADSIGRP_SYM_VALBYHND; // Access via symbolic handle stored in paramInfo->hSymbolicHandle
-    offset = paramInfo->hSymbolicHandle;
+    offset = paramInfo.hSymbolicHandle;
   }
 
   AdsNotificationAttrib attrib;
   /** Length of the data that is to be passed to the callback function. */
-  attrib.cbLength = paramInfo->plcSize;
+  attrib.cbLength = paramInfo.plcSize;
   /**
    * ADSTRANS_SERVERCYCLE: The notification's callback function is invoked cyclically.
    * ADSTRANS_SERVERONCHA: The notification's callback function is only invoked when the value changes.
    */
   attrib.nTransMode = ADSTRANS_SERVERONCHA; // Add option
   /** The notification's callback function is invoked at the latest when this time has elapsed. The unit is 100 ns. */
-  attrib.nMaxDelay = (uint32_t)(paramInfo->maxDelayTimeMS * 10000); // 100ms
+  attrib.nMaxDelay = (uint32_t)(paramInfo.maxDelayTimeMS * 10000); // 100ms
   /** The ADS server checks whether the variable has changed after this time interval. The unit is 100 ns. */
-  attrib.nCycleTime = (uint32_t)(paramInfo->sampleTimeMS * 10000);
+  attrib.nCycleTime = (uint32_t)(paramInfo.sampleTimeMS * 10000);
 
   uint32_t hNotify = 0;
-  adsLock();
-  long addStatus = AdsSyncAddDeviceNotificationReqEx(adsPort_,
+  long addStatus = AdsSyncAddDeviceNotificationReqEx(adsClientPort,
                                                      &amsServer,
                                                      group,
                                                      offset,
                                                      &attrib,
                                                      &adsDataCallback,
-                                                     (uint32_t)paramInfo->paramIndex,
+                                                     (uint32_t)paramInfo.paramIndex,
                                                      &hNotify);
-  adsUnlock();
   if (addStatus)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Add device notification failed with: %s (0x%lx)\n", driverName, functionName, adsErrorToString(addStatus), addStatus);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Add device notification failed with: %s (0x%lx)\n", driverName, __func__, adsErrorToString(addStatus), addStatus);
     return asynError;
   }
 
   // Add was successful
-  paramInfo->hCallbackNotify = hNotify;
-  paramInfo->bCallbackNotifyValid = true;
+  paramInfo.hCallbackNotify = hNotify;
+  paramInfo.bCallbackNotifyValid = true;
 
   return asynSuccess;
 }
@@ -3611,9 +3673,9 @@ asynStatus adsAsynPortDriver::adsAddDataCallback(adsParamInfo *paramInfo)
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsDelDataCallback(adsParamInfo *paramInfo)
+asynStatus adsAsynPortDriver::adsDelDataCallback(long adsClientPort, adsParamInfo &paramInfo)
 {
-  return adsDelDataCallback(paramInfo, false);
+  return adsDelDataCallback(adsClientPort, paramInfo, false);
 }
 
 /** Unregister on-change callback for parameter (plc-variable).
@@ -3624,25 +3686,22 @@ asynStatus adsAsynPortDriver::adsDelDataCallback(adsParamInfo *paramInfo)
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsDelDataCallback(adsParamInfo *paramInfo, bool blockErrorMsg)
+asynStatus adsAsynPortDriver::adsDelDataCallback(long adsClientPort, adsParamInfo &paramInfo, bool blockErrorMsg)
 {
-  const char *functionName = "adsDelDataCallback";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  paramInfo->bCallbackNotifyValid = false;
+  paramInfo.bCallbackNotifyValid = false;
 
   AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo->amsPort};
+  amsServer = {remoteNetId_, paramInfo.amsPort};
 
-  adsLock();
-  const long delStatus = AdsSyncDelDeviceNotificationReqEx(adsPort_, &amsServer, paramInfo->hCallbackNotify);
-  paramInfo->hCallbackNotify = -1;
-  adsUnlock();
+  const long delStatus = AdsSyncDelDeviceNotificationReqEx(adsClientPort, &amsServer, paramInfo.hCallbackNotify);
+  paramInfo.hCallbackNotify = -1;
   if (delStatus)
   {
     if (!blockErrorMsg)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Delete device notification failed with: %s (0x%lx)\n", driverName, functionName, adsErrorToString(delStatus), delStatus);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Delete device notification failed with: %s (0x%lx)\n", driverName, __func__, adsErrorToString(delStatus), delStatus);
     }
     return asynError;
   }
@@ -3658,10 +3717,10 @@ asynStatus adsAsynPortDriver::adsDelDataCallback(adsParamInfo *paramInfo, bool b
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsGetSymInfoByName(uint16_t amsPort, const char *varName, adsSymbolEntry *info)
+asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t amsPort, const char *varName, adsSymbolEntry &info)
 {
   long errorCode = 0;
-  return adsGetSymInfoByName(amsPort, varName, info, &errorCode);
+  return adsGetSymInfoByName(adsClientPort, amsPort, varName, info, &errorCode);
 }
 
 /** Get symbolic information for a plc variable.
@@ -3673,14 +3732,13 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(uint16_t amsPort, const char *
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsGetSymInfoByName(uint16_t amsPort, const char *varName, adsSymbolEntry *info, long *errorCode)
+asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t amsPort, const char *varName, adsSymbolEntry &info, long *errorCode)
 {
-  const char *functionName = "adsGetSymInfoByName";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable name: %s, amsPort: %d.\n", driverName, functionName, varName, (int)amsPort);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable name: %s, amsPort: %d.\n", driverName, __func__, varName, (int)amsPort);
 
-  if (!info || !varName)
+  if (!varName)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Info struct or varName NULL.\n", driverName, functionName);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Info struct or varName NULL.\n", driverName, __func__);
     return asynError;
   }
 
@@ -3688,60 +3746,51 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(uint16_t amsPort, const char *
   AmsAddr amsServer;
 
   amsServer = {remoteNetId_, amsPort};
-  adsLock();
-  const long infoStatus = AdsSyncReadWriteReqEx2(adsPort_,
+  const long infoStatus = AdsSyncReadWriteReqEx2(adsClientPort,
                                                  &amsServer,
                                                  ADSIGRP_SYM_INFOBYNAMEEX,
                                                  0,
                                                  sizeof(adsSymbolEntry),
-                                                 info,
+                                                 &info,
                                                  strlen(varName),
                                                  varName,
                                                  &bytesRead);
-  adsUnlock();
   *errorCode = infoStatus;
 
   if (infoStatus)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Get symbolic information failed for %s with: %s (0x%lx)\n", driverName, functionName, varName, adsErrorToString(infoStatus), infoStatus);
-    if (infoStatus == GLOBALERR_TARGET_PORT)
-    {
-      /* Sigh.  It was up, now it's down.  Let's go home. */
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Port error, giving up!\n",
-                driverName, functionName);
-      exit(1);
-    }
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Get symbolic information failed for %s with: %s (0x%lx)\n", driverName, __func__, varName, adsErrorToString(infoStatus), infoStatus);
     return asynError;
   }
 
-  info->variableName = info->buffer;
+  info.variableName = info.buffer;
 
-  if (info->nameLength >= sizeof(info->buffer) - 1)
+  if (info.nameLength >= sizeof(info.buffer) - 1)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Missalignment of type in AdsSyncReadWriteReqEx2 return struct for %s\n", driverName, functionName, varName);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Missalignment of type in AdsSyncReadWriteReqEx2 return struct for %s\n", driverName, __func__, varName);
     return asynError;
   }
-  info->symDataType = info->buffer + info->nameLength + 1;
+  info.symDataType = info.buffer + info.nameLength + 1;
 
-  if (info->nameLength + info->typeLength + 2 >= (uint16_t)(sizeof(info->buffer) - 1))
+  if (info.nameLength + info.typeLength + 2 >= (uint16_t)(sizeof(info.buffer) - 1))
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Missalignment of comment in AdsSyncReadWriteReqEx2 return struct for %s\n", driverName, functionName, varName);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Missalignment of comment in AdsSyncReadWriteReqEx2 return struct for %s\n", driverName, __func__, varName);
   }
-  info->symComment = info->symDataType + info->typeLength + 1;
+  info.symComment = info.symDataType + info.typeLength + 1;
 
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Symbolic information\n");
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "SymEntrylength: %d\n", info->entryLen);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "idxGroup: 0x%x\n", info->iGroup);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "idxOffset: 0x%x\n", info->iOffset);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "ByteSize: %d\n", info->size);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "adsDataType: %d\n", info->dataType);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Flags: %d\n", info->flags);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Name length: %d\n", info->nameLength);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Type length: %d\n", info->typeLength);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Type length: %d\n", info->commentLength);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Variable name: %s\n", info->variableName);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Data type: %s\n", info->symDataType);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Comment: %s\n", info->symComment);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "SymEntrylength: %d\n", info.entryLen);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "idxGroup: 0x%x\n", info.iGroup);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "idxOffset: 0x%x\n", info.iOffset);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "ByteSize: %d\n", info.size);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "adsDataType: %d\n", info.dataType);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Flags: %d\n", info.flags);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Name length: %d\n", info.nameLength);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Type length: %d\n", info.typeLength);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Type length: %d\n", info.commentLength);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Variable name: %s\n", info.variableName);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Data type: %s\n", info.symDataType);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Comment: %s\n", info.symComment);
 
   return asynSuccess;
 }
@@ -3752,26 +3801,25 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(uint16_t amsPort, const char *
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsGetSymInfoByName(adsParamInfo *paramInfo)
+asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, adsParamInfo &paramInfo)
 {
-  const char *functionName = "adsGetSymInfoByName";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   adsSymbolEntry infoStruct;
   memset(&infoStruct, 0, sizeof(infoStruct));
 
-  asynStatus stat = adsGetSymInfoByName(paramInfo->amsPort, paramInfo->plcAdrStr, &infoStruct);
+  asynStatus stat = adsGetSymInfoByName(adsClientPort, paramInfo.amsPort, paramInfo.plcAdrStr.c_str(), infoStruct);
   if (stat)
   {
     return asynError;
   }
 
   // fill paramInfo data structure
-  paramInfo->plcAbsAdrGroup = infoStruct.iGroup;
-  paramInfo->plcAbsAdrOffset = infoStruct.iOffset;
-  paramInfo->plcSize = infoStruct.size;
-  paramInfo->plcDataType = infoStruct.dataType;
-  paramInfo->plcAbsAdrValid = true;
+  paramInfo.plcAbsAdrGroup = infoStruct.iGroup;
+  paramInfo.plcAbsAdrOffset = infoStruct.iOffset;
+  paramInfo.plcSize = infoStruct.size;
+  paramInfo.plcDataType = infoStruct.dataType;
+  paramInfo.plcAbsAdrValid = true;
 
   return asynSuccess;
 }
@@ -3780,62 +3828,41 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(adsParamInfo *paramInfo)
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsConnect()
+asynStatus adsAsynPortDriver::adsConnect(long adsClientPort)
 {
-  const char *functionName = "adsConnect";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  adsDelRouteLock(1);
-  // add local route to your ADS Master
-  if (!routeAdded_)
+  adsDelRoute();
+  asynStatus stat = adsAddRoute();
+
+  if (stat != asynSuccess)
   {
-    asynStatus stat = adsAddRouteLock();
-
-    if (stat != asynSuccess)
-    {
-      adsDelRouteLock(1);
-      if (adsPort_)
-      {
-        adsLock();
-        AdsPortCloseEx(adsPort_);
-        adsPort_ = 0;
-        adsUnlock();
-        return asynError;
-      }
-    }
-  }
-
-  // open a new ADS port
-  adsLock();
-  if (!adsPort_)
-    adsPort_ = AdsPortOpenEx();
-  adsUnlock();
-  if (!adsPort_)
-  {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s:Open ADS port failed.\n", driverName, functionName);
+    adsDelRoute();
     return asynError;
   }
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:Open ADS port = %ld.\n", driverName, functionName, adsPort_);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+            "%s:%s: successfully added route to ip = %s, netid = %s.\n",
+            driverName, __func__, ipaddr_.c_str(), amsaddr_.c_str());
+
   // Update timeout
   uint32_t defaultTimeout = 0;
-  adsLock();
-  long status = AdsSyncGetTimeoutEx(adsPort_, &defaultTimeout);
-  adsUnlock();
+  long status = AdsSyncGetTimeoutEx(adsClientPort, &defaultTimeout);
   if (status)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: AdsSyncGetTimeoutEx failed with: %s (0x%lx).\n", driverName, functionName, adsErrorToString(status), status);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: AdsSyncGetTimeoutEx failed with: %s (0x%lx).\n", driverName, __func__, adsErrorToString(status), status);
     return asynError;
   }
-  adsLock();
-  status = AdsSyncSetTimeoutEx(adsPort_, (uint32_t)adsTimeoutMS_);
-  adsUnlock();
+  if (defaultTimeout == adsTimeout_ms_)
+    return asynSuccess;
+
+  status = AdsSyncSetTimeoutEx(adsClientPort, (uint32_t)adsTimeout_ms_);
   if (status)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: AdsSyncSetTimeoutEx failed with: %s (0x%lx).\n", driverName, functionName, adsErrorToString(status), status);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: AdsSyncSetTimeoutEx failed with: %s (0x%lx).\n", driverName, __func__, adsErrorToString(status), status);
     return asynError;
   }
 
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Update ADS sync time out from %u to %u.\n", driverName, functionName, defaultTimeout, (uint32_t)adsTimeoutMS_);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Updated ADS sync time out from %u to %u.\n", driverName, __func__, defaultTimeout, adsTimeout_ms_);
 
   return asynSuccess;
 }
@@ -3844,47 +3871,24 @@ asynStatus adsAsynPortDriver::adsConnect()
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReadVersion(long adsClientPort, std::shared_ptr<amsPortInfo> port)
+asynStatus adsAsynPortDriver::adsReadVersion(long adsClientPort, amsPortInfo &port)
 {
-  const char *functionName = "adsReadVersion";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Ams-port %u\n", driverName, functionName, port->amsPort);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Ams-port %u\n", driverName, __func__, port.amsPort);
 
   AmsAddr amsServer;
   AdsVersion version;
   char devName[255];
-  amsServer = {remoteNetId_, port->amsPort};
+  amsServer = {remoteNetId_, port.amsPort};
 
   long status = AdsSyncReadDeviceInfoReqEx(adsClientPort, &amsServer, devName, &version);
   if (status)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: AdsSyncReadDeviceInfoReqEx failed with: %s (0x%lx).\n", driverName, functionName, adsErrorToString(status), status);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: AdsSyncReadDeviceInfoReqEx failed with: %s (0x%lx).\n", driverName, __func__, adsErrorToString(status), status);
     return asynError;
   }
 
-  port->version = version;
-  strncpy(port->devName, devName, sizeof(port->devName));
-  return asynSuccess;
-}
-
-/** Disconnect ads router (TwinCAT system).
- *
- * \return asynSuccess or asynError.
- */
-asynStatus adsAsynPortDriver::adsDisconnect()
-{
-  const char *functionName = "adsDisconnect";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: adsPort_=%ld\n", driverName, functionName, adsPort_);
-
-  adsLock();
-  const long closeStatus = AdsPortCloseEx(adsPort_);
-  adsPort_ = 0;
-  adsUnlock();
-  if (closeStatus)
-  {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Close ADS port failed with: %s (0x%lx)\n", driverName, functionName, adsErrorToString(closeStatus), closeStatus);
-    return asynError;
-  }
-
+  port.version = version;
+  strncpy(port.devName, devName, sizeof(port.devName));
   return asynSuccess;
 }
 
@@ -3894,9 +3898,9 @@ asynStatus adsAsynPortDriver::adsDisconnect()
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReleaseSymbolicHandle(adsParamInfo *paramInfo)
+asynStatus adsAsynPortDriver::adsReleaseSymbolicHandle(long adsClientPort, adsParamInfo &paramInfo)
 {
-  return adsReleaseSymbolicHandle(paramInfo, false);
+  return adsReleaseSymbolicHandle(adsClientPort, paramInfo, false);
 }
 
 /** Release handle to symbolic variable (in TwinCAT plc)
@@ -3907,23 +3911,22 @@ asynStatus adsAsynPortDriver::adsReleaseSymbolicHandle(adsParamInfo *paramInfo)
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReleaseSymbolicHandle(adsParamInfo *paramInfo, bool blockErrorMsg)
+asynStatus adsAsynPortDriver::adsReleaseSymbolicHandle(long adsClientPort, adsParamInfo &paramInfo, bool blockErrorMsg)
 {
-  const char *functionName = "adsReleaseHandle";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  paramInfo->bSymbolicHandleValid = false;
+  paramInfo.bSymbolicHandleValid = false;
 
   AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo->amsPort};
+  amsServer = {remoteNetId_, paramInfo.amsPort};
 
-  adsLock();
-  const long releaseStatus = AdsSyncWriteReqEx(adsPort_, &amsServer, ADSIGRP_SYM_RELEASEHND, 0, sizeof(paramInfo->hSymbolicHandle), &paramInfo->hSymbolicHandle);
-  adsUnlock();
-  paramInfo->hSymbolicHandle = -1;
+  const long releaseStatus = AdsSyncWriteReqEx(adsClientPort, &amsServer, ADSIGRP_SYM_RELEASEHND, 0, sizeof(paramInfo.hSymbolicHandle), &paramInfo.hSymbolicHandle);
+  paramInfo.hSymbolicHandle = -1;
   if (releaseStatus && !blockErrorMsg)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Release of handle 0x%x failed with: %s (0x%lx)\n", driverName, functionName, paramInfo->hSymbolicHandle, adsErrorToString(releaseStatus), releaseStatus);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: Release of handle 0x%x failed with: %s (0x%lx)\n",
+              driverName, __func__, paramInfo.hSymbolicHandle, adsErrorToString(releaseStatus), releaseStatus);
     return asynError;
   }
 
@@ -3938,10 +3941,9 @@ asynStatus adsAsynPortDriver::adsReleaseSymbolicHandle(adsParamInfo *paramInfo, 
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsWriteParam(adsParamInfo *paramInfo, const void *binaryBuffer, uint32_t bytesToWrite)
+asynStatus adsAsynPortDriver::adsWriteParam(long adsClientPort, adsParamInfo &paramInfo, const void *binaryBuffer, uint32_t bytesToWrite)
 {
-  const char *functionName = "adsWriteParam";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   // Calculate consumed time by this method
   struct timeval start, end;
@@ -3952,65 +3954,63 @@ asynStatus adsAsynPortDriver::adsWriteParam(adsParamInfo *paramInfo, const void 
   uint32_t offset = 0;
 
   AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo->amsPort};
+  amsServer = {remoteNetId_, paramInfo.amsPort};
 
-  if (paramInfo->isAdrCommand)
+  if (paramInfo.isAdrCommand)
   { // Abs access (ADR command)
-    if (!paramInfo->plcAbsAdrValid)
+    if (!paramInfo.plcAbsAdrValid)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Absolute address in paramInfo not valid.\n", driverName, functionName);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Absolute address in paramInfo not valid.\n", driverName, __func__);
       return asynError;
     }
 
-    group = paramInfo->plcAbsAdrGroup;
-    offset = paramInfo->plcAbsAdrOffset;
+    group = paramInfo.plcAbsAdrGroup;
+    offset = paramInfo.plcAbsAdrOffset;
   }
   else
-  { // Symbolic access
-
+  {
+    // Symbolic access
     // Read symbolic information if needed (to get paramInfo->plcSize)
-    if (!paramInfo->plcAbsAdrValid)
+    if (!paramInfo.plcAbsAdrValid)
     {
-      asynStatus statusInfo = adsGetSymInfoByName(paramInfo);
+      asynStatus statusInfo = adsGetSymInfoByName(adsClientPort, paramInfo);
       if (statusInfo == asynError)
       {
-        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymInfoByName failed.\n", driverName, functionName);
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymInfoByName failed.\n", driverName, __func__);
         return asynError;
       }
     }
 
     // Get symbolic handle if needed
-    if (!paramInfo->bSymbolicHandleValid)
+    if (!paramInfo.bSymbolicHandleValid)
     {
-      asynStatus statusHandle = adsGetSymHandleByName(paramInfo);
+      asynStatus statusHandle = adsGetSymHandleByName(adsClientPort, paramInfo);
       if (statusHandle != asynSuccess)
       {
-        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymHandleByName failed.\n", driverName, functionName);
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymHandleByName failed.\n", driverName, __func__);
         return asynError;
       }
     }
 
     group = ADSIGRP_SYM_VALBYHND; // Access via symbolic handle stored in paramInfo->hSymbolicHandle
-    offset = paramInfo->hSymbolicHandle;
+    offset = paramInfo.hSymbolicHandle;
   }
-  adsLock();
-  long writeStatus = AdsSyncWriteReqEx(adsPort_,
+  long writeStatus = AdsSyncWriteReqEx(adsClientPort,
                                        &amsServer,
                                        group,
                                        offset,
-                                       paramInfo->plcSize,
+                                       paramInfo.plcSize,
                                        binaryBuffer);
-  adsUnlock();
   if (writeStatus)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ADS write failed with: %s (0x%lx)\n", driverName, functionName, adsErrorToString(writeStatus), writeStatus);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ADS write failed with: %s (0x%lx)\n", driverName, __func__, adsErrorToString(writeStatus), writeStatus);
     return asynError;
   }
 
   gettimeofday(&end, NULL);
   secs_used = (end.tv_sec - start.tv_sec); // avoid overflow by subtracting first
   micros_used = ((secs_used * 1000000) + end.tv_usec) - (start.tv_usec);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: ADS write: micros used: 0x%lx\n", driverName, functionName, micros_used);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "%s:%s: ADS write: micros used: 0x%lx\n", driverName, __func__, micros_used);
 
   return asynSuccess;
 }
@@ -4021,10 +4021,10 @@ asynStatus adsAsynPortDriver::adsWriteParam(adsParamInfo *paramInfo, const void 
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReadParam(adsParamInfo *paramInfo)
+asynStatus adsAsynPortDriver::adsReadParam(long adsClientPort, adsParamInfo &paramInfo)
 {
   long notused = 0;
-  return adsReadParam(paramInfo, &notused, 1);
+  return adsReadParam(adsClientPort, paramInfo, notused, 1);
 }
 
 /** Read value of variable in TwinCAT.
@@ -4034,84 +4034,85 @@ asynStatus adsAsynPortDriver::adsReadParam(adsParamInfo *paramInfo)
  * \param[in] updateAsynPar Update asyn parameter.
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReadParam(adsParamInfo *paramInfo, long *error, int updateAsynPar)
+asynStatus adsAsynPortDriver::adsReadParam(long adsClientPort, adsParamInfo &paramInfo, long &error, int updateAsynPar)
 {
-  const char *functionName = "adsReadParam";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   uint32_t group = 0;
   uint32_t offset = 0;
-  *error = 0;
+  error = 0;
 
   AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo->amsPort};
+  amsServer = {remoteNetId_, paramInfo.amsPort};
 
-  if (paramInfo->isAdrCommand)
+  if (paramInfo.isAdrCommand)
   { // Abs access (ADR command)
-    if (!paramInfo->plcAbsAdrValid)
+    if (!paramInfo.plcAbsAdrValid)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Absolute address in paramInfo not valid.\n", driverName, functionName);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Absolute address in paramInfo not valid.\n", driverName, __func__);
       return asynError;
     }
 
-    group = paramInfo->plcAbsAdrGroup;
-    offset = paramInfo->plcAbsAdrOffset;
+    group = paramInfo.plcAbsAdrGroup;
+    offset = paramInfo.plcAbsAdrOffset;
   }
   else
   { // Symbolic access
 
     // Read symbolic information if needed (to get paramInfo->plcSize)
-    if (!paramInfo->plcAbsAdrValid)
+    if (!paramInfo.plcAbsAdrValid)
     {
-      asynStatus statusInfo = adsGetSymInfoByName(paramInfo);
+      asynStatus statusInfo = adsGetSymInfoByName(adsClientPort, paramInfo);
       if (statusInfo == asynError)
       {
-        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymInfoByName failed.\n", driverName, functionName);
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymInfoByName failed.\n", driverName, __func__);
         return asynError;
       }
     }
 
     // Get symbolic handle if needed
-    if (!paramInfo->bSymbolicHandleValid)
+    if (!paramInfo.bSymbolicHandleValid)
     {
-      asynStatus statusHandle = adsGetSymHandleByName(paramInfo);
+      asynStatus statusHandle = adsGetSymHandleByName(adsClientPort, paramInfo);
       if (statusHandle != asynSuccess)
       {
-        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymHandleByName failed.\n", driverName, functionName);
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: adsGetSymHandleByName failed.\n", driverName, __func__);
         return asynError;
       }
     }
 
     group = ADSIGRP_SYM_VALBYHND; // Access via symbolic handle stored in paramInfo->hSymbolicHandle
-    offset = paramInfo->hSymbolicHandle;
+    offset = paramInfo.hSymbolicHandle;
   }
 
-  char *data = new char[paramInfo->plcSize];
+  char *data = new char[paramInfo.plcSize];
   uint32_t bytesRead = 0;
-  adsLock();
-  *error = AdsSyncReadReqEx2(adsPort_,
-                             &amsServer,
-                             group,
-                             offset,
-                             paramInfo->plcSize,
-                             (void *)data,
-                             &bytesRead);
-  adsUnlock();
-  if (*error)
+  error = AdsSyncReadReqEx2(adsClientPort,
+                            &amsServer,
+                            group,
+                            offset,
+                            paramInfo.plcSize,
+                            (void *)data,
+                            &bytesRead);
+  if (error)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: AdsSyncReadReqEx2 failed: %s (%lu).\n", driverName, functionName, adsErrorToString(*error), *error);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: AdsSyncReadReqEx2 failed: %s (%lu).\n",
+              driverName, __func__, adsErrorToString(error), error);
     return asynError;
   }
 
-  if (bytesRead != paramInfo->plcSize)
+  if (bytesRead != paramInfo.plcSize)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Read bytes differ from parameter plc size (%u vs %u).\n", driverName, functionName, bytesRead, paramInfo->plcSize);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: Read bytes differ from parameter plc size (%u vs %u).\n",
+              driverName, __func__, bytesRead, paramInfo.plcSize);
     return asynError;
   }
 
   // No timestamp available
-  paramInfo->plcTimeStampRaw = 0;
-  paramInfo->firstReadDone = true;
+  paramInfo.plcTimeStampRaw = 0;
+  paramInfo.firstReadDone = true;
 
   asynStatus stat = asynSuccess;
   if (updateAsynPar)
@@ -4133,12 +4134,12 @@ asynStatus adsAsynPortDriver::adsReadParam(adsParamInfo *paramInfo, long *error,
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReadStateLock(uint16_t amsport, uint16_t *adsState, bool blockErrorMsg)
+asynStatus adsAsynPortDriver::adsReadStateLock(long adsClientPort, uint16_t amsport, uint16_t &adsState, bool blockErrorMsg)
 {
   asynStatus stat;
   lock();
   long error = 0;
-  stat = adsReadState(adsPort_, amsport, adsState, blockErrorMsg, &error);
+  stat = adsReadState(adsClientPort, amsport, adsState, blockErrorMsg, error);
   unlock();
   return stat;
 }
@@ -4155,13 +4156,11 @@ asynStatus adsAsynPortDriver::adsReadStateLock(uint16_t amsport, uint16_t *adsSt
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReadStateLock(uint16_t amsport, uint16_t *adsState, bool blockErrorMsg, long *error)
+asynStatus adsAsynPortDriver::adsReadStateLock(long adsClientPort, uint16_t amsport, uint16_t &adsState, bool blockErrorMsg, long &error)
 {
   asynStatus stat;
-  adsLock();
   // If we are locking the mutex then we must be using the shared ads client port.
-  stat = adsReadState(adsPort_, amsport, adsState, blockErrorMsg, error);
-  adsUnlock();
+  stat = adsReadState(adsClientPort, amsport, adsState, blockErrorMsg, error);
   return stat;
 }
 
@@ -4171,10 +4170,10 @@ asynStatus adsAsynPortDriver::adsReadStateLock(uint16_t amsport, uint16_t *adsSt
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReadState(long adsClientPort, uint16_t *adsState)
+asynStatus adsAsynPortDriver::adsReadState(long adsClientPort, uint16_t &adsState)
 {
   long error = 0;
-  return adsReadState(adsClientPort, amsportDefault_, adsState, false, &error);
+  return adsReadState(adsClientPort, amsportDefault_, adsState, false, error);
 }
 
 /** Read state of amsport in TwinCAT
@@ -4188,22 +4187,19 @@ asynStatus adsAsynPortDriver::adsReadState(long adsClientPort, uint16_t *adsStat
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsReadState(long adsClientPort, uint16_t amsport, uint16_t *adsState, bool blockErrorMsg, long *error)
+asynStatus adsAsynPortDriver::adsReadState(long adsClientPort, uint16_t amsport, uint16_t &adsState, bool blockErrorMsg, long &error)
 {
-
-  const char *functionName = "adsReadState";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   AmsAddr amsServer = {remoteNetId_, amsport};
 
   uint16_t devState;
-  const long status = AdsSyncReadStateReqEx(adsClientPort, &amsServer, adsState, &devState);
-  *error = status;
-  if (status)
+  error = AdsSyncReadStateReqEx(adsClientPort, &amsServer, &adsState, &devState);
+  if (error)
   {
     if (!blockErrorMsg)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ADS read state failed with: %s (0x%lx)\n", driverName, functionName, adsErrorToString(status), status);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ADS read state failed with: %s (0x%lx)\n", driverName, __func__, adsErrorToString(error), error);
     }
     return asynError;
   }
@@ -4217,17 +4213,16 @@ asynStatus adsAsynPortDriver::adsReadState(long adsClientPort, uint16_t amsport,
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsWriteState(uint16_t amsport, uint16_t adsState)
+asynStatus adsAsynPortDriver::adsWriteState(long adsClientPort, uint16_t amsport, uint16_t adsState)
 {
-  const char *functionName = "adsWriteState";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: adsState = %s (%u)\n", driverName, functionName, adsStateToString(adsState), adsState);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: adsState = %s (%u)\n", driverName, __func__, adsStateToString(adsState), adsState);
 
   void *pData = NULL;
   AmsAddr amsServer = {remoteNetId_, amsport};
-  const long status = AdsSyncWriteControlReqEx(adsPort_, &amsServer, adsState, 0, 0, pData);
+  const long status = AdsSyncWriteControlReqEx(adsClientPort, &amsServer, adsState, 0, 0, pData);
   if (status)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ADS write state failed with: %s (0x%lx)\n", driverName, functionName, adsErrorToString(status), status);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: ADS write state failed with: %s (0x%lx)\n", driverName, __func__, adsErrorToString(status), status);
     return asynError;
   }
 
@@ -4240,7 +4235,7 @@ asynStatus adsAsynPortDriver::adsWriteState(uint16_t amsport, uint16_t adsState)
  */
 int adsAsynPortDriver::getParamTableSize()
 {
-  return paramTableSize_;
+  return adsParamArray_.size();
 }
 
 /** Get parameter info struct for a certain index/reason (pasynUser->reason).
@@ -4251,17 +4246,13 @@ int adsAsynPortDriver::getParamTableSize()
  */
 adsParamInfo *adsAsynPortDriver::getAdsParamInfo(int index)
 {
-  const char *functionName = "getAdsParamInfo";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Get paramInfo for index: %d\n", driverName, functionName, index);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Get paramInfo for index: %d\n", driverName, __func__, index);
 
-  if (index < adsParamArrayCount_)
+  if (index < 0 || (size_t)index >= adsParamArray_.size())
   {
-    return pAdsParamArray_[index];
+    return nullptr;
   }
-  else
-  {
-    return NULL;
-  }
+  return &adsParamArray_[index];
 }
 
 /** Get current parameter count.
@@ -4270,7 +4261,7 @@ adsParamInfo *adsAsynPortDriver::getAdsParamInfo(int index)
  */
 int adsAsynPortDriver::getAdsParamCount()
 {
-  return adsParamArrayCount_;
+  return adsParamArray_.size();
 }
 
 /** Update timestamp of parameter.
@@ -4281,45 +4272,45 @@ int adsAsynPortDriver::getAdsParamCount()
  *
  * Refreshes and sets timestamp depending on time source (PLC or EPICS).
  */
-asynStatus adsAsynPortDriver::refreshParamTime(adsParamInfo *paramInfo)
+asynStatus adsAsynPortDriver::refreshParamTime(adsParamInfo &paramInfo)
 {
-  const char *functionName = "refreshParamTime";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: plcTime %lu.\n", driverName, functionName, paramInfo->plcTimeStampRaw);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: plcTime %lu.\n", driverName, __func__, paramInfo.plcTimeStampRaw);
 
   // Convert plc timeStamp (windows format) to epicsTimeStamp
-  if (windowsToEpicsTimeStamp(paramInfo->plcTimeStampRaw, &paramInfo->plcTimeStamp))
+  if (windowsToEpicsTimeStamp(paramInfo.plcTimeStampRaw, &paramInfo.plcTimeStamp))
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: windowsToEpicsTimeStamp() failed.\n", driverName, functionName);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: windowsToEpicsTimeStamp() failed.\n", driverName, __func__);
     return asynError;
   }
 
   epicsTimeStamp ts;
 
   // Update time stamp
-  if (paramInfo->timeBase == ADS_TIME_BASE_EPICS || paramInfo->plcTimeStampRaw == 0)
+  if (paramInfo.timeBase == ADS_TIME_BASE_EPICS || paramInfo.plcTimeStampRaw == 0)
   {
     if (updateTimeStamp() != asynSuccess)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: updateTimeStamp() failed.\n", driverName, functionName);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: updateTimeStamp() failed.\n", driverName, __func__);
       return asynError;
     }
   }
   else
-  { // ADS_TIME_BASE_PLC
-    if (setTimeStamp(&paramInfo->plcTimeStamp) != asynSuccess)
+  {
+    // ADS_TIME_BASE_PLC
+    if (setTimeStamp(&paramInfo.plcTimeStamp) != asynSuccess)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: updateTimeStamp() failed.\n", driverName, functionName);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: updateTimeStamp() failed.\n", driverName, __func__);
       return asynError;
     }
   }
 
   if (getTimeStamp(&ts) != asynSuccess)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: getTimeStamp() failed.\n", driverName, functionName);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: getTimeStamp() failed.\n", driverName, __func__);
     return asynError;
   }
 
-  paramInfo->epicsTimestamp = ts;
+  paramInfo.epicsTimestamp = ts;
 
   return asynSuccess;
 }
@@ -4333,7 +4324,7 @@ asynStatus adsAsynPortDriver::refreshParamTime(adsParamInfo *paramInfo)
  *
  * Thread safe.
  */
-asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo *paramInfo, const void *data)
+asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data)
 {
   lock();
   asynStatus stat = adsUpdateParameter(paramInfo, data);
@@ -4351,7 +4342,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo *paramInfo, co
  *
  * Thread safe.
  */
-asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo *paramInfo, const void *data, size_t dataSize)
+asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data, size_t dataSize)
 {
   lock();
   asynStatus stat = adsUpdateParameter(paramInfo, data, dataSize);
@@ -4367,9 +4358,9 @@ asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo *paramInfo, co
  * \return asynSuccess or asynError.
  *
  */
-asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const void *data)
+asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data)
 {
-  return adsUpdateParameter(paramInfo, data, paramInfo->lastCallbackSize);
+  return adsUpdateParameter(paramInfo, data, paramInfo.lastCallbackSize);
 }
 
 /** Update asyn parameter or callback (for arrays).
@@ -4381,63 +4372,58 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
  * \return asynSuccess or asynError.
  *
  */
-asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const void *data, size_t dataSize)
+asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data, size_t dataSize)
 {
-  const char *functionName = "adsUpdateParameter";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
-
-  if (!paramInfo)
-  {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: paramInfo NULL.\n", driverName, functionName);
-    return asynError;
-  }
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   if (!data)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: data NULL.\n", driverName, functionName);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: data NULL.\n", driverName, __func__);
     return asynError;
   }
 
   if (refreshParamTime(paramInfo) != asynSuccess)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: refreshParamTime() failed.\n", driverName, functionName);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: refreshParamTime() failed.\n", driverName, __func__);
     return asynError;
   }
 
   asynStatus ret = asynError;
 
   // Ensure check if array
-  if (paramInfo->plcDataIsArray)
+  if (paramInfo.plcDataIsArray)
   {
-    if (!paramInfo->arrayDataBuffer)
+    if (paramInfo.arrayDataBuffer.empty())
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Array but buffer is NULL.\n", driverName, functionName);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Array but buffer is NULL.\n", driverName, __func__);
       return asynError;
     }
     // Copy data to param buffer
-    memcpy(paramInfo->arrayDataBuffer, data, paramInfo->lastCallbackSize);
+    memcpy(paramInfo.arrayDataBuffer.data(), data, paramInfo.lastCallbackSize);
   }
 
-  switch (paramInfo->plcDataType)
+  switch (paramInfo.plcDataType)
   {
   case ADST_INT8:
     int8_t *ADST_INT8Var;
     ADST_INT8Var = ((int8_t *)data);
     // Asyn types
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32:
-      ret = setIntegerParam(paramInfo->paramIndex, (int)(*ADST_INT8Var));
+      ret = setIntegerParam(paramInfo.paramIndex, (int)(*ADST_INT8Var));
       break;
     case asynParamFloat64:
-      ret = setDoubleParam(paramInfo->paramIndex, (double)(*ADST_INT8Var));
+      ret = setDoubleParam(paramInfo.paramIndex, (double)(*ADST_INT8Var));
       break;
     case asynParamInt8Array:
       // handled in fireCallbacks()
       ret = asynSuccess;
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
@@ -4447,20 +4433,22 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
     int16_t *ADST_INT16Var;
     ADST_INT16Var = ((int16_t *)data);
     // Asyn types
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32:
-      ret = setIntegerParam(paramInfo->paramIndex, (int)(*ADST_INT16Var));
+      ret = setIntegerParam(paramInfo.paramIndex, (int)(*ADST_INT16Var));
       break;
     case asynParamFloat64:
-      ret = setDoubleParam(paramInfo->paramIndex, (double)(*ADST_INT16Var));
+      ret = setDoubleParam(paramInfo.paramIndex, (double)(*ADST_INT16Var));
       break;
     case asynParamInt16Array:
       // handled in fireCallbacks()
       ret = asynSuccess;
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
@@ -4469,20 +4457,22 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
     int32_t *ADST_INT32Var;
     ADST_INT32Var = ((int32_t *)data);
     // Asyn types
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32:
-      ret = setIntegerParam(paramInfo->paramIndex, (int)(*ADST_INT32Var));
+      ret = setIntegerParam(paramInfo.paramIndex, (int)(*ADST_INT32Var));
       break;
     case asynParamFloat64:
-      ret = setDoubleParam(paramInfo->paramIndex, (double)(*ADST_INT32Var));
+      ret = setDoubleParam(paramInfo.paramIndex, (double)(*ADST_INT32Var));
       break;
     case asynParamInt32Array:
       // handled in fireCallbacks()
       ret = asynSuccess;
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
@@ -4491,16 +4481,16 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
     int64_t *ADST_INT64Var;
     ADST_INT64Var = ((int64_t *)data);
     // Asyn types
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32:
-      ret = setIntegerParam(paramInfo->paramIndex, (int)(*ADST_INT64Var));
+      ret = setIntegerParam(paramInfo.paramIndex, (int)(*ADST_INT64Var));
       break;
     case asynParamFloat64:
-      ret = setDoubleParam(paramInfo->paramIndex, (double)(*ADST_INT64Var));
+      ret = setDoubleParam(paramInfo.paramIndex, (double)(*ADST_INT64Var));
       break;
     case asynParamInt64:
-      ret = setInteger64Param(paramInfo->paramIndex, *ADST_INT64Var);
+      ret = setInteger64Param(paramInfo.paramIndex, *ADST_INT64Var);
       break;
     // No 64 bit uint array callback type (also no 64bit uint in EPICS)
     case asynParamInt64Array:
@@ -4508,7 +4498,9 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
       ret = asynSuccess;
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
@@ -4517,17 +4509,19 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
     uint8_t *ADST_UINT8Var;
     ADST_UINT8Var = ((uint8_t *)data);
     // Asyn types
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32:
-      ret = setIntegerParam(paramInfo->paramIndex, (int)(*ADST_UINT8Var));
+      ret = setIntegerParam(paramInfo.paramIndex, (int)(*ADST_UINT8Var));
       break;
     case asynParamFloat64:
-      ret = setDoubleParam(paramInfo->paramIndex, (double)(*ADST_UINT8Var));
+      ret = setDoubleParam(paramInfo.paramIndex, (double)(*ADST_UINT8Var));
       break;
     // Arrays of unsigned not supported
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
@@ -4536,17 +4530,19 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
     uint16_t *ADST_UINT16Var;
     ADST_UINT16Var = ((uint16_t *)data);
     // Asyn types
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32:
-      ret = setIntegerParam(paramInfo->paramIndex, (int)(*ADST_UINT16Var));
+      ret = setIntegerParam(paramInfo.paramIndex, (int)(*ADST_UINT16Var));
       break;
     case asynParamFloat64:
-      ret = setDoubleParam(paramInfo->paramIndex, (double)(*ADST_UINT16Var));
+      ret = setDoubleParam(paramInfo.paramIndex, (double)(*ADST_UINT16Var));
       break;
     // Arrays of unsigned not supported
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
@@ -4555,17 +4551,19 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
     uint32_t *ADST_UINT32Var;
     ADST_UINT32Var = ((uint32_t *)data);
     // Asyn types
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32:
-      ret = setIntegerParam(paramInfo->paramIndex, (int)(*ADST_UINT32Var));
+      ret = setIntegerParam(paramInfo.paramIndex, (int)(*ADST_UINT32Var));
       break;
     case asynParamFloat64:
-      ret = setDoubleParam(paramInfo->paramIndex, (double)(*ADST_UINT32Var));
+      ret = setDoubleParam(paramInfo.paramIndex, (double)(*ADST_UINT32Var));
       break;
     // Arrays of unsigned not supported
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
@@ -4573,16 +4571,16 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
   case ADST_UINT64:
     uint64_t *ADST_UINT64Var;
     ADST_UINT64Var = ((uint64_t *)data);
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32:
-      ret = setIntegerParam(paramInfo->paramIndex, (int)(*ADST_UINT64Var));
+      ret = setIntegerParam(paramInfo.paramIndex, (int)(*ADST_UINT64Var));
       break;
     case asynParamFloat64:
-      ret = setDoubleParam(paramInfo->paramIndex, (double)(*ADST_UINT64Var));
+      ret = setDoubleParam(paramInfo.paramIndex, (double)(*ADST_UINT64Var));
       break;
     case asynParamInt64:
-      ret = setInteger64Param(paramInfo->paramIndex, (epicsInt64)(*ADST_UINT64Var));
+      ret = setInteger64Param(paramInfo.paramIndex, (epicsInt64)(*ADST_UINT64Var));
       break;
     // No 64 bit uint array callback type (also no 64bit uint in EPICS)
     case asynParamInt64Array:
@@ -4590,7 +4588,9 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
       ret = asynSuccess;
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
@@ -4598,20 +4598,22 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
   case ADST_REAL32:
     float *ADST_REAL32Var;
     ADST_REAL32Var = ((float *)data);
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32:
-      ret = setIntegerParam(paramInfo->paramIndex, (int)(*ADST_REAL32Var));
+      ret = setIntegerParam(paramInfo.paramIndex, (int)(*ADST_REAL32Var));
       break;
     case asynParamFloat64:
-      ret = setDoubleParam(paramInfo->paramIndex, (double)(*ADST_REAL32Var));
+      ret = setDoubleParam(paramInfo.paramIndex, (double)(*ADST_REAL32Var));
       break;
     case asynParamFloat32Array:
       // handled in fireCallbacks()
       ret = asynSuccess;
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
@@ -4619,20 +4621,22 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
   case ADST_REAL64:
     double *ADST_REAL64Var;
     ADST_REAL64Var = ((double *)data);
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32:
-      ret = setIntegerParam(paramInfo->paramIndex, (int)(*ADST_REAL64Var));
+      ret = setIntegerParam(paramInfo.paramIndex, (int)(*ADST_REAL64Var));
       break;
     case asynParamFloat64:
-      ret = setDoubleParam(paramInfo->paramIndex, (double)(*ADST_REAL64Var));
+      ret = setDoubleParam(paramInfo.paramIndex, (double)(*ADST_REAL64Var));
       break;
     case asynParamFloat64Array:
       // handled in fireCallbacks()
       ret = asynSuccess;
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
@@ -4641,39 +4645,45 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
   case ADST_BIT:
     int8_t *ADST_BitVar;
     ADST_BitVar = ((int8_t *)data);
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32:
-      ret = setIntegerParam(paramInfo->paramIndex, (int)(*ADST_BitVar));
+      ret = setIntegerParam(paramInfo.paramIndex, (int)(*ADST_BitVar));
       break;
     case asynParamFloat64:
-      ret = setDoubleParam(paramInfo->paramIndex, (double)(*ADST_BitVar));
+      ret = setDoubleParam(paramInfo.paramIndex, (double)(*ADST_BitVar));
       break;
     case asynParamInt8Array:
       // handled in fireCallbacks()
       ret = asynSuccess;
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
     break;
   case ADST_STRING:
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt8Array:
       // handled in fireCallbacks()
       ret = asynSuccess;
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
     break;
   default:
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+              driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
     return asynError;
     break;
   }
@@ -4703,16 +4713,12 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo *paramInfo, const 
  */
 asynStatus adsAsynPortDriver::fireAllCallbacksLock()
 {
-  const char *functionName = "fireAllCallbacksLock";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   lock();
-  for (int i = 0; i < adsParamArrayCount_; i++)
+  for (auto &paramInfo : adsParamArray_)
   {
-    if (pAdsParamArray_[i])
-    {
-      fireCallbacks(pAdsParamArray_[i]);
-    }
+    fireCallbacks(paramInfo);
   }
   unlock();
   return asynSuccess;
@@ -4724,17 +4730,16 @@ asynStatus adsAsynPortDriver::fireAllCallbacksLock()
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo *paramInfo)
+asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo &paramInfo)
 {
-  const char *functionName = "fireCallbacks";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  if (!paramInfo->plcDataIsArray)
+  if (!paramInfo.plcDataIsArray)
   {
     return callParamCallbacks();
   }
 
-  if (paramInfo->lastCallbackSize <= 0)
+  if (paramInfo.lastCallbackSize <= 0)
   {
     return asynSuccess;
   }
@@ -4742,123 +4747,143 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo *paramInfo)
   asynStatus ret = asynError;
 
   // Array
-  switch (paramInfo->plcDataType)
+  switch (paramInfo.plcDataType)
   {
   case ADST_INT8:
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt8Array:
-      ret = doCallbacksInt8Array((epicsInt8 *)paramInfo->arrayDataBuffer, paramInfo->lastCallbackSize, paramInfo->paramIndex, paramInfo->asynAddr);
+      ret = doCallbacksInt8Array((epicsInt8 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
     break;
 
   case ADST_INT16:
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt16Array:
-      ret = doCallbacksInt16Array((epicsInt16 *)paramInfo->arrayDataBuffer, paramInfo->lastCallbackSize, paramInfo->paramIndex, paramInfo->asynAddr);
+      ret = doCallbacksInt16Array((epicsInt16 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
     break;
   case ADST_INT32:
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt32Array:
-      ret = doCallbacksInt32Array((epicsInt32 *)paramInfo->arrayDataBuffer, paramInfo->lastCallbackSize, paramInfo->paramIndex, paramInfo->asynAddr);
+      ret = doCallbacksInt32Array((epicsInt32 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
     break;
   case ADST_INT64:
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt64Array:
-      ret = doCallbacksInt64Array((epicsInt64 *)paramInfo->arrayDataBuffer, paramInfo->lastCallbackSize / sizeof(epicsInt64), paramInfo->paramIndex, paramInfo->asynAddr);
+      ret = doCallbacksInt64Array((epicsInt64 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize / sizeof(epicsInt64), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
     break;
     // No 64 bit uint array callback type -> cast into int64_t and use doCallbacksInt64Array
   case ADST_UINT64:
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt64Array:
-      ret = doCallbacksInt64Array((epicsInt64 *)paramInfo->arrayDataBuffer, paramInfo->lastCallbackSize / sizeof(epicsInt64), paramInfo->paramIndex, paramInfo->asynAddr);
+      ret = doCallbacksInt64Array((epicsInt64 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize / sizeof(epicsInt64), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
     break;
   case ADST_REAL32:
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamFloat32Array:
-      ret = doCallbacksFloat32Array((epicsFloat32 *)paramInfo->arrayDataBuffer, paramInfo->lastCallbackSize, paramInfo->paramIndex, paramInfo->asynAddr);
+      ret = doCallbacksFloat32Array((epicsFloat32 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
     break;
 
   case ADST_REAL64:
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamFloat64Array:
-      ret = doCallbacksFloat64Array((epicsFloat64 *)paramInfo->arrayDataBuffer, paramInfo->lastCallbackSize, paramInfo->paramIndex, paramInfo->asynAddr);
+      ret = doCallbacksFloat64Array((epicsFloat64 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
     break;
 
   case ADST_BIT:
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt8Array:
-      ret = doCallbacksInt8Array((epicsInt8 *)paramInfo->arrayDataBuffer, paramInfo->lastCallbackSize, paramInfo->paramIndex, paramInfo->asynAddr);
+      ret = doCallbacksInt8Array((epicsInt8 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
     break;
   case ADST_STRING:
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt8Array:
-      ret = doCallbacksInt8Array((epicsInt8 *)paramInfo->arrayDataBuffer, paramInfo->lastCallbackSize, paramInfo->paramIndex, paramInfo->asynAddr);
+      ret = doCallbacksInt8Array((epicsInt8 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+                driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
       return asynError;
       break;
     }
     break;
 
   default:
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n", driverName, functionName, adsTypeToString(paramInfo->plcDataType), asynTypeToString(paramInfo->asynType));
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: Type combination not supported. PLC type = %s, ASYN type= %s\n",
+              driverName, __func__, adsTypeToString(paramInfo.plcDataType), asynTypeToString(paramInfo.asynType));
     return asynError;
     break;
   }
@@ -4873,23 +4898,18 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo *paramInfo)
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::setAlarmParam(adsParamInfo *paramInfo, int alarm, int severity)
+asynStatus adsAsynPortDriver::setAlarmParam(adsParamInfo &paramInfo, int alarm, int severity)
 {
-  const char *functionName = "setAlarmParam";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
-
-  if (!paramInfo)
-  {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: paramInfo==NULL.\n", driverName, functionName);
-    return asynError;
-  }
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   asynStatus stat;
   int oldAlarmStatus = 0;
-  stat = getParamAlarmStatus(paramInfo->paramIndex, &oldAlarmStatus);
+  stat = getParamAlarmStatus(paramInfo.paramIndex, &oldAlarmStatus);
   if (stat != asynSuccess)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: getParamAlarmStatus failed for parameter %s (%d).\n", driverName, functionName, paramInfo->drvInfo, paramInfo->paramIndex);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: getParamAlarmStatus failed for parameter %s (%d).\n",
+              driverName, __func__, paramInfo.drvInfo.c_str(), paramInfo.paramIndex);
     return asynError;
   }
 
@@ -4897,33 +4917,39 @@ asynStatus adsAsynPortDriver::setAlarmParam(adsParamInfo *paramInfo, int alarm, 
 
   if (oldAlarmStatus != alarm)
   {
-    stat = setParamAlarmStatus(paramInfo->paramIndex, alarm);
+    stat = setParamAlarmStatus(paramInfo.paramIndex, alarm);
     if (stat != asynSuccess)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed set alarm status for parameter %s (%d).\n", driverName, functionName, paramInfo->drvInfo, paramInfo->paramIndex);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed set alarm status for parameter %s (%d).\n",
+                driverName, __func__, paramInfo.drvInfo.c_str(), paramInfo.paramIndex);
       return asynError;
     }
-    paramInfo->alarmStatus = alarm;
+    paramInfo.alarmStatus = alarm;
     doCallbacks = true;
   }
 
   int oldAlarmSeverity = 0;
-  stat = getParamAlarmSeverity(paramInfo->paramIndex, &oldAlarmSeverity);
+  stat = getParamAlarmSeverity(paramInfo.paramIndex, &oldAlarmSeverity);
   if (stat != asynSuccess)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: getParamAlarmStatus failed for parameter %s (%d).\n", driverName, functionName, paramInfo->drvInfo, paramInfo->paramIndex);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: getParamAlarmStatus failed for parameter %s (%d).\n",
+              driverName, __func__, paramInfo.drvInfo.c_str(), paramInfo.paramIndex);
     return asynError;
   }
 
   if (oldAlarmSeverity != severity)
   {
-    stat = setParamAlarmSeverity(paramInfo->paramIndex, severity);
+    stat = setParamAlarmSeverity(paramInfo.paramIndex, severity);
     if (stat != asynSuccess)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Failed set alarm severity for parameter %s (%d).\n", driverName, functionName, paramInfo->drvInfo, paramInfo->paramIndex);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: Failed set alarm severity for parameter %s (%d).\n",
+                driverName, __func__, paramInfo.drvInfo.c_str(), paramInfo.paramIndex);
       return asynError;
     }
-    paramInfo->alarmSeverity = severity;
+    paramInfo.alarmSeverity = severity;
     doCallbacks = true;
   }
 
@@ -4932,34 +4958,34 @@ asynStatus adsAsynPortDriver::setAlarmParam(adsParamInfo *paramInfo, int alarm, 
     return asynSuccess;
   }
   // Write size used for arrays
-  size_t writeSize = paramInfo->arrayDataBufferSize;
-  if (paramInfo->plcSize < writeSize)
+  size_t writeSize = paramInfo.arrayDataBuffer.size();
+  if (paramInfo.plcSize < writeSize)
   {
-    writeSize = paramInfo->plcSize;
+    writeSize = paramInfo.plcSize;
   }
 
   // Alarm status or severity changed=>Do callbacks with old buffered data (if nElemnts==0 then no data in record...)
-  if (paramInfo->plcDataIsArray && paramInfo->arrayDataBuffer and paramInfo->arrayDataBufferSize > 0 && allowCallbackEpicsState)
+  if (paramInfo.plcDataIsArray && writeSize > 0 && allowCallbackEpicsState)
   {
-    switch (paramInfo->asynType)
+    switch (paramInfo.asynType)
     {
     case asynParamInt8Array:
-      stat = doCallbacksInt8Array((epicsInt8 *)paramInfo->arrayDataBuffer, writeSize / sizeof(epicsInt8), paramInfo->paramIndex, paramInfo->asynAddr);
+      stat = doCallbacksInt8Array((epicsInt8 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsInt8), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     case asynParamInt16Array:
-      stat = doCallbacksInt16Array((epicsInt16 *)paramInfo->arrayDataBuffer, writeSize / sizeof(epicsInt16), paramInfo->paramIndex, paramInfo->asynAddr);
+      stat = doCallbacksInt16Array((epicsInt16 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsInt16), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     case asynParamInt32Array:
-      stat = doCallbacksInt32Array((epicsInt32 *)paramInfo->arrayDataBuffer, writeSize / sizeof(epicsInt32), paramInfo->paramIndex, paramInfo->asynAddr);
+      stat = doCallbacksInt32Array((epicsInt32 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsInt32), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     case asynParamInt64Array:
-      stat = doCallbacksInt64Array((epicsInt64 *)paramInfo->arrayDataBuffer, writeSize / sizeof(epicsInt64), paramInfo->paramIndex, paramInfo->asynAddr);
+      stat = doCallbacksInt64Array((epicsInt64 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsInt64), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     case asynParamFloat32Array:
-      stat = doCallbacksFloat32Array((epicsFloat32 *)paramInfo->arrayDataBuffer, writeSize / sizeof(epicsFloat32), paramInfo->paramIndex, paramInfo->asynAddr);
+      stat = doCallbacksFloat32Array((epicsFloat32 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsFloat32), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     case asynParamFloat64Array:
-      stat = doCallbacksFloat64Array((epicsFloat64 *)paramInfo->arrayDataBuffer, writeSize / sizeof(epicsFloat64), paramInfo->paramIndex, paramInfo->asynAddr);
+      stat = doCallbacksFloat64Array((epicsFloat64 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsFloat64), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
       stat = callParamCallbacks();
@@ -5003,18 +5029,13 @@ asynStatus adsAsynPortDriver::setAlarmPortLock(uint16_t amsPort, int alarm, int 
  */
 asynStatus adsAsynPortDriver::setAlarmPort(uint16_t amsPort, int alarm, int severity)
 {
-  const char *functionName = "setAlarmPort";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  for (int i = 0; i < adsParamArrayCount_; i++)
+  for (auto &paramInfo : adsParamArray_)
   {
-    if (!pAdsParamArray_[i])
+    if (paramInfo.amsPort == amsPort)
     {
-      continue;
-    }
-    if (pAdsParamArray_[i]->amsPort == amsPort)
-    {
-      if (setAlarmParam(pAdsParamArray_[i], alarm, severity) != asynSuccess)
+      if (setAlarmParam(paramInfo, alarm, severity) != asynSuccess)
       {
         return asynError;
       }
@@ -5023,75 +5044,43 @@ asynStatus adsAsynPortDriver::setAlarmPort(uint16_t amsPort, int alarm, int seve
   return asynSuccess;
 }
 
-/** Take adsLib lock.
- */
-void adsAsynPortDriver::adsLock()
-{
-  adsMutex.lock();
-}
-
-/** Release adsLib lock.
- */
-void adsAsynPortDriver::adsUnlock()
-{
-  adsMutex.unlock();
-}
-
 /** Delete ads route
- *
- * \param[in] force Force delete.
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsDelRoute(int force)
+asynStatus adsAsynPortDriver::adsDelRoute()
 {
-  const char *functionName = "adsDelRoute";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: force = %s\n", driverName, functionName, force ? "true" : "false");
-  if (routeAdded_ || force)
-  {
-    routeAdded_ = 0;
-    AdsDelRoute(remoteNetId_);
-  }
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: deleting route.\n", driverName, __func__);
+
+  std::lock_guard<std::mutex> lockGuard(adsAddDelRouteMutex_);
+
+  routeAdded_ = false;
+  AdsDelRoute(remoteNetId_);
+
   return asynSuccess;
-}
-
-/** Delete ads route
- *
- * \param[in] force Force delete.
- *
- * \return asynSuccess or asynError.
- *
- * Thread safe.
- */
-asynStatus adsAsynPortDriver::adsDelRouteLock(int force)
-{
-  adsLock();
-  asynStatus stat = adsDelRoute(force);
-  adsUnlock();
-  return stat;
 }
 
 /** Add ads route
  *
  * \return asynSuccess or asynError.
  *
- * Thread safe.
  */
-asynStatus adsAsynPortDriver::adsAddRouteLock()
+asynStatus adsAsynPortDriver::adsAddRoute()
 {
-  const char *functionName = "adsAddRouteLock";
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: adding route.\n", driverName, __func__);
 
-  // add local route to your ADS Master
-  adsLock();
-  const long addRouteStatus = AdsAddRoute(remoteNetId_, ipaddr_);
-  adsUnlock();
+  std::lock_guard<std::mutex> lockGuard(adsAddDelRouteMutex_);
+
+  const long addRouteStatus = AdsAddRoute(remoteNetId_, ipaddr_.c_str());
   if (addRouteStatus)
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Adding ADS route failed with: %s (0x%lx).\n", driverName, functionName, adsErrorToString(addRouteStatus), addRouteStatus);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Adding ADS route failed with: %s (0x%lx).\n", driverName, __func__, adsErrorToString(addRouteStatus), addRouteStatus);
     return asynError;
   }
-  routeAdded_ = 1;
+
+  asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Adding ADS route succeeded.\n", driverName, __func__);
+
+  routeAdded_ = true;
   return asynSuccess;
 }
 
@@ -5214,6 +5203,7 @@ extern "C"
       defaultTimeSource = ADS_TIME_BASE_PLC;
     }
 
+    printf("Constructing adsAsynPortDriver...\n");
     adsAsynPortObj = new adsAsynPortDriver(portName,
                                            ipaddr,
                                            amsaddr,
@@ -5225,6 +5215,7 @@ extern "C"
                                            maxDelayTimeMS,
                                            adsTimeoutMS,
                                            (ADSTIMESOURCE)defaultTimeSource);
+    printf("adsAsynPortDriver constructed.\n");
     if (adsAsynPortObj)
     {
       asynUser *traceUser = adsAsynPortObj->getTraceAsynUser();
@@ -5280,13 +5271,12 @@ extern "C"
 
   static void adsSetLocalAddressCallFunc(const iocshArgBuf *args)
   {
-    const char *functionName = "adsSetLocalAddress";
     if (!args[0].sval || strlen(args[0].sval) < 11)
     {
-      printf("%s:%s: local_ams_id parameter required (of the form A.B.C.D.E.F)\n", driverName, functionName);
+      printf("%s:%s: local_ams_id parameter required (of the form A.B.C.D.E.F)\n", driverName, __func__);
       return;
     }
-    printf("%s:%s: Setting local AMS Net ID to: %s\n", driverName, functionName, args[0].sval);
+    printf("%s:%s: Setting local AMS Net ID to: %s\n", driverName, __func__, args[0].sval);
     AdsSetLocalAddress(std::string(args[0].sval));
   }
 
@@ -5315,4 +5305,119 @@ extern "C"
   }
 
   epicsExportRegistrar(adsAsynPortDriverRegister);
+}
+
+long adsAsynPortDriver::getAdsClientPortNumberForThreadId(epicsThreadId threadId)
+{
+  std::lock_guard<std::recursive_mutex> lockGuard(threadIdToAmsClientPortMapMutex_);
+
+  // If the map doesn't contain the thread id already, return the default one.
+  if (threadIdToAmsClientPortMap_.find(threadId) != threadIdToAmsClientPortMap_.end())
+    return threadIdToAmsClientPortMap_.at(0).port;
+
+  // Otherwise, get the ads client port assigned to the input threadId.
+  return threadIdToAmsClientPortMap_.at(threadId).port;
+}
+long adsAsynPortDriver::addAdsClientPortNumberForThreadId(epicsThreadId threadId)
+{
+  std::lock_guard<std::recursive_mutex> lockGuard(threadIdToAmsClientPortMapMutex_);
+
+  // If the map contains the thread id already, increment the live count
+  // and return the port number used for it.
+  auto it = threadIdToAmsClientPortMap_.find(threadId);
+  if (it != threadIdToAmsClientPortMap_.end())
+  {
+    it->second.liveCount++;
+    return it->second.port;
+  }
+
+  // If we get here, the thread id doesn't already have an ads client port assigned for it.
+  // In this case, open a new port for it.
+  auto adsClientPort = AdsPortOpenEx();
+  if (isInvalidPortNumber(adsClientPort))
+    return 0;
+
+  // Insert the new pair.
+  threadIdToAmsClientPortMap_.insert(std::make_pair(threadId, AmsClientPortEntry(adsClientPort, 1)));
+  return adsClientPort;
+}
+asynStatus adsAsynPortDriver::delAdsClientPortNumberForThreadId(epicsThreadId threadId)
+{
+  std::lock_guard<std::recursive_mutex> lockGuard(threadIdToAmsClientPortMapMutex_);
+
+  // If the map contains the thread id erase it.
+  auto it = threadIdToAmsClientPortMap_.find(threadId);
+  if (it != threadIdToAmsClientPortMap_.end())
+  {
+    it->second.liveCount--;
+    if (it->second.liveCount > 0)
+    {
+      // Do not close the port if the live count is still above 0.
+      // This means this thread is still using this port somewhere.
+      return asynSuccess;
+    }
+    auto result = AdsPortCloseEx(it->second.port);
+    if (result)
+    {
+      asynPrint(pasynUserSelf, ASYN_TRACE_WARNING,
+                "%s:%s: found thread id in map but failed to close port.\n", driverName, __func__);
+      return asynError;
+    }
+    threadIdToAmsClientPortMap_.erase(it);
+  }
+  return asynSuccess;
+}
+
+bool adsAsynPortDriver::okToProcessBulkReads() const
+{
+  return okToProcessBulkReads_;
+}
+bool adsAsynPortDriver::setOkToProcessBulkReads(bool ok)
+{
+  okToProcessBulkReads_ = ok;
+  return okToProcessBulkReads_;
+}
+adsAsynPortDriver::datacbinfo::datacbinfo(adsParamInfo &paramInfo, const AdsNotificationHeader *pNotification) : paramInfo(paramInfo), notification(*pNotification)
+{
+  const uint8_t *dataFromNotification = reinterpret_cast<const uint8_t *>(pNotification + 1);
+  data.resize(pNotification->cbSampleSize);
+  memcpy(data.data(), dataFromNotification, pNotification->cbSampleSize);
+}
+void adsAsynPortDriver::emplaceInDataCallbackQueue(adsParamInfo &paramInfo, const AdsNotificationHeader *pNotification)
+{
+  std::lock_guard<std::mutex> lockGuard(dataCbQueueMutex_);
+  if (!pNotification)
+  {
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: notification pointer null, skip %s (%d)\n",
+              driverName, __func__, paramInfo.drvInfo.c_str(), paramInfo.paramIndex);
+    return;
+  }
+  if (datacbqueue.size() >= MAXCBQSIZE)
+  {
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: datacbqueue at max size, skip %s (%d)\n",
+              driverName, __func__, paramInfo.drvInfo.c_str(), paramInfo.paramIndex);
+    return;
+  }
+  datacbqueue.emplace(paramInfo, pNotification);
+}
+
+AdsClientPortGuard::AdsClientPortGuard(adsAsynPortDriver &adsAsynPortDriver)
+    : adsAsynPortDriver_(adsAsynPortDriver)
+{
+  threadId_ = epicsThreadGetIdSelf();
+  adsClientPort_ = adsAsynPortDriver_.addAdsClientPortNumberForThreadId(threadId_);
+  if (isInvalidPortNumber(adsClientPort_))
+  {
+    throw std::runtime_error("Failed to create ads client port.");
+  }
+}
+AdsClientPortGuard::~AdsClientPortGuard()
+{
+  adsAsynPortDriver_.delAdsClientPortNumberForThreadId(epicsThreadGetIdSelf());
+}
+long AdsClientPortGuard::getAdsClientPort() const
+{
+  return adsClientPort_;
 }

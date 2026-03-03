@@ -15,6 +15,9 @@
 #include "asynPortDriver.h" //data types
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
 // Error codes
 #define ADS_COM_ERROR_INVALID_DATA_TYPE 1004
@@ -22,7 +25,9 @@
 #define ADS_COM_ERROR_BUFFER_TO_EPICS_FULL 1006
 #define ADS_COM_ERROR_OCTET_ADSPORT_OPTION_FAIL 1007
 
-#define ADS_MAX_FIELD_CHAR_LENGTH 128
+// 128 is the maximum for a single field but multiple fields can "dot" together to be longer.
+// So using double the 128 size.
+#define ADS_MAX_FIELD_CHAR_LENGTH 128 * 2
 #define ADS_ADR_COMMAND_PREFIX ".ADR."
 #define ADS_OPTION_T_MAX_DLY_MS "T_DLY_MS"
 #define ADS_OPTION_T_SAMPLE_RATE_MS "TS_MS"
@@ -54,13 +59,13 @@ typedef enum
 
 typedef struct adsParamInfo
 {
-  char *recordName;
-  char *recordType;
-  char *scan;
-  char *dtyp;
-  char *inp;
-  char *out;
-  char *drvInfo;
+  std::string recordName;
+  std::string recordType;
+  std::string scan;
+  std::string dtyp;
+  std::string inp;
+  std::string out;
+  std::string drvInfo;
   asynParamType asynType;
   int asynAddr;
   bool isIOIntr;
@@ -72,7 +77,7 @@ typedef struct adsParamInfo
   bool isAdrCommand;
   bool isBulkRead;
   double pollClass;
-  char *plcAdrStr;
+  std::string plcAdrStr;
   uint32_t plcAbsAdrGroup;
   uint32_t plcAbsAdrOffset;
   uint32_t plcSize;
@@ -84,8 +89,7 @@ typedef struct adsParamInfo
   uint32_t hSymbolicHandle;
   bool bSymbolicHandleValid;
   size_t lastCallbackSize;
-  size_t arrayDataBufferSize;
-  void *arrayDataBuffer;
+  std::vector<uint8_t> arrayDataBuffer;
   bool refreshNeeded;       // Communication broken update handles and callbacks
   ADSDATASOURCE dataSource; // Variable in PLC or in driver (not in PLC)
   // timing
@@ -115,6 +119,7 @@ typedef struct amsPortInfo
   bool bCallbackNotifyValid;
   bool refreshNeeded; // Communication broken update handles and callbacks
   size_t retryCount;
+  bool stale;
 } amsPortInfo;
 
 // For info from symbolic name Actually this data type should be in the adslib (but missing)..
@@ -205,6 +210,45 @@ int octetAscii2binary(const char *asciiBuffer,
                       uint32_t binaryBufferSize,
                       uint32_t *bytesProcessed);
 
-bool isInvalidClientPortNumber(long clientPortNumber);
+bool isInvalidPortNumber(long clientPortNumber);
+
+struct tsentry
+{
+  tsentry();
+  uint16_t amsPort;
+  uint32_t iHandleH;
+  uint32_t iHandleL;
+  bool refreshNeeded;
+};
+
+struct BulkReadRequestInfo
+{
+  BulkReadRequestInfo();
+  uint32_t iGroup;
+  uint32_t iOffset;
+  uint32_t iSize;
+};
+
+struct BulkReadInfo
+{
+  BulkReadInfo();
+  size_t numberOfVariables() const;         // Number of variables in this read
+  uint16_t amsPort;                         // The port this goes to!
+  std::vector<BulkReadRequestInfo> reqInfo; // The actual request!
+  std::vector<int> asynParamIds;            // The asyn parameter handles
+  uint32_t readSize;                        // The total size of the read expected (including status).
+  bool refreshNeeded;
+};
+
+std::string string_format(const char *fmt, ...);
+
+std::string amsNetIdToStr(const AmsNetId &amsNetId);
+
+struct AmsClientPortEntry
+{
+  AmsClientPortEntry(long port, int liveCount);
+  long port;
+  int liveCount;
+};
 
 #endif /* ADSASYNPORTDRIVERUTILS_H_ */
