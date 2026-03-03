@@ -718,6 +718,17 @@ void adsAsynPortDriver::bulkReadThread()
         {
           asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "Bulk read failed: status %ld, client port: %ld, netid: %s, server port: %d\n",
                  status, adsClientPort, amsaddr_.c_str(), amsServer.port);
+          int index = 0;
+          size_t totalBytes = 0;
+          for (auto& reqInfo : bulkReadInfo.reqInfo)
+          {
+            asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "reqInfo[#%u].iGroup = %u\n", index, reqInfo.iGroup);
+            asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "reqInfo[#%u].iOffset = %u\n", index, reqInfo.iOffset);
+            asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "reqInfo[#%u].iSize = %u\n", index, reqInfo.iSize);
+            totalBytes += reqInfo.iSize;
+            index++;
+          }
+          asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "totalBytes = %lu\n", totalBytes);
           continue;
         }
 
