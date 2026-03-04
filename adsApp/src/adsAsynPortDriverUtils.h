@@ -90,6 +90,8 @@ typedef struct adsParamInfo
   bool bSymbolicHandleValid;
   size_t lastCallbackSize;
   std::vector<uint8_t> arrayDataBuffer;
+  std::vector<uint8_t> dataBulkReadThisRead;
+  std::vector<uint8_t> dataBulkReadLastRead;
   bool refreshNeeded;       // Communication broken update handles and callbacks
   ADSDATASOURCE dataSource; // Variable in PLC or in driver (not in PLC)
   // timing
@@ -238,6 +240,7 @@ struct BulkReadInfo
   std::vector<int> asynParamIds;            // The asyn parameter handles
   uint32_t readSize;                        // The total size of the read expected (including status).
   bool refreshNeeded;
+  std::vector<uint8_t> data;
 };
 
 std::string string_format(const char *fmt, ...);

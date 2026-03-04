@@ -450,7 +450,6 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
 
   {
     std::lock_guard<std::recursive_mutex> lockGuard(adsBulkInfoUpdateMutex_);
-    bulkReadData_.resize(4 * 1024 * 1024);
     setOkToProcessBulkReads(false);
     bulkReadTimeElapsed_us_ = 0;
   }
@@ -602,7 +601,7 @@ void adsAsynPortDriver::cyclicThread()
           if (adsServerPort.paramInfo->dataSource == ADS_DATASOURCE_AMS_STATE)
           {
             void *pData = (void *)&adsServerPort.adsState;
-            adsUpdateParameterLock(*adsServerPort.paramInfo, pData, 2);
+            adsUpdateParameterLock(*adsServerPort.paramInfo, pData, 2, true);
           }
         }
         asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Ams-port, %u, state change: \"%s\" -> \"%s\".\n",
@@ -661,7 +660,7 @@ void adsAsynPortDriver::cyclicThread()
 void adsAsynPortDriver::bulkReadThread()
 {
   struct timeval start, now;
-  uint32_t bytesRead;
+  uint32_t numBytesReadBackFromServer;
   long status;
   asynUser *asynTraceUser = getTraceAsynUser();
 
@@ -695,40 +694,43 @@ void adsAsynPortDriver::bulkReadThread()
         if (bulkReadInfo.numberOfVariables() <= 0)
           continue;
 
-        bytesRead = 0;
+        numBytesReadBackFromServer = 0;
         AmsAddr amsServer = {remoteNetId_, bulkReadInfo.amsPort};
-        status = AdsSyncReadWriteReqEx2(adsClientPort,
-                                        &amsServer,
-                                        ADSIGRP_SUMUP_READ, bulkReadInfo.numberOfVariables(),
-                                        bulkReadInfo.readSize, bulkReadData_.data(),
-                                        sizeof(BulkReadRequestInfo) * bulkReadInfo.numberOfVariables(), bulkReadInfo.reqInfo.data(),
-                                        &bytesRead);
+        bulkReadInfo.data.resize(bulkReadInfo.readSize);
+        auto reqInfoSize = sizeof(BulkReadRequestInfo) * bulkReadInfo.numberOfVariables();
+        auto numSubCommandsAsIndexOffset = bulkReadInfo.numberOfVariables();
+        auto indexGroupToRequestBulkRead = ADSIGRP_SUMUP_READ;
+        status = AdsSyncReadWriteReqEx2(adsClientPort, &amsServer,
+                                        indexGroupToRequestBulkRead, numSubCommandsAsIndexOffset,
+                                        bulkReadInfo.readSize, bulkReadInfo.data.data(),
+                                        reqInfoSize, bulkReadInfo.reqInfo.data(),
+                                        &numBytesReadBackFromServer);
 
         asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "%s:%s: AdsSyncReadWriteReqEx2() with params:\n", driverName, __func__);
         asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "port: %lu\n", adsClientPort);
         asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "pAddr: amsNetId = %s, amsServerPort = %u\n", amsaddr_.c_str(), amsServer.port);
-        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "indexGroup: %u\n", ADSIGRP_SUMUP_READ);
-        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "indexOffset: %lu\n", bulkReadInfo.numberOfVariables());
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "indexGroup: %u\n", indexGroupToRequestBulkRead);
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "indexOffset: %lu\n", numSubCommandsAsIndexOffset);
         asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "readLength: %u\n", bulkReadInfo.readSize);
-        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "readDataLengthBytes: %lu\n", sizeof(uint8_t) * bulkReadData_.size());
-        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "writeLength: %lu\n", sizeof(BulkReadRequestInfo) * bulkReadInfo.numberOfVariables());
-        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "writeDataLengthBytes: %lu\n", sizeof(BulkReadRequestInfo) * bulkReadInfo.reqInfo.size());
-        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "bytesRead: %u\n", bytesRead);
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "readDataLengthBytes: %u\n", bulkReadInfo.readSize);
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "writeLength: %lu\n", reqInfoSize);
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "writeDataLengthBytes: %lu\n", reqInfoSize);
+        asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "bytesRead: %u\n", numBytesReadBackFromServer);
         if (status)
         {
           asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "Bulk read failed: status %ld, client port: %ld, netid: %s, server port: %d\n",
-                 status, adsClientPort, amsaddr_.c_str(), amsServer.port);
+                    status, adsClientPort, amsaddr_.c_str(), amsServer.port);
           int index = 0;
           size_t totalBytes = 0;
-          for (auto& reqInfo : bulkReadInfo.reqInfo)
+          for (auto &reqInfo : bulkReadInfo.reqInfo)
           {
-            asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "reqInfo[#%u].iGroup = %u\n", index, reqInfo.iGroup);
-            asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "reqInfo[#%u].iOffset = %u\n", index, reqInfo.iOffset);
-            asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "reqInfo[#%u].iSize = %u\n", index, reqInfo.iSize);
+            asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "reqInfo[#%u].iGroup = %u\n", index, reqInfo.iGroup);
+            asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "reqInfo[#%u].iOffset = %u\n", index, reqInfo.iOffset);
+            asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "reqInfo[#%u].iSize = %u\n", index, reqInfo.iSize);
             totalBytes += reqInfo.iSize;
             index++;
           }
-          asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "totalBytes = %lu\n", totalBytes);
+          asynPrint(asynTraceUser, ASYN_TRACE_FLOW, "totalBytes = %lu\n", totalBytes);
           continue;
         }
 
@@ -736,13 +738,13 @@ void adsAsynPortDriver::bulkReadThread()
         // The bulkReadData.data() has type uint8_t, so each index of the vector represents one byte.
         // By casting to a uint32_t, we can conveniently step along the error codes for each sub command.
         // Remember, there is one sub command per variable.
-        uint32_t *errorCodePerVariable = (uint32_t *)bulkReadData_.data();
+        uint32_t *errorCodePerVariable = (uint32_t *)bulkReadInfo.data.data();
 
         // The actual data returned from doing the bulk read is stored starting just after the error codes
         // for each sub command. So bulkReadInfo.numberOfVariables() * sizeof(uint32_t) gives us the number
         // of error code bytes, and so the dataPerVariable pointer points to the first byte that represents
         // the returned data.
-        uint8_t *dataPerVariable = bulkReadData_.data() + bulkReadInfo.numberOfVariables() * sizeof(uint32_t);
+        uint8_t *dataPerVariable = bulkReadInfo.data.data() + bulkReadInfo.numberOfVariables() * sizeof(uint32_t);
 
         uint64_t nTimeStamp = 0;
         // The first two bulk parameters might represent the first 32 bits and last 32 bits respectively of a 64 bit time stamp.
@@ -778,28 +780,53 @@ void adsAsynPortDriver::bulkReadThread()
             asynPrint(asynTraceUser, ASYN_TRACE_ERROR,
                       "%s:%s: getAdsParamInfo() for hUser %u failed\n",
                       driverName, __func__, paramId);
+            errorCodePerVariable++;
             continue;
           }
-          if (*errorCodePerVariable++)
+          if (*errorCodePerVariable)
           {
             asynPrint(asynTraceUser, ASYN_TRACE_ERROR,
                       "%s:%s: bulk read for %s (%s) failed\n",
                       driverName, __func__, paramInfo->drvInfo.c_str(), paramInfo->recordName.c_str());
+            errorCodePerVariable++;
+            paramInfo->refreshNeeded = true;
+            continue;
           }
           paramInfo->plcTimeStampRaw = nTimeStamp;
           paramInfo->lastCallbackSize = paramInfo->plcSize;
-          adsUpdateParameterLock(*paramInfo, dataPerVariable);
+          paramInfo->dataBulkReadThisRead.resize(paramInfo->lastCallbackSize);
+          memcpy(paramInfo->dataBulkReadThisRead.data(),
+                 dataPerVariable,
+                 paramInfo->dataBulkReadThisRead.size());
+
+          if (paramInfo->dataBulkReadThisRead.size() != paramInfo->dataBulkReadLastRead.size() ||
+              memcmp(dataPerVariable,
+                     paramInfo->dataBulkReadLastRead.data(),
+                     paramInfo->dataBulkReadThisRead.size()) != 0)
+          {
+            adsUpdateParameter(*paramInfo, dataPerVariable, true);
+            // Too many adsUpdateParameter calls will overwhelm the I/O interrupt
+            // callbacks and they will fall behind. Try to wait a bit between updateParameter calls.
+            // Ideally, this sleep command would be replaced with a check that forces
+            // this thread to wait until the ads parameter I/O interrupt for this parameter has completed
+            // successfully but I cannot figure out how to get a handle to the interrupt
+            // to check that it has completed. Alternatively, we may need to switch bulk read
+            // parameters to be polled by epics instead of waiting for i/o interrupts.
+            usleep(100);
+          }
           dataPerVariable += paramInfo->lastCallbackSize;
+          errorCodePerVariable++;
+          paramInfo->dataBulkReadLastRead = paramInfo->dataBulkReadThisRead;
         }
       }
-    }
-    gettimeofday(&now, NULL);
-    bulkReadTimeElapsed_us_ = (now.tv_sec - start.tv_sec) * 1000000 +
-                              (now.tv_usec - start.tv_usec);
+      gettimeofday(&now, NULL);
+      bulkReadTimeElapsed_us_ = (now.tv_sec - start.tv_sec) * 1000000 +
+                                (now.tv_usec - start.tv_usec);
 
-    printf("%s:%s: Bulk read complete. Elapsed time: %g\n", driverName, __func__, bulkReadTimeElapsed_us_ / 1000000.0);
-    // Always sleep at least 10ms to let other threads acquire the ads lock
-    usleep(std::max(bulkReadTimeDelay_us_ - bulkReadTimeElapsed_us_, 10000));
+      printf("%s:%s: Bulk read complete. Elapsed time: %g\n", driverName, __func__, bulkReadTimeElapsed_us_ / 1000000.0);
+      // Always sleep at least 10ms to prevent this looping from generating too many I/O interrupts.
+      usleep(std::max(bulkReadTimeDelay_us_ - bulkReadTimeElapsed_us_, 10000));
+    }
   }
 }
 
@@ -1426,8 +1453,8 @@ asynStatus adsAsynPortDriver::adsAddToBulkRead(adsParamInfo &paramInfo)
       // First variable in this bulk request.
       bulkReadInfo_[i].amsPort = paramInfo.amsPort;
       bulkReadInfo_[i].reqInfo.resize(2);
-      auto &first32BitsOfTimestampReqInfo = bulkReadInfo_[i].reqInfo.back();
-      auto &last32BitsOfTimestampReqInfo = bulkReadInfo_[i].reqInfo.back();
+      auto &first32BitsOfTimestampReqInfo = bulkReadInfo_[i].reqInfo[0];
+      auto &last32BitsOfTimestampReqInfo = bulkReadInfo_[i].reqInfo[1];
       int j = adsGetBulkTimeStamp(paramInfo.amsPort);
       if (bulkTs_[j].refreshNeeded)
       {
@@ -1997,7 +2024,7 @@ bool adsAsynPortDriver::isCallbackAllowed(adsParamInfo &paramInfo)
 /** Checks if callback is allowed for a certain ams-port.
  * \param[in] amsPort amsPort.
  *
- * \return true if connection ti ams-port is ok otherwise false.
+ * \return true if connection to ams-port is ok otherwise false.
  */
 bool adsAsynPortDriver::isCallbackAllowed(uint16_t amsPort)
 {
@@ -4128,7 +4155,7 @@ asynStatus adsAsynPortDriver::adsReadParam(long adsClientPort, adsParamInfo &par
   asynStatus stat = asynSuccess;
   if (updateAsynPar)
   {
-    stat = adsUpdateParameterLock(paramInfo, (const void *)data, bytesRead);
+    stat = adsUpdateParameterLock(paramInfo, (const void *)data, bytesRead, true);
   }
 
   return stat;
@@ -4335,7 +4362,7 @@ asynStatus adsAsynPortDriver::refreshParamTime(adsParamInfo &paramInfo)
  *
  * Thread safe.
  */
-asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data)
+asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data, bool callCallbacks)
 {
   lock();
   asynStatus stat = adsUpdateParameter(paramInfo, data);
@@ -4353,7 +4380,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, co
  *
  * Thread safe.
  */
-asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data, size_t dataSize)
+asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data, size_t dataSize, bool callCallbacks)
 {
   lock();
   asynStatus stat = adsUpdateParameter(paramInfo, data, dataSize);
@@ -4369,7 +4396,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, co
  * \return asynSuccess or asynError.
  *
  */
-asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data)
+asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data, bool callCallbacks)
 {
   return adsUpdateParameter(paramInfo, data, paramInfo.lastCallbackSize);
 }
@@ -4383,7 +4410,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const 
  * \return asynSuccess or asynError.
  *
  */
-asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data, size_t dataSize)
+asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data, size_t dataSize, bool callCallbacks)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 

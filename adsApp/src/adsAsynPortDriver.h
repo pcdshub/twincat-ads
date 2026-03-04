@@ -101,7 +101,7 @@ public:
                                      size_t nElements);
 
   asynStatus adsUpdateParameterLock(adsParamInfo &paramInfo,
-                                    const void *data);
+                                    const void *data, bool callCallbacks = true);
   asynStatus invalidateParamsLock(uint16_t amsPort);
   asynStatus refreshParamsLock(long adsClientPort, uint16_t amsPort);
   asynStatus adsDelRoute();
@@ -141,12 +141,12 @@ private:
   asynStatus refreshParams(long adsClientPort, uint16_t amsPort);
   asynStatus invalidateParams(uint16_t amsPort);
   asynStatus adsUpdateParameter(adsParamInfo &paramInfo,
-                                const void *data);
+                                const void *data, bool callCallbacks = true);
   asynStatus adsUpdateParameter(adsParamInfo &paramInfo,
-                                const void *data, size_t dataSize);
+                                const void *data, size_t dataSize, bool callCallbacks = true);
   asynStatus adsUpdateParameterLock(adsParamInfo &paramInfo,
                                     const void *data,
-                                    size_t dataSize);
+                                    size_t dataSize, bool callCallbacks = true);
 
   // ADS methods
   asynStatus adsAddDataCallback(long adsClientPort, adsParamInfo &paramInfo);
@@ -275,10 +275,9 @@ private:
   size_t MaxNumberOfSubCallsPerBulkRead_;
   std::vector<tsentry> bulkTs_;
   std::vector<BulkReadInfo> bulkReadInfo_;
-  std::vector<uint8_t> bulkReadData_; // The read buffer for bulk reads
-  int bulkReadTimeDelay_us_;          // Rate to process bulk reads
-  int bulkReadTimeElapsed_us_;        // Time of last bulk read loop
-  bool okToProcessBulkReads_;         // OK to process bulk reads
+  int bulkReadTimeDelay_us_;   // Rate to process bulk reads
+  int bulkReadTimeElapsed_us_; // Time of last bulk read loop
+  bool okToProcessBulkReads_;  // OK to process bulk reads
   std::recursive_mutex adsBulkInfoUpdateMutex_;
 
   // data callback thread
