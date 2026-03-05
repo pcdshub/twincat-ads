@@ -18,6 +18,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <mutex>
 
 // Error codes
 #define ADS_COM_ERROR_INVALID_DATA_TYPE 1004
@@ -59,6 +60,7 @@ typedef enum
 
 typedef struct adsParamInfo
 {
+  adsParamInfo();
   std::string recordName;
   std::string recordType;
   std::string scan;
@@ -104,6 +106,7 @@ typedef struct adsParamInfo
   bool firstReadDone;
   int bulkIndex;
   int bulkOffset;
+  std::shared_ptr<std::recursive_mutex> mutex;
 } adsParamInfo;
 
 typedef struct amsPortInfo

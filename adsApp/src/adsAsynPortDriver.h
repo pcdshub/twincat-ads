@@ -254,7 +254,7 @@ private:
   uint32_t adsTimeout_ms_;
   std::unordered_map<epicsThreadId, AmsClientPortEntry> threadIdToAmsClientPortMap_;
   double cyclicThreadCycleTime_s_;
-  bool routeAdded_;
+  bool routeEstablished_;
   std::mutex adsAddDelRouteMutex_;
   uint16_t amsportDefault_;
   unsigned int priority_;
@@ -264,6 +264,7 @@ private:
   std::vector<amsPortInfo> amsPortList_;
   ADSTIMESOURCE defaultTimeSource_;
   std::recursive_mutex threadIdToAmsClientPortMapMutex_;
+  std::mutex callbacksMutex_;
 
   // octet
   adsOctetOutputBufferType octetAsciiBuffer_;

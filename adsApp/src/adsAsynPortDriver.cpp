@@ -24,6 +24,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <callback.h>
 #include <epicsString.h>
 #include <epicsThread.h>
 #include <epicsTime.h>
@@ -87,17 +88,6 @@ static void getEpicsState(initHookState state)
   case initHookAfterFinishDevSup:
     break;
   case initHookAfterScanInit:
-    allowCallbackEpicsState = 1;
-
-    // make all callbacks if data arrived from callback before interrupts were registered (before allowCallbackEpicsState==1)
-    if (!adsAsynPortObj)
-    {
-      printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, __func__);
-      return;
-    }
-    adsAsynPortObj->fireAllCallbacksLock();
-    adsAsynPortObj->setOkToProcessBulkReads(true);
-    printf("Begin polling PLC!\n");
     break;
   case initHookAfterInitialProcess:
     break;
@@ -112,6 +102,17 @@ static void getEpicsState(initHookState state)
   case initHookAfterCaServerRunning:
     break;
   case initHookAfterIocRunning: /* End of iocRun/iocInit commands */
+    allowCallbackEpicsState = 1;
+
+    // make all callbacks if data arrived from callback before interrupts were registered (before allowCallbackEpicsState==1)
+    if (!adsAsynPortObj)
+    {
+      printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, __func__);
+      return;
+    }
+    adsAsynPortObj->fireAllCallbacksLock();
+    adsAsynPortObj->setOkToProcessBulkReads(true);
+    printf("Begin polling PLC!\n");
     break;
   case initHookAtIocPause: /* Start of iocPause command */
     break;
@@ -360,7 +361,7 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
   defaultTimeSource_ = defaultTimeSource;
   {
     std::lock_guard<std::mutex> lockGuard(adsAddDelRouteMutex_);
-    routeAdded_ = false;
+    routeEstablished_ = false;
   }
   amsPortList_.clear();
 
@@ -406,7 +407,7 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
     throw std::runtime_error(string_format("%s:%s: createParam for default access failed.\n", driverName, __func__));
   }
 
-  adsParamArray_.emplace_back(adsParamInfo());
+  adsParamArray_.emplace_back();
   auto &paramInfo = adsParamArray_.back();
   paramInfo.recordName = "Any record";
   paramInfo.recordType = "No type";
@@ -548,14 +549,14 @@ void adsAsynPortDriver::cyclicThread()
 
   while (true)
   {
-    if (!allowCallbackEpicsState || !routeAdded_)
+    if (!allowCallbackEpicsState || !routeEstablished_)
     {
       epicsThreadSleep(cyclicThreadCycleTime_s_);
       continue; // Epics has not yet started, so don't start the cyclic thread yet.
     }
     {
       std::lock_guard<std::mutex> lockGuard(adsAddDelRouteMutex_);
-      if (!routeAdded_)
+      if (!routeEstablished_)
       {
         epicsThreadSleep(cyclicThreadCycleTime_s_);
         continue; // Route is not added yet, so don't start the cyclic thread.
@@ -679,7 +680,7 @@ void adsAsynPortDriver::bulkReadThread()
 
   while (true)
   {
-    while (!okToProcessBulkReads_)
+    while (!okToProcessBulkReads_ || !routeEstablished_)
     {
       epicsThreadSleep(0.5);
       continue;
@@ -781,6 +782,7 @@ void adsAsynPortDriver::bulkReadThread()
                       "%s:%s: getAdsParamInfo() for hUser %u failed\n",
                       driverName, __func__, paramId);
             errorCodePerVariable++;
+            setAlarmParam(*paramInfo, READ_ALARM, INVALID_ALARM);
             continue;
           }
           if (*errorCodePerVariable)
@@ -789,7 +791,7 @@ void adsAsynPortDriver::bulkReadThread()
                       "%s:%s: bulk read for %s (%s) failed\n",
                       driverName, __func__, paramInfo->drvInfo.c_str(), paramInfo->recordName.c_str());
             errorCodePerVariable++;
-            paramInfo->refreshNeeded = true;
+            setAlarmParam(*paramInfo, READ_ALARM, INVALID_ALARM);
             continue;
           }
           paramInfo->plcTimeStampRaw = nTimeStamp;
@@ -804,6 +806,12 @@ void adsAsynPortDriver::bulkReadThread()
                      paramInfo->dataBulkReadLastRead.data(),
                      paramInfo->dataBulkReadThisRead.size()) != 0)
           {
+            if (paramInfo->dataBulkReadThisRead.size() >= 2)
+            {
+              asynPrint(asynTraceUser, ASYN_TRACE_FLOW,
+                        "%s:%s: new value for %s = %u\n",
+                        driverName, __func__, paramInfo->recordName.c_str(), *(uint16_t *)dataPerVariable);
+            }
             adsUpdateParameter(*paramInfo, dataPerVariable, true);
             // Too many adsUpdateParameter calls will overwhelm the I/O interrupt
             // callbacks and they will fall behind. Try to wait a bit between updateParameter calls.
@@ -812,13 +820,13 @@ void adsAsynPortDriver::bulkReadThread()
             // successfully but I cannot figure out how to get a handle to the interrupt
             // to check that it has completed. Alternatively, we may need to switch bulk read
             // parameters to be polled by epics instead of waiting for i/o interrupts.
-            usleep(100);
           }
           dataPerVariable += paramInfo->lastCallbackSize;
           errorCodePerVariable++;
           paramInfo->dataBulkReadLastRead = paramInfo->dataBulkReadThisRead;
         }
       }
+      callbackQueueShow(0);
       gettimeofday(&now, NULL);
       bulkReadTimeElapsed_us_ = (now.tv_sec - start.tv_sec) * 1000000 +
                                 (now.tv_usec - start.tv_usec);
@@ -1295,6 +1303,8 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser, const char *drv
  */
 asynStatus adsAsynPortDriver::updateParamInfoWithPLCInfo(long adsClientPort, adsParamInfo &paramInfo)
 {
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
+
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: : %s\n", driverName, __func__, paramInfo.drvInfo.c_str());
 
   // Do not read information from PLC if "variable" in driver (like ams router state)
@@ -1430,7 +1440,9 @@ void adsAsynPortDriver::poll_info(char *name)
 /* TBD - Use paramInfo.pollClass to separate into different poll rates!! */
 asynStatus adsAsynPortDriver::adsAddToBulkRead(adsParamInfo &paramInfo)
 {
-  std::lock_guard<std::recursive_mutex> lockGuard(adsBulkInfoUpdateMutex_);
+  std::lock(adsBulkInfoUpdateMutex_, *paramInfo.mutex);
+  std::lock_guard<std::recursive_mutex> lockGuard(adsBulkInfoUpdateMutex_, std::adopt_lock);
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex, std::adopt_lock);
 
   if (paramInfo.bulkIndex < 0)
   {
@@ -1569,6 +1581,8 @@ asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo, adsP
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, __func__, drvInfo);
 
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
+
   bool isInput = false;
   bool isOutput = false;
   paramInfo.amsPort = amsportDefault_;
@@ -1702,6 +1716,8 @@ asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo, adsP
 asynStatus adsAsynPortDriver::parsePlcInfofromDrvInfo(const char *drvInfo, adsParamInfo &paramInfo)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, __func__, drvInfo);
+
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
 
   // Check if input or output
   paramInfo.isIOIntr = false;
@@ -2015,6 +2031,8 @@ asynStatus adsAsynPortDriver::addNewAmsPortToList(uint16_t amsPort)
  */
 bool adsAsynPortDriver::isCallbackAllowed(adsParamInfo &paramInfo)
 {
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
+
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
             "%s:%s: isCallbackAllowed = %d\n", driverName, __func__, !paramInfo.refreshNeeded);
 
@@ -2672,6 +2690,7 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: invalid parameter index = %d\n", driverName, __func__, paramIndex);
     pasynUser->alarmStatus = WRITE_ALARM;
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
     callParamCallbacks();
     return asynError;
   }
@@ -2781,6 +2800,7 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types size missmatch (%s and %d bytes). Write canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType), maxBytesToWrite);
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
     callParamCallbacks();
     return asynError;
   }
@@ -2789,6 +2809,7 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
   if (adsWriteParam(adsClientPort, paramInfo, (const void *)buffer, maxBytesToWrite) != asynSuccess)
   {
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
     callParamCallbacks();
     return asynError;
   }
@@ -2811,6 +2832,7 @@ asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: invalid parameter index = %d\n", driverName, __func__, paramIndex);
     pasynUser->alarmStatus = WRITE_ALARM;
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
     callParamCallbacks();
     return asynError;
   }
@@ -2882,6 +2904,7 @@ asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types size mismatch (%s and %d bytes). Write canceled.\n",
               driverName, __func__, adsTypeToString(paramInfo.plcDataType), maxBytesToWrite);
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
     callParamCallbacks();
     return asynError;
   }
@@ -2890,6 +2913,7 @@ asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
   if (adsWriteParam(adsClientPort, paramInfo, buffer, maxBytesToWrite) != asynSuccess)
   {
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
     callParamCallbacks();
     return asynError;
   }
@@ -2919,6 +2943,7 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL\n", driverName, __func__);
     pasynUser->alarmStatus = WRITE_ALARM;
     pasynUser->alarmSeverity = INVALID_ALARM;
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
     callParamCallbacks();
     return asynError;
   }
@@ -3040,6 +3065,7 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types size mismatch (%s and %d bytes). Write canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType), maxBytesToWrite);
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
     callParamCallbacks();
     return asynError;
   }
@@ -3048,6 +3074,7 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
   if (adsWriteParam(adsClientPort, paramInfo, (const void *)buffer, maxBytesToWrite) != asynSuccess)
   {
     setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
     callParamCallbacks();
     return asynError;
   }
@@ -3513,6 +3540,8 @@ asynStatus adsAsynPortDriver::adsGetSymHandleByName(long adsClientPort, adsParam
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
+
   AmsAddr amsServer;
   amsServer = {remoteNetId_, paramInfo.amsPort};
 
@@ -3622,6 +3651,8 @@ asynStatus adsAsynPortDriver::adsAddDataCallback(long adsClientPort, adsParamInf
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
+
   uint32_t group = 0;
   uint32_t offset = 0;
 
@@ -3727,6 +3758,8 @@ asynStatus adsAsynPortDriver::adsDelDataCallback(long adsClientPort, adsParamInf
 asynStatus adsAsynPortDriver::adsDelDataCallback(long adsClientPort, adsParamInfo &paramInfo, bool blockErrorMsg)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
+
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
 
   paramInfo.bCallbackNotifyValid = false;
 
@@ -3843,6 +3876,8 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, adsParamIn
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
+
   adsSymbolEntry infoStruct;
   memset(&infoStruct, 0, sizeof(infoStruct));
 
@@ -3870,17 +3905,20 @@ asynStatus adsAsynPortDriver::adsConnect(long adsClientPort)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  adsDelRoute();
-  asynStatus stat = adsAddRoute();
-
-  if (stat != asynSuccess)
+  if (!routeEstablished_)
   {
     adsDelRoute();
-    return asynError;
+    asynStatus stat = adsAddRoute();
+
+    if (stat != asynSuccess)
+    {
+      adsDelRoute();
+      return asynError;
+    }
+    asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+              "%s:%s: successfully added route to ip = %s, netid = %s.\n",
+              driverName, __func__, ipaddr_.c_str(), amsaddr_.c_str());
   }
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
-            "%s:%s: successfully added route to ip = %s, netid = %s.\n",
-            driverName, __func__, ipaddr_.c_str(), amsaddr_.c_str());
 
   // Update timeout
   uint32_t defaultTimeout = 0;
@@ -3953,6 +3991,8 @@ asynStatus adsAsynPortDriver::adsReleaseSymbolicHandle(long adsClientPort, adsPa
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
+
   paramInfo.bSymbolicHandleValid = false;
 
   AmsAddr amsServer;
@@ -3982,6 +4022,8 @@ asynStatus adsAsynPortDriver::adsReleaseSymbolicHandle(long adsClientPort, adsPa
 asynStatus adsAsynPortDriver::adsWriteParam(long adsClientPort, adsParamInfo &paramInfo, const void *binaryBuffer, uint32_t bytesToWrite)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
+
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
 
   // Calculate consumed time by this method
   struct timeval start, end;
@@ -4075,6 +4117,8 @@ asynStatus adsAsynPortDriver::adsReadParam(long adsClientPort, adsParamInfo &par
 asynStatus adsAsynPortDriver::adsReadParam(long adsClientPort, adsParamInfo &paramInfo, long &error, int updateAsynPar)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
+
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
 
   uint32_t group = 0;
   uint32_t offset = 0;
@@ -4312,6 +4356,8 @@ int adsAsynPortDriver::getAdsParamCount()
  */
 asynStatus adsAsynPortDriver::refreshParamTime(adsParamInfo &paramInfo)
 {
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
+
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: plcTime %lu.\n", driverName, __func__, paramInfo.plcTimeStampRaw);
 
   // Convert plc timeStamp (windows format) to epicsTimeStamp
@@ -4365,7 +4411,7 @@ asynStatus adsAsynPortDriver::refreshParamTime(adsParamInfo &paramInfo)
 asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data, bool callCallbacks)
 {
   lock();
-  asynStatus stat = adsUpdateParameter(paramInfo, data);
+  asynStatus stat = adsUpdateParameter(paramInfo, data, callCallbacks);
   unlock();
   return stat;
 }
@@ -4383,7 +4429,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, co
 asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data, size_t dataSize, bool callCallbacks)
 {
   lock();
-  asynStatus stat = adsUpdateParameter(paramInfo, data, dataSize);
+  asynStatus stat = adsUpdateParameter(paramInfo, data, dataSize, callCallbacks);
   unlock();
   return stat;
 }
@@ -4398,7 +4444,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, co
  */
 asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data, bool callCallbacks)
 {
-  return adsUpdateParameter(paramInfo, data, paramInfo.lastCallbackSize);
+  return adsUpdateParameter(paramInfo, data, paramInfo.lastCallbackSize, callCallbacks);
 }
 
 /** Update asyn parameter or callback (for arrays).
@@ -4413,6 +4459,8 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const 
 asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data, size_t dataSize, bool callCallbacks)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
+
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
 
   if (!data)
   {
@@ -4737,7 +4785,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const 
     return ret;
   }
 
-  if (allowCallbackEpicsState)
+  if (allowCallbackEpicsState && callCallbacks)
   {
     return fireCallbacks(paramInfo);
   }
@@ -4772,14 +4820,17 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo &paramInfo)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  if (!paramInfo.plcDataIsArray)
-  {
-    return callParamCallbacks();
-  }
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
 
   if (paramInfo.lastCallbackSize <= 0)
   {
     return asynSuccess;
+  }
+
+  if (!paramInfo.plcDataIsArray)
+  {
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
+    return callParamCallbacks();
   }
 
   asynStatus ret = asynError;
@@ -4940,6 +4991,8 @@ asynStatus adsAsynPortDriver::setAlarmParam(adsParamInfo &paramInfo, int alarm, 
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
+
   asynStatus stat;
   int oldAlarmStatus = 0;
   stat = getParamAlarmStatus(paramInfo.paramIndex, &oldAlarmStatus);
@@ -5005,6 +5058,7 @@ asynStatus adsAsynPortDriver::setAlarmParam(adsParamInfo &paramInfo, int alarm, 
   // Alarm status or severity changed=>Do callbacks with old buffered data (if nElemnts==0 then no data in record...)
   if (paramInfo.plcDataIsArray && writeSize > 0 && allowCallbackEpicsState)
   {
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
     switch (paramInfo.asynType)
     {
     case asynParamInt8Array:
@@ -5032,6 +5086,7 @@ asynStatus adsAsynPortDriver::setAlarmParam(adsParamInfo &paramInfo, int alarm, 
   }
   else
   {
+    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
     stat = callParamCallbacks();
   }
 
@@ -5092,7 +5147,7 @@ asynStatus adsAsynPortDriver::adsDelRoute()
 
   std::lock_guard<std::mutex> lockGuard(adsAddDelRouteMutex_);
 
-  routeAdded_ = false;
+  routeEstablished_ = false;
   AdsDelRoute(remoteNetId_);
 
   return asynSuccess;
@@ -5118,7 +5173,7 @@ asynStatus adsAsynPortDriver::adsAddRoute()
 
   asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Adding ADS route succeeded.\n", driverName, __func__);
 
-  routeAdded_ = true;
+  routeEstablished_ = true;
   return asynSuccess;
 }
 
@@ -5126,7 +5181,6 @@ asynStatus adsAsynPortDriver::adsAddRoute()
 
 extern "C"
 {
-
   asynUser *pPrintOutAsynUser;
 
   static void printHelp()
@@ -5423,7 +5477,9 @@ adsAsynPortDriver::datacbinfo::datacbinfo(adsParamInfo &paramInfo, const AdsNoti
 }
 void adsAsynPortDriver::emplaceInDataCallbackQueue(adsParamInfo &paramInfo, const AdsNotificationHeader *pNotification)
 {
-  std::lock_guard<std::mutex> lockGuard(dataCbQueueMutex_);
+  std::lock(dataCbQueueMutex_, *paramInfo.mutex);
+  std::lock_guard<std::mutex> lockGuard(dataCbQueueMutex_, std::adopt_lock);
+  std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex, std::adopt_lock);
   if (!pNotification)
   {
     asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,

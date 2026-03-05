@@ -1279,3 +1279,8 @@ std::string amsNetIdToStr(const AmsNetId &amsNetId)
 }
 
 AmsClientPortEntry::AmsClientPortEntry(long port, int liveCount) : port(port), liveCount(liveCount) {}
+
+adsParamInfo::adsParamInfo()
+{
+  mutex = std::make_shared<std::recursive_mutex>();
+}
