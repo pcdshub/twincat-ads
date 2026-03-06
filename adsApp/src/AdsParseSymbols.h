@@ -2,19 +2,29 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_ADSPARSESYMBOLS_H__353EFDFE_6136_400C_A0E7_B24C2480E9F1__INCLUDED_)
-#define AFX_ADSPARSESYMBOLS_H__353EFDFE_6136_400C_A0E7_B24C2480E9F1__INCLUDED_
-
-#if _MSC_VER > 1000
-#pragma once
-#endif // _MSC_VER > 1000
+#ifndef ADSPARSESYMBOLS_H_
+#define ADSPARSESYMBOLS_H_
 
 #include "AdsDef.h"
 #include "AdsLib.h"
 #include <unordered_map>
 
 ///////////////////////////////////////////////////////////////////////////////
-typedef struct
+struct AdsSymbolEntryAccess : public AdsSymbolEntry
+{
+  const char * name() const { return reinterpret_cast<const char *>(this + 1); }
+  const char * type() const { return name() + nameLength + 1; }
+  const char * comment() const { return type() + typeLength + 1; }
+  const AdsSymbolEntryAccess * maybeNext() const;
+};
+
+struct AdsDatatypeArrayInfo
+{
+	uint32_t lBound;   //
+	uint32_t elements; //
+};
+
+struct AdsDatatypeEntry
 {
 	uint32_t entryLength;	// length of complete datatype entry
 	uint32_t version;		// version of datatype structure
@@ -28,46 +38,63 @@ typedef struct
 	uint16_t typeLength;	// length of dataitem type name (excl. \0)
 	uint16_t commentLength; // length of comment (excl. \0)
 	uint16_t arrayDim;		//
-	uint16_t subItems;		//
-} AdsDatatypeEntry;
-
-#define PADSDATATYPENAME(p) ((char *)(((AdsDatatypeEntry *)p) + 1))
-#define PADSDATATYPETYPE(p) (((char *)(((AdsDatatypeEntry *)p) + 1)) + ((AdsDatatypeEntry *)p)->nameLength + 1)
-#define PADSDATATYPECOMMENT(p) (((char *)(((AdsDatatypeEntry *)p) + 1)) + ((AdsDatatypeEntry *)p)->nameLength + 1 + ((AdsDatatypeEntry *)p)->typeLength + 1)
-#define PADSDATATYPEARRAYINFO(p) (AdsDatatypeArrayInfo *)(((char *)(((AdsDatatypeEntry *)p) + 1)) + ((AdsDatatypeEntry *)p)->nameLength + 1 + ((AdsDatatypeEntry *)p)->typeLength + 1 + ((AdsDatatypeEntry *)p)->commentLength + 1)
+	uint16_t subItemCount;	//
+							// dynamic part of the structure:
+	// ADS_INT8    name[];             // name of datatype with terminating \0
+	// ADS_INT8    type[];             // type name of dataitem with terminating \0
+	// ADS_INT8    comment[];          // comment of datatype with terminating \0
+	// AdsDatatypeArrayInfo  array[];  // array information, if arrayDim > 0
+	// AdsDatatypeEntry    subItems[]; // sub items, if subItems > 0
+	const char *name() const
+	{
+		return reinterpret_cast<const char *>(this + 1);
+	}
+	const char *type() const
+	{
+		return name() + nameLength + 1;
+	}
+	const char *comment() const
+	{
+		return type() + typeLength + 1;
+	}
+	const AdsDatatypeArrayInfo *arrayInfo() const
+	{
+		return reinterpret_cast<const AdsDatatypeArrayInfo *>(comment() + commentLength + 1);
+	}
+	const AdsDatatypeEntry *subItems() const
+	{
+		return reinterpret_cast<const AdsDatatypeEntry *>(reinterpret_cast<const char *>(arrayInfo()) + arrayDim * sizeof(AdsDatatypeArrayInfo));
+	}
+};
 
 inline AdsDatatypeEntry *AdsDatatypeStructItem(AdsDatatypeEntry *p, uint16_t iItem)
 {
 	uint16_t i;
 	AdsDatatypeEntry *pItem;
-	if (iItem >= p->subItems)
-		return NULL;
-	pItem = (AdsDatatypeEntry *)(((uint8_t *)(p + 1)) + p->nameLength + p->typeLength + p->commentLength + 3 + p->arrayDim * sizeof(AdsDatatypeArrayInfo));
+	if (iItem >= p->subItemCount)
+		return 0;
+	pItem = (AdsDatatypeEntry *)(((unsigned char *)(p + 1)) + p->nameLength +
+								 p->typeLength + p->commentLength + 3 +
+								 p->arrayDim * sizeof(AdsDatatypeArrayInfo));
 	for (i = 0; i < iItem; i++)
-		pItem = (AdsDatatypeEntry *)(((uint8_t *)pItem) + pItem->entryLength);
+		pItem = (AdsDatatypeEntry *)(((unsigned char *)pItem) + pItem->entryLength);
 	return pItem;
 }
-
-typedef struct
-{
-	uint32_t lBound;   //
-	uint32_t elements; //
-} AdsDatatypeArrayInfo;
 
 class CAdsSymbolInfo
 {
 public:
 	CAdsSymbolInfo() : m_pEntry(NULL) {};
-	unsigned long iGrp;		//
-	unsigned long iOffs;	//
-	unsigned long size;		// size of datatype ( in bytes )
-	unsigned long offs;		// offs of dataitem in parent datatype ( in bytes )
-	unsigned long dataType; // adsDataType of symbol (if alias)
-	unsigned long flags;	//
-	unsigned long entryLength;
-	unsigned long nameLength;
-	unsigned long typeLength;
-	unsigned long commentLength;
+	uint32_t iGrp;	   //
+	uint32_t iOffs;	   //
+	uint32_t size;	   // size of datatype ( in bytes )
+	uint32_t offs;	   // offs of dataitem in parent datatype ( in bytes )
+	uint32_t dataType; // adsDataType of symbol (if alias)
+	uint32_t flags;	   //
+	uint32_t entryLength;
+	uint32_t nameLength;
+	uint32_t typeLength;
+	uint32_t commentLength;
 	std::string name;
 	std::string fullname;
 	std::string type;
@@ -75,29 +102,21 @@ public:
 	AdsDatatypeEntry *m_pEntry;
 };
 
-#define PADSSYMBOLNAME(p) ((char *)(((AdsSymbolEntry *)p) + 1))
-#define PADSSYMBOLTYPE(p) (((char *)(((AdsSymbolEntry *)p) + 1)) + ((AdsSymbolEntry *)p)->nameLength + 1)
-#define PADSSYMBOLCOMMENT(p) (((char *)(((AdsSymbolEntry *)p) + 1)) + ((AdsSymbolEntry *)p)->nameLength + 1 + ((AdsSymbolEntry *)p)->typeLength + 1)
-
-#define PADSNEXTSYMBOLENTRY(pEntry) (*((uint32_t *)(((char *)pEntry) + ((AdsSymbolEntry *)pEntry)->entryLength))            \
-										 ? ((AdsSymbolEntry *)(((char *)pEntry) + ((AdsSymbolEntry *)pEntry)->entryLength)) \
-										 : NULL)
-
-typedef struct
+struct AdsSymbolUploadInfo
 {
 	uint32_t nSymbols;
 	uint32_t nSymSize;
-} AdsSymbolUploadInfo;
+};
 
-typedef struct
+struct AdsSymbolUploadInfo2
 {
-	unsigned long nSymbols;
-	unsigned long nSymSize;
-	unsigned long nDatatypes;
-	unsigned long nDatatypeSize;
-	unsigned long nMaxDynSymbols;
-	unsigned long nUsedDynSymbols;
-} AdsSymbolUploadInfo2;
+	uint32_t nSymbols = 0;
+	uint32_t nSymSize = 0;
+	uint32_t nDatatypes = 0;
+	uint32_t nDatatypeSize = 0;
+	uint32_t nMaxDynSymbols = 0;
+	uint32_t nUsedDynSymbols = 0;
+};
 
 #define ADSIGRP_SYM_DT_UPLOAD 0xF00E
 #define ADSIGRP_SYM_UPLOADINFO2 0xF00F
@@ -107,67 +126,68 @@ typedef struct
 class CAdsParseSymbols
 {
 public:
-	CAdsParseSymbols(void *pSymbols, unsigned int nSymSize, void *pDatatypes = NULL, unsigned int nDTSize = 0);
+	CAdsParseSymbols(void *pSymbols, uint32_t nSymSize, void *pDatatypes = NULL, uint32_t nDTSize = 0);
 	virtual ~CAdsParseSymbols();
 
-	virtual unsigned int SymbolCount()
+	virtual uint32_t SymbolCount()
 	{
 		return m_nSymbols;
 	}
-	virtual unsigned int DatatypeCount()
+	virtual uint32_t DatatypeCount()
 	{
 		return m_nDatatypes;
 	}
-	virtual AdsSymbolEntry *Symbol(unsigned int sym)
+	virtual AdsSymbolEntryAccess *Symbol(uint32_t sym)
 	{
 		return (sym < m_nSymbols) ? m_ppSymbolArray[sym] : NULL;
 	}
-	virtual bool Symbol(unsigned int sym, CAdsSymbolInfo &info);
-	virtual char *SymbolName(unsigned int sym)
+	virtual bool Symbol(uint32_t sym, CAdsSymbolInfo &info);
+	virtual const char *SymbolName(uint32_t sym) const
 	{
-		return (sym < m_nSymbols) ? PADSSYMBOLNAME(m_ppSymbolArray[sym]) : NULL;
+		return (sym < m_nSymbols) ? m_ppSymbolArray[sym]->name() : NULL;
 	}
-	virtual char *SymbolType(unsigned int sym)
+	virtual const char *SymbolType(uint32_t sym) const
 	{
-		return (sym < m_nSymbols) ? PADSSYMBOLTYPE(m_ppSymbolArray[sym]) : NULL;
+		return (sym < m_nSymbols) ? m_ppSymbolArray[sym]->type() : NULL;
 	}
-	virtual char *SymbolComment(unsigned int sym)
+	virtual const char *SymbolComment(uint32_t sym) const
 	{
-		return (sym < m_nSymbols) ? PADSSYMBOLCOMMENT(m_ppSymbolArray[sym]) : NULL;
+		return (sym < m_nSymbols) ? m_ppSymbolArray[sym]->comment() : NULL;
 	}
-	virtual unsigned int SubSymbolCount(unsigned int sym);
-	virtual unsigned int SubSymbolCount(char *sType);
-	virtual unsigned int SubSymbolCount(AdsDatatypeEntry *pEntry);
-	virtual bool SubSymbolInfo(CAdsSymbolInfo main, unsigned int sub, CAdsSymbolInfo &info);
+	virtual uint32_t SubSymbolCount(uint32_t sym) const;
+	virtual uint32_t SubSymbolCount(const char *sType) const;
+	virtual uint32_t SubSymbolCount(const AdsDatatypeEntry *pEntry) const;
+	virtual bool SubSymbolInfo(CAdsSymbolInfo main, uint32_t sub, CAdsSymbolInfo &info);
 
 protected:
-	virtual AdsDatatypeEntry *GetTypeByName(std::string sType);
+	virtual AdsDatatypeEntry *GetTypeByName(const std::string& sType);
+	virtual const AdsDatatypeEntry *GetTypeByName(const std::string& sType) const;
 
 	char *m_pSymbols;
 	char *m_pDatatypes;
-	unsigned int m_nSymbols;
-	unsigned int m_nDatatypes;
-	unsigned int m_nSymSize;
-	unsigned int m_nDTSize;
-	AdsSymbolEntry **m_ppSymbolArray;
+	uint32_t m_nSymbols;
+	uint32_t m_nDatatypes;
+	uint32_t m_nSymSize;
+	uint32_t m_nDTSize;
+	AdsSymbolEntryAccess **m_ppSymbolArray;
 	AdsDatatypeEntry **m_ppDatatypeArray;
 	char m_bufGetTypeByNameBuffer[300];
 };
 
-typedef enum ADSGETDYNSYMBOLTYPE
+enum ADSGETDYNSYMBOLTYPE
 {
 	ADSDYNSYM_GET_NEXT = 1,
 	ADSDYNSYM_GET_SIBLING = 2,
 	ADSDYNSYM_GET_CHILD = 3,
 	ADSDYNSYM_GET_PARENT = 4,
-} ADSGETDYNSYMBOLTYPE;
+};
 
-typedef struct ADSDYNSYM_SUBINFO
+struct ADSDYNSYM_SUBINFO
 {
 	CAdsSymbolInfo infoParent;
-	long nSub;
+	uint32_t nSub;
 	ADSDYNSYM_SUBINFO *pParent;
-} ADSDYNSYM_SUBINFO;
+};
 
 class AdsSymbolParser
 {
@@ -175,7 +195,7 @@ public:
 	AdsSymbolParser(long amsClientPort, const AmsAddr &amsAddr);
 	~AdsSymbolParser();
 
-	long load(std::unordered_map<std::string, AdsSymbolEntry>& adsSymbolMap);
+	long load(std::unordered_map<std::string, AdsSymbolEntry> &adsSymbolMap);
 	long parent();
 	long sibling();
 	long child();
@@ -189,16 +209,16 @@ public:
 
 protected:
 	CAdsParseSymbols *m_pDynSymbols;
-	long m_nCurDynSymbol;
+	uint32_t m_nCurDynSymbol;
 	ADSDYNSYM_SUBINFO *m_pCurSubSymbol;
-	long m_nNextNavType;
+	uint32_t m_nNextNavType;
 	AmsAddr m_amsAddr;
-	long m_amsClientPort;
+	uint32_t m_amsClientPort;
 
 	long AdsSetFirstDynSymbol(bool bForceReload);
-	long AdsGetNextDynSymbol(long navType, std::string &strName, std::string &strFullName,
+	long AdsGetNextDynSymbol(uint32_t navType, std::string &strName, std::string &strFullName,
 							 std::string &strType, std::string &strComment, uint32_t &adsType,
 							 uint32_t &cbSymbolSize, uint32_t &nIndexGroup, uint32_t &IndexOffset);
 };
 
-#endif
+#endif // ADSPARSESYMBOLS_H_

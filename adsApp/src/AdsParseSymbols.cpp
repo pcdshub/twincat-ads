@@ -32,11 +32,11 @@ CAdsParseSymbols::CAdsParseSymbols(void *pSymbols, unsigned int nSymSize, void *
 			offs += *(unsigned long *)&m_pSymbols[offs];
 		}
 		assert(offs == nSymSize);
-		m_ppSymbolArray = new AdsSymbolEntry *[m_nSymbols];
+		m_ppSymbolArray = new AdsSymbolEntryAccess *[m_nSymbols];
 		m_nSymbols = offs = 0;
 		while (*(unsigned long *)&m_pSymbols[offs])
 		{
-			m_ppSymbolArray[m_nSymbols++] = (AdsSymbolEntry *)&m_pSymbols[offs];
+			m_ppSymbolArray[m_nSymbols++] = (AdsSymbolEntryAccess *)&m_pSymbols[offs];
 			offs += *(unsigned long *)&m_pSymbols[offs];
 		}
 		assert(offs == nSymSize);
@@ -85,7 +85,7 @@ static int CompareDTByName(const void *p1, const void *p2)
 	return strcmp((char *)((*(AdsDatatypeEntry **)p1) + 1), (char *)((*(AdsDatatypeEntry **)p2) + 1));
 }
 
-AdsDatatypeEntry *CAdsParseSymbols::GetTypeByName(std::string sType)
+const AdsDatatypeEntry *CAdsParseSymbols::GetTypeByName(const std::string &sType) const
 {
 	AdsDatatypeEntry *pKey = (AdsDatatypeEntry *)m_bufGetTypeByNameBuffer;
 	strcpy((char *)(pKey + 1), sType.c_str());
@@ -100,7 +100,22 @@ AdsDatatypeEntry *CAdsParseSymbols::GetTypeByName(std::string sType)
 		return NULL;
 }
 
-unsigned int CAdsParseSymbols::SubSymbolCount(unsigned int sym)
+AdsDatatypeEntry *CAdsParseSymbols::GetTypeByName(const std::string &sType)
+{
+	AdsDatatypeEntry *pKey = (AdsDatatypeEntry *)m_bufGetTypeByNameBuffer;
+	strcpy((char *)(pKey + 1), sType.c_str());
+
+	// serach data type by name
+	AdsDatatypeEntry **ppEntry = (AdsDatatypeEntry **)bsearch(&pKey, m_ppDatatypeArray, m_nDatatypes,
+															  sizeof(*m_ppDatatypeArray), CompareDTByName);
+
+	if (ppEntry)
+		return *ppEntry;
+	else
+		return NULL;
+}
+
+uint32_t CAdsParseSymbols::SubSymbolCount(unsigned int sym) const
 {
 	if (sym < m_nSymbols)
 		return SubSymbolCount(SymbolType(sym));
@@ -108,28 +123,28 @@ unsigned int CAdsParseSymbols::SubSymbolCount(unsigned int sym)
 		return 0;
 }
 
-unsigned int CAdsParseSymbols::SubSymbolCount(char *sType)
+uint32_t CAdsParseSymbols::SubSymbolCount(const char *sType) const
 {
-	AdsDatatypeEntry *pEntry = GetTypeByName(sType);
+	auto pEntry = GetTypeByName(sType);
 	if (pEntry)
 		return SubSymbolCount(pEntry);
 	else
 		return 0;
 }
 
-unsigned int CAdsParseSymbols::SubSymbolCount(AdsDatatypeEntry *pEntry)
+uint32_t CAdsParseSymbols::SubSymbolCount(const AdsDatatypeEntry *pEntry) const
 {
-	unsigned int cnt = 0;
+	uint32_t cnt = 0;
 	if (pEntry)
 	{
-		if (pEntry->subItems)
+		if (pEntry->subItemCount)
 		{
-			cnt += pEntry->subItems;
+			cnt += pEntry->subItemCount;
 		}
 		else if (pEntry->arrayDim)
 		{
 			cnt = 1;
-			AdsDatatypeArrayInfo *pAI = PADSDATATYPEARRAYINFO(pEntry);
+			auto pAI = pEntry->arrayInfo();
 			for (unsigned short i = 0; i < pEntry->arrayDim; i++)
 				cnt *= pAI[i].elements;
 		}
@@ -140,7 +155,7 @@ unsigned int CAdsParseSymbols::SubSymbolCount(AdsDatatypeEntry *pEntry)
 
 bool CAdsParseSymbols::Symbol(unsigned int sym, CAdsSymbolInfo &info)
 {
-	AdsSymbolEntry *pEntry = Symbol(sym);
+	AdsSymbolEntryAccess *pEntry = Symbol(sym);
 	if (pEntry == NULL)
 		return false;
 
@@ -153,24 +168,24 @@ bool CAdsParseSymbols::Symbol(unsigned int sym, CAdsSymbolInfo &info)
 	info.size = pEntry->size;
 	info.dataType = pEntry->dataType;
 	info.flags = pEntry->flags;
-	info.name = PADSSYMBOLNAME(pEntry);
-	info.fullname = PADSSYMBOLNAME(pEntry);
-	info.type = PADSSYMBOLTYPE(pEntry);
-	info.comment = PADSSYMBOLCOMMENT(pEntry);
+	info.name = pEntry->name();
+	info.fullname = pEntry->name();
+	info.type = pEntry->type();
+	info.comment = pEntry->comment();
 
 	return true;
 }
 
-bool CAdsParseSymbols::SubSymbolInfo(CAdsSymbolInfo main, unsigned int sub, CAdsSymbolInfo &info)
+bool CAdsParseSymbols::SubSymbolInfo(CAdsSymbolInfo main, uint32_t sub, CAdsSymbolInfo &info)
 {
 	if (!main.m_pEntry)
 		main.m_pEntry = GetTypeByName(main.type);
-	AdsDatatypeEntry *pEntry = main.m_pEntry;
+	auto pEntry = main.m_pEntry;
 	if (pEntry)
 	{
-		if (pEntry->subItems)
+		if (pEntry->subItemCount)
 		{
-			AdsDatatypeEntry *pSEntry = AdsDatatypeStructItem(pEntry, sub);
+			auto pSEntry = AdsDatatypeStructItem(pEntry, sub);
 			if (pSEntry)
 			{
 				info.iGrp = main.iGrp;
@@ -178,10 +193,10 @@ bool CAdsParseSymbols::SubSymbolInfo(CAdsSymbolInfo main, unsigned int sub, CAds
 				info.size = pSEntry->size;
 				info.dataType = pSEntry->dataType;
 				info.flags = pSEntry->flags;
-				info.name = PADSDATATYPENAME(pSEntry);
+				info.name = pSEntry->name();
 				info.fullname = string_format("%s.%s", main.fullname, info.name);
-				info.type = PADSDATATYPETYPE(pSEntry);
-				info.comment = PADSDATATYPECOMMENT(pSEntry);
+				info.type = pSEntry->type();
+				info.comment = pSEntry->comment();
 				return true;
 			}
 		}
@@ -189,7 +204,7 @@ bool CAdsParseSymbols::SubSymbolInfo(CAdsSymbolInfo main, unsigned int sub, CAds
 		{
 			unsigned int x[10] = {0}, baseSize = pEntry->size;
 			x[pEntry->arrayDim] = 1;
-			AdsDatatypeArrayInfo *pAI = PADSDATATYPEARRAYINFO(pEntry);
+			auto pAI = pEntry->arrayInfo();
 			for (int i = pEntry->arrayDim - 1; i >= 0; i--)
 			{
 				x[i] = x[i + 1] * pAI[i].elements;
@@ -203,8 +218,8 @@ bool CAdsParseSymbols::SubSymbolInfo(CAdsSymbolInfo main, unsigned int sub, CAds
 				info.size = baseSize;
 				info.dataType = pEntry->dataType;
 				info.flags = pEntry->flags;
-				info.type = PADSDATATYPETYPE(pEntry);
-				info.comment = PADSDATATYPECOMMENT(pEntry);
+				info.type = pEntry->type();
+				info.comment = pEntry->comment();
 				std::string arr = "[";
 				std::string tmp = "";
 				for (int i = 0; i < pEntry->arrayDim; i++)
@@ -244,23 +259,37 @@ AdsSymbolParser::~AdsSymbolParser()
 
 long AdsSymbolParser::load(std::unordered_map<std::string, AdsSymbolEntry> &adsSymbolMap)
 {
-
-	auto errorCode = AdsSetFirstDynSymbol(true);
+	auto errorCode = next();
 	if (errorCode)
+	{
+		printf("AdsSymbolParser::next() returned error code: %lu\n", errorCode);
 		return errorCode;
-	adsSymbolMap.insert(std::make_pair(this->fullname, this->adsSymbolEntry));
-	errorCode = next();
-	if (errorCode)
-		return errorCode;
-	auto it = adsSymbolMap.find(this->fullname);
-	while (it == adsSymbolMap.end())
+	}
+	long count = 0;
+	// auto it = adsSymbolMap.find(this->fullname);
+	while (count < 10000)
 	{
 		adsSymbolMap.insert(std::make_pair(this->fullname, this->adsSymbolEntry));
+		printf("Insert symbol: %s\n", this->fullname.c_str());
+		errorCode = child();
+		if (!errorCode)
+			continue;
+		printf("AdsSymbolParser::child() returned error code: %lu\n", errorCode);
+		errorCode = parent();
+		if (!errorCode)
+			continue;
+		printf("AdsSymbolParser::parent() returned error code: %lu\n", errorCode);
+		errorCode = sibling();
+		if (!errorCode)
+			continue;
+		printf("AdsSymbolParser::sibling() returned error code: %lu\n", errorCode);
 		errorCode = next();
-		if (errorCode)
-			return errorCode;
-		it = adsSymbolMap.find(this->fullname);
+		if (!errorCode)
+			continue;
+		printf("AdsSymbolParser::next() returned error code: %lu\n", errorCode);
+		// it = adsSymbolMap.find(this->fullname);
 	}
+	return errorCode;
 }
 
 long AdsSymbolParser::parent()
@@ -290,7 +319,7 @@ long AdsSymbolParser::next()
 long AdsSymbolParser::AdsSetFirstDynSymbol(bool bForceReload)
 {
 	long nResult = ADSERR_NOERR;
-
+	printf("AdsSetFirstDynSymbol(%d)\n", bForceReload);
 	if (bForceReload)
 	{
 		if (m_pDynSymbols != NULL)
@@ -305,42 +334,61 @@ long AdsSymbolParser::AdsSetFirstDynSymbol(bool bForceReload)
 		delete m_pCurSubSymbol;
 		m_pCurSubSymbol = tmp;
 	}
-
 	uint32_t numBytesRead = 0;
+	if (m_pDynSymbols != NULL)
+	{
+		printf("m_pDynSymbols was not null.\n");
+		return ADSERR_DEVICE_NOMEMORY;
+	}
+	AdsSymbolUploadInfo2 info;
+	printf("AdsSyncReadReqEx2(m_amsClientPort, &m_amsAddr, ADSIGRP_SYM_UPLOADINFO2, 0, sizeof(info), &info, &numBytesRead);\n");
+	nResult = AdsSyncReadReqEx2(m_amsClientPort, &m_amsAddr, ADSIGRP_SYM_UPLOADINFO2, 0, sizeof(info), &info, &numBytesRead);
+	if (nResult != ADSERR_NOERR)
+	{
+		printf("Error when trying to get ADSIGRP_SYM_UPLOADINFO2: %lu\n", nResult);
+		return nResult;
+	}
+	printf("info.nSymSize = %u\n", info.nSymSize);
+	char *pSym = new char[info.nSymSize];
+	if (!pSym)
+	{
+		printf("Failed to allocate memory for pointer to symbols.\n");
+		return ADSERR_DEVICE_NOMEMORY;
+	}
+	printf("AdsSyncReadReqEx2(m_amsClientPort, &m_amsAddr, ADSIGRP_SYM_UPLOAD, 0, info.nSymSize, pSym, &numBytesRead);\n");
+	nResult = AdsSyncReadReqEx2(m_amsClientPort, &m_amsAddr, ADSIGRP_SYM_UPLOAD, 0, info.nSymSize, pSym, &numBytesRead);
+	if (nResult != ADSERR_NOERR)
+	{
+		printf("Error when trying to get ADSIGRP_SYM_UPLOAD: %lu\n", nResult);
+		return nResult;
+	}
+	printf("info.nDatatypeSize = %u\n", info.nDatatypeSize);
+	char *pDT = new char[info.nDatatypeSize];
+	if (!pDT)
+	{
+		printf("Failed to allocate memory for pointer to datatypes.\n");
+		return ADSERR_DEVICE_NOMEMORY;
+	}
+	printf("AdsSyncReadReqEx2(m_amsClientPort, &m_amsAddr, ADSIGRP_SYM_DT_UPLOAD, 0, info.nDatatypeSize, pDT, &numBytesRead);\n");
+	nResult = AdsSyncReadReqEx2(m_amsClientPort, &m_amsAddr, ADSIGRP_SYM_DT_UPLOAD, 0, info.nDatatypeSize, pDT, &numBytesRead);
+	if (nResult != ADSERR_NOERR)
+	{
+		printf("Error when trying to get ADSIGRP_SYM_DT_UPLOAD: %lu\n", nResult);
+		return nResult;
+	}
+	m_pDynSymbols = new CAdsParseSymbols(pSym, info.nSymSize, pDT, info.nDatatypeSize);
 	if (m_pDynSymbols == NULL)
 	{
-		AdsSymbolUploadInfo2 info;
-		nResult = AdsSyncReadReqEx2(m_amsClientPort, &m_amsAddr, ADSIGRP_SYM_UPLOADINFO2, 0, sizeof(info), &info, &numBytesRead);
-		if (nResult == ADSERR_NOERR)
-		{
-			char *pSym = new char[info.nSymSize];
-			if (pSym)
-			{
-				nResult = AdsSyncReadReqEx2(m_amsClientPort, &m_amsAddr, ADSIGRP_SYM_UPLOAD, 0, info.nSymSize, pSym, &numBytesRead);
-				if (nResult == ADSERR_NOERR)
-				{
-					char *pDT = new char[info.nDatatypeSize];
-					if (pDT)
-					{
-						nResult = AdsSyncReadReqEx2(m_amsClientPort, &m_amsAddr, ADSIGRP_SYM_DT_UPLOAD, 0, info.nDatatypeSize, pDT, &numBytesRead);
-						if (nResult == ADSERR_NOERR)
-						{
-							m_pDynSymbols = new CAdsParseSymbols(pSym, info.nSymSize, pDT, info.nDatatypeSize);
-							if (m_pDynSymbols == NULL)
-								nResult = ADSERR_DEVICE_NOMEMORY;
-						}
-						delete pDT;
-					}
-				}
-				delete pSym;
-			}
-		}
+		printf("Error when trying to construct CAdsParseSymbols: %lu\n", nResult);
+		return ADSERR_DEVICE_NOMEMORY;
 	}
+	delete pDT;
+	delete pSym;
 
 	return nResult;
 }
 
-long AdsSymbolParser::AdsGetNextDynSymbol(long navType, std::string &strName, std::string &strFullName,
+long AdsSymbolParser::AdsGetNextDynSymbol(uint32_t navType, std::string &strName, std::string &strFullName,
 										  std::string &strType, std::string &strComment, uint32_t &adsType,
 										  uint32_t &cbSymbolSize, uint32_t &nIndexGroup, uint32_t &nIndexOffset)
 {
@@ -380,7 +428,7 @@ long AdsSymbolParser::AdsGetNextDynSymbol(long navType, std::string &strName, st
 					if (m_pDynSymbols->SubSymbolInfo(main, 0, info))
 					{
 						ADSDYNSYM_SUBINFO *pTmp = m_pCurSubSymbol;
-						m_pCurSubSymbol = new ADSDYNSYM_SUBINFO;
+						m_pCurSubSymbol = new ADSDYNSYM_SUBINFO();
 						if (m_pCurSubSymbol)
 						{
 							m_pCurSubSymbol->infoParent = main;
@@ -403,7 +451,7 @@ long AdsSymbolParser::AdsGetNextDynSymbol(long navType, std::string &strName, st
 				{
 					if (m_pDynSymbols->SubSymbolInfo(main, 0, info))
 					{
-						m_pCurSubSymbol = new ADSDYNSYM_SUBINFO;
+						m_pCurSubSymbol = new ADSDYNSYM_SUBINFO();
 						if (m_pCurSubSymbol)
 						{
 							m_pCurSubSymbol->infoParent = main;
@@ -485,4 +533,9 @@ long AdsSymbolParser::AdsGetNextDynSymbol(long navType, std::string &strName, st
 	}
 
 	return nResult;
+}
+
+const AdsSymbolEntryAccess *AdsSymbolEntryAccess::maybeNext() const
+{
+	return reinterpret_cast<const AdsSymbolEntryAccess *>(reinterpret_cast<const char *>(this) + entryLength);
 }

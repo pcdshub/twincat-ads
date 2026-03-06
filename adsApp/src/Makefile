@@ -31,6 +31,7 @@ ADSSUPPORTSOURCES = \
 
 ads_SRCS += adsAsynPortDriver.cpp
 ads_SRCS += adsAsynPortDriverUtils.cpp
+ads_SRCS += AdsParseSymbols.cpp
 ads_SRCS += ${ADSSUPPORTSOURCES}
 
 ads_LIBS += asyn

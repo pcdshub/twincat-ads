@@ -298,7 +298,7 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
                      asynInt32Mask | asynFloat64Mask | asynInt64Mask | asynInt8ArrayMask | asynInt16ArrayMask | asynInt32ArrayMask | asynInt64ArrayMask | asynFloat32ArrayMask | asynFloat64ArrayMask | asynDrvUserMask | asynOctetMask, /* Interface mask */
                      asynInt32Mask | asynFloat64Mask | asynInt64Mask | asynInt8ArrayMask | asynInt16ArrayMask | asynInt32ArrayMask | asynInt64ArrayMask | asynFloat32ArrayMask | asynFloat64ArrayMask | asynDrvUserMask | asynOctetMask, /* Interrupt mask */
                      ASYN_CANBLOCK,                                                                                                                                                                                                      /* asynFlags.  This driver does not block and it is not multi-device, so flag is 0 */
-                     autoConnect,                                                                                                                                                                                                        /* Autoconnect */
+                     0,                                                                                                                                                                                                        /* Autoconnect */
                      priority,                                                                                                                                                                                                           /* Default priority */
                      0)                                                                                                                                                                                                                  /* Default stack size*/
 {
@@ -522,7 +522,7 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
       {
         asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
                   "%s:%s: found symbol: %s.\n",
-                  driverName, __func__, adsSymbolEntryPair.first);
+                  driverName, __func__, adsSymbolEntryPair.first.c_str());
       }
       return;
     }
