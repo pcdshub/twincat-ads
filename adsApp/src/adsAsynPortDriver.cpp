@@ -406,6 +406,8 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
     asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
               "%s:%s: failed to get ads client port. Fallback to default client port.\n", driverName, __func__);
   }
+  AmsAddr addr = {remoteNetId_, amsportDefault_};
+  adsSymbolParserList_.emplace_back(adsClientPort, addr);
 
   // Add first param for other access (like motor record or stream device).
   int index;
@@ -507,9 +509,21 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
     }
     else if (adsState == ADSSTATE_RUN)
     {
-      asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+      asynPrint(pasynUserSelf, ASYN_TRACE_INFO,
                 "%s:%s: connection established for the ads server at ip = %s, amsnetid = %s.\n",
                 driverName, __func__, ipaddr_.c_str(), amsaddr_.c_str());
+      if (!adsSymbolParserList_[0].load(adsSymbolMap_))
+      {
+        asynPrint(pasynUserSelf, ASYN_TRACE_INFO,
+                  "%s:%s: loaded all ads symbols for port %u.\n",
+                  driverName, __func__, amsportDefault_);
+      }
+      for (auto &adsSymbolEntryPair : adsSymbolMap_)
+      {
+        asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+                  "%s:%s: found symbol: %s.\n",
+                  driverName, __func__, adsSymbolEntryPair.first);
+      }
       return;
     }
   }
@@ -3771,21 +3785,37 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
   AmsAddr amsServer;
 
   amsServer = {remoteNetId_, amsPort};
-  const long infoStatus = AdsSyncReadWriteReqEx2(adsClientPort,
-                                                 &amsServer,
-                                                 ADSIGRP_SYM_INFOBYNAMEEX,
-                                                 0,
-                                                 sizeof(adsSymbolEntry),
-                                                 &info,
-                                                 strlen(varName),
-                                                 varName,
-                                                 &bytesRead);
-  *errorCode = infoStatus;
-
-  if (infoStatus)
+  auto it = adsSymbolMap_.find(varName);
+  if (it == adsSymbolMap_.end())
   {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Get symbolic information failed for %s with: %s (0x%lx)\n", driverName, __func__, varName, adsErrorToString(infoStatus), infoStatus);
-    return asynError;
+    const long infoStatus = AdsSyncReadWriteReqEx2(adsClientPort,
+                                                   &amsServer,
+                                                   ADSIGRP_SYM_INFOBYNAMEEX,
+                                                   0,
+                                                   sizeof(adsSymbolEntry),
+                                                   &info,
+                                                   strlen(varName),
+                                                   varName,
+                                                   &bytesRead);
+    *errorCode = infoStatus;
+
+    if (infoStatus)
+    {
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Get symbolic information failed for %s with: %s (0x%lx)\n", driverName, __func__, varName, adsErrorToString(infoStatus), infoStatus);
+      return asynError;
+    }
+  }
+  else
+  {
+    info.entryLen = it->second.entryLength;
+    info.iGroup = it->second.iGroup;
+    info.iOffset = it->second.iOffs;
+    info.size = it->second.size;
+    info.dataType = it->second.dataType;
+    info.flags = it->second.flags;
+    info.nameLength = it->second.nameLength;
+    info.typeLength = it->second.typeLength;
+    info.commentLength = it->second.commentLength;
   }
 
   info.variableName = info.buffer;
