@@ -113,7 +113,7 @@ public:
   int getAdsParamCount();
   bool isCallbackAllowed(adsParamInfo &paramInfo);
   bool isCallbackAllowed(uint16_t amsPort);
-  bool okToProcessBulkReads() const;
+  bool okToProcessBulkReads();
   bool setOkToProcessBulkReads(bool ok);
   void emplaceInDataCallbackQueue(adsParamInfo &paramInfo, const AdsNotificationHeader *pNotification);
 
@@ -299,7 +299,7 @@ private:
 class AdsClientPortGuard
 {
 public:
-  AdsClientPortGuard(adsAsynPortDriver &adsAsynPortDriver);
+  AdsClientPortGuard(adsAsynPortDriver &adsAsynPortDriver, long &adsClientPort);
   ~AdsClientPortGuard();
   long getAdsClientPort() const;
 

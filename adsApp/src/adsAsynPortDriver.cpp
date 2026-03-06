@@ -39,7 +39,7 @@
 #include <epicsExport.h>
 
 static const char *driverName = "adsAsynPortDriver";
-static adsAsynPortDriver *adsAsynPortObj;
+static std::unique_ptr<adsAsynPortDriver> adsAsynPortObj;
 static long oldTimeStamp = 0;
 static struct timeval oldTime = {0};
 static int allowCallbackEpicsState = 0;
@@ -112,7 +112,7 @@ static void getEpicsState(initHookState state)
     }
     adsAsynPortObj->fireAllCallbacksLock();
     adsAsynPortObj->setOkToProcessBulkReads(true);
-    printf("Begin polling PLC!\n");
+    printf("Begin polling PLC\n");
     break;
   case initHookAtIocPause: /* Start of iocPause command */
     break;
@@ -158,17 +158,11 @@ static void adsSymbolsChangedCallback(const AmsAddr *pAddr, const AdsNotificatio
   asynUser *asynTraceUser = adsAsynPortObj->getTraceAsynUser();
 
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
+  AdsClientPortGuard adsClientPortGuard(*adsAsynPortObj, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*adsAsynPortObj);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
-  {
-    adsClientPort = adsAsynPortObj->getAdsClientPortNumberForThreadId(0);
-    asynPrint(asynTraceUser, ASYN_TRACE_ERROR,
-              "%s:%s: failed to get ads client port. Fallback to default client port.\n", driverName, __func__);
+    throw std::runtime_error(string_format(
+        "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
   }
 
   asynPrint(asynTraceUser, ASYN_TRACE_INFO, "%s:%s: Symbols changed for Ams-port %u.\n", driverName, __func__, pAddr->port);
@@ -205,7 +199,7 @@ static void adsDataCallback(const AmsAddr *pAddr, const AdsNotificationHeader *p
   oldTime = newTime;
 
   // Ensure hUser is within range
-  if (hUser > (uint32_t)(adsAsynPortObj->getParamTableSize() - 1))
+  if (hUser > (uint32_t)(adsAsynPortObj->getParamTableSize() - 1) || hUser < 0)
   {
     asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: hUser out of range: %u.\n", driverName, __func__, hUser);
     return;
@@ -308,6 +302,13 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
                      priority,                                                                                                                                                                                                           /* Default priority */
                      0)                                                                                                                                                                                                                  /* Default stack size*/
 {
+  if (!pasynUserSelf)
+  {
+    throw std::runtime_error(string_format(
+        "%s:%s: pasynUserSelf was a null pointer. Failure to initialize.\n",
+        driverName, __func__));
+  }
+
   // Extra Debugging from the beginning: pasynTrace->setTraceMask(pasynUserSelf, 0x11);
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
@@ -318,19 +319,25 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
   if (paramTableSize < 1)
   {
     // If paramTableSize_==1 then only stream device or motor record can use the driver through the "default access" param below.
-    throw std::runtime_error(string_format("%s:%s: Param table size too small: %d\n", driverName, __func__, paramTableSize));
+    throw std::runtime_error(string_format(
+        "%s:%s: Param table size too small: %d\n",
+        driverName, __func__, paramTableSize));
   }
   adsParamArray_.reserve(paramTableSize);
 
   if (!ipaddr)
   {
-    throw std::runtime_error(string_format("%s:%s: ip address passed was a null pointer.\n", driverName, __func__));
+    throw std::runtime_error(string_format(
+        "%s:%s: ip address passed was a null pointer.\n",
+        driverName, __func__));
   }
   ipaddr_ = ipaddr;
 
   if (!amsaddr)
   {
-    throw std::runtime_error(string_format("%s:%s: ams address passed was a null pointer.\n", driverName, __func__));
+    throw std::runtime_error(string_format(
+        "%s:%s: ams address passed was a null pointer.\n",
+        driverName, __func__));
   }
   amsaddr_ = amsaddr;
   remoteNetId_ = {0, 0, 0, 0, 0, 0};
@@ -343,11 +350,15 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
                      &remoteNetId_.b[5]);
   if (nvals != 6)
   {
-    throw std::runtime_error(string_format("%s:%s: AMS address invalid %s.\n", driverName, __func__, amsaddr_));
+    throw std::runtime_error(string_format(
+        "%s:%s: AMS address invalid %s.\n",
+        driverName, __func__, amsaddr_));
   }
   if (isInvalidPortNumber(amsport))
   {
-    throw std::runtime_error(string_format("%s:%s: invalid default ams port: %d.\n", driverName, __func__, amsport));
+    throw std::runtime_error(string_format(
+        "%s:%s: invalid default ams port: %d.\n",
+        driverName, __func__, amsport));
   }
 
   amsportDefault_ = amsport;
@@ -388,15 +399,12 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
 
   // Create an ads client port that will automatically be closed when this function leaves scope.
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
-  {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
+  AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
     adsClientPort = getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: failed to get ads client port. Fallback to default client port.\n", driverName, __func__);
   }
 
   // Add first param for other access (like motor record or stream device).
@@ -535,13 +543,8 @@ adsAsynPortDriver::~adsAsynPortDriver()
 void adsAsynPortDriver::cyclicThread()
 {
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
-  {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
+  AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
     throw std::runtime_error(string_format(
         "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
@@ -641,10 +644,11 @@ void adsAsynPortDriver::cyclicThread()
       }
       if (adsServerPort.retryCount > 10)
       {
+        if (!adsServerPort.stale)
+          asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                    "%s:%s: port %u marked stale. Perhaps it does not have an ads state to read.\n",
+                    driverName, __func__, adsServerPort.amsPort);
         adsServerPort.stale = true;
-        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
-                  "%s:%s: port %u marked stale. Perhaps it does not have an ads state to read.\n",
-                  driverName, __func__, adsServerPort.amsPort);
       }
       allStale = allStale && adsServerPort.stale;
       if (allStale)
@@ -666,13 +670,8 @@ void adsAsynPortDriver::bulkReadThread()
   asynUser *asynTraceUser = getTraceAsynUser();
 
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
-  {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
+  AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
     throw std::runtime_error(string_format(
         "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
@@ -680,7 +679,7 @@ void adsAsynPortDriver::bulkReadThread()
 
   while (true)
   {
-    while (!okToProcessBulkReads_ || !routeEstablished_)
+    while (!okToProcessBulkReads() || !routeEstablished_)
     {
       epicsThreadSleep(0.5);
       continue;
@@ -1030,7 +1029,7 @@ asynStatus adsAsynPortDriver::refreshParams(long adsClientPort, uint16_t amsPort
       adsAddSymbolsChangedCallback(adsClientPort, port);
     }
   }
-  setOkToProcessBulkReads(true);
+  setOkToProcessBulkReads(allowCallbackEpicsState);
   return asynSuccess;
 }
 
@@ -1108,13 +1107,8 @@ asynStatus adsAsynPortDriver::connect(asynUser *pasynUser)
   asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: thread: %s\n", driverName, __func__, epicsThreadGetNameSelf());
 
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
-  {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
+  AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
     throw std::runtime_error(string_format(
         "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
@@ -1187,13 +1181,8 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser, const char *drv
   asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, __func__, drvInfo);
 
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
-  {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
+  AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
     throw std::runtime_error(string_format(
         "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
@@ -1223,9 +1212,9 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser, const char *drv
   }
 
   if (!vcnt++)
-    asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: linking EPICS PVs to PLC variables...\n", driverName, __func__);
+    asynPrint(pasynUser, ASYN_TRACE_INFO, "%s:%s: linking EPICS PVs to PLC variables...\n", driverName, __func__);
   if (vcnt % 1000 == 0)
-    asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: %d...\n", driverName, __func__, vcnt);
+    asynPrint(pasynUser, ASYN_TRACE_INFO, "%s:%s: %d...\n", driverName, __func__, vcnt);
 
   // Collect data from drvInfo string and recordpasynUser->reason=index;
   adsParamArray_.emplace_back();
@@ -1247,7 +1236,7 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser, const char *drv
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: createParam() failed.", driverName, __func__);
     return asynError;
   }
-  asynPrint(pasynUser, ASYN_TRACE_INFO, "%s:%s: Parameter created: \"%s\" (index %d).\n", driverName, __func__, drvInfo, index);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: Parameter created: \"%s\" (index %d).\n", driverName, __func__, drvInfo, index);
 
   // Set default value for basic types...
   switch (paramInfo.asynType)
@@ -1538,13 +1527,8 @@ int adsAsynPortDriver::adsGetBulkTimeStamp(uint16_t amsPort)
   if (bulkTs_[i].refreshNeeded)
   {
     long adsClientPort = 0;
-    std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-    try
-    {
-      adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-      adsClientPort = adsClientPortGuard->getAdsClientPort();
-    }
-    catch (std::runtime_error &e)
+    AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+    if (isInvalidPortNumber(adsClientPort))
     {
       throw std::runtime_error(string_format(
           "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
@@ -1597,17 +1581,17 @@ asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo, adsP
   }
   while (!status)
   {
-    paramInfo.recordType = strdup(dbGetRecordTypeName(pdbentry));
+    paramInfo.recordType = dbGetRecordTypeName(pdbentry);
     status = dbFirstRecord(pdbentry);
     while (!status)
     {
-      paramInfo.recordName = strdup(dbGetRecordName(pdbentry));
+      paramInfo.recordName = dbGetRecordName(pdbentry);
       if (!dbIsAlias(pdbentry))
       {
         status = dbFindField(pdbentry, "INP");
         if (!status)
         {
-          paramInfo.inp = strdup(dbGetString(pdbentry));
+          paramInfo.inp = dbGetString(pdbentry);
           isInput = true;
           char port[ADS_MAX_FIELD_CHAR_LENGTH];
           int adr;
@@ -1630,7 +1614,7 @@ asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo, adsP
         status = dbFindField(pdbentry, "OUT");
         if (!status)
         {
-          paramInfo.out = strdup(dbGetString(pdbentry));
+          paramInfo.out = dbGetString(pdbentry);
           isOutput = true;
           char port[ADS_MAX_FIELD_CHAR_LENGTH];
           int adr;
@@ -2086,13 +2070,8 @@ asynStatus adsAsynPortDriver::readOctet(asynUser *pasynUser, char *value, size_t
   asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
-  {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
+  AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
     throw std::runtime_error(string_format(
         "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
@@ -2210,13 +2189,8 @@ asynStatus adsAsynPortDriver::writeOctet(asynUser *pasynUser, const char *value,
   asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: %s\n", driverName, __func__, value);
 
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
-  {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
+  AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
     throw std::runtime_error(string_format(
         "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
@@ -2696,13 +2670,8 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
   }
 
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
-  {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
+  AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
     throw std::runtime_error(string_format(
         "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
@@ -2838,13 +2807,8 @@ asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
   }
 
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
-  {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
+  AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
     throw std::runtime_error(string_format(
         "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
@@ -2949,13 +2913,8 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
   }
 
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
-  {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
+  AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
     throw std::runtime_error(string_format(
         "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
@@ -3178,13 +3137,8 @@ asynStatus adsAsynPortDriver::adsGenericArrayWrite(asynUser *pasynUser, long all
   }
 
   long adsClientPort = 0;
-  std::shared_ptr<AdsClientPortGuard> adsClientPortGuard;
-  try
-  {
-    adsClientPortGuard = std::make_shared<AdsClientPortGuard>(*this);
-    adsClientPort = adsClientPortGuard->getAdsClientPort();
-  }
-  catch (std::runtime_error &e)
+  AdsClientPortGuard adsClientPortGuard(*this, adsClientPort);
+  if (isInvalidPortNumber(adsClientPort))
   {
     throw std::runtime_error(string_format(
         "%s:%s: failed to open ads client port for this thread.\n", driverName, __func__));
@@ -5296,17 +5250,17 @@ extern "C"
     }
 
     printf("Constructing adsAsynPortDriver...\n");
-    adsAsynPortObj = new adsAsynPortDriver(portName,
-                                           ipaddr,
-                                           amsaddr,
-                                           amsport,
-                                           asynParamTableSize,
-                                           priority,
-                                           noAutoConnect == 0,
-                                           defaultSampleTimeMS,
-                                           maxDelayTimeMS,
-                                           adsTimeoutMS,
-                                           (ADSTIMESOURCE)defaultTimeSource);
+    adsAsynPortObj.reset(new adsAsynPortDriver(portName,
+                                               ipaddr,
+                                               amsaddr,
+                                               amsport,
+                                               asynParamTableSize,
+                                               priority,
+                                               noAutoConnect == 0,
+                                               defaultSampleTimeMS,
+                                               maxDelayTimeMS,
+                                               adsTimeoutMS,
+                                               (ADSTIMESOURCE)defaultTimeSource));
     printf("adsAsynPortDriver constructed.\n");
     if (adsAsynPortObj)
     {
@@ -5460,12 +5414,14 @@ asynStatus adsAsynPortDriver::delAdsClientPortNumberForThreadId(epicsThreadId th
   return asynSuccess;
 }
 
-bool adsAsynPortDriver::okToProcessBulkReads() const
+bool adsAsynPortDriver::okToProcessBulkReads()
 {
+  std::lock_guard<std::recursive_mutex> lg(adsBulkInfoUpdateMutex_);
   return okToProcessBulkReads_;
 }
 bool adsAsynPortDriver::setOkToProcessBulkReads(bool ok)
 {
+  std::lock_guard<std::recursive_mutex> lg(adsBulkInfoUpdateMutex_);
   okToProcessBulkReads_ = ok;
   return okToProcessBulkReads_;
 }
@@ -5497,19 +5453,16 @@ void adsAsynPortDriver::emplaceInDataCallbackQueue(adsParamInfo &paramInfo, cons
   datacbqueue.emplace(paramInfo, pNotification);
 }
 
-AdsClientPortGuard::AdsClientPortGuard(adsAsynPortDriver &adsAsynPortDriver)
+AdsClientPortGuard::AdsClientPortGuard(adsAsynPortDriver &adsAsynPortDriver, long &adsClientPort)
     : adsAsynPortDriver_(adsAsynPortDriver)
 {
   threadId_ = epicsThreadGetIdSelf();
   adsClientPort_ = adsAsynPortDriver_.addAdsClientPortNumberForThreadId(threadId_);
-  if (isInvalidPortNumber(adsClientPort_))
-  {
-    throw std::runtime_error("Failed to create ads client port.");
-  }
+  adsClientPort = adsClientPort_;
 }
 AdsClientPortGuard::~AdsClientPortGuard()
 {
-  adsAsynPortDriver_.delAdsClientPortNumberForThreadId(epicsThreadGetIdSelf());
+  adsAsynPortDriver_.delAdsClientPortNumberForThreadId(threadId_);
 }
 long AdsClientPortGuard::getAdsClientPort() const
 {
