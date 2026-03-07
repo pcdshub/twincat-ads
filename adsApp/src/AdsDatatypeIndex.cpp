@@ -2,6 +2,7 @@
 #include "AdsDatatypeEntry.h"
 #include <assert.h>
 #include <sstream>
+#include <iostream>
 
 AdsDatatypeIndex::~AdsDatatypeIndex()
 {
@@ -13,6 +14,8 @@ AdsDatatypeIndex::~AdsDatatypeIndex()
 
 void AdsDatatypeIndex::build()
 {
+  std::cout << "Building datatype index..." << std::endl;
+
   auto end = mDataTypeUpload.data() + mDataTypeUpload.size();
   auto current = reinterpret_cast<const AdsDatatypeEntry *>(mDataTypeUpload.data());
 
@@ -24,7 +27,7 @@ void AdsDatatypeIndex::build()
       printf("Datatype record extends past end of buffer. Skipped.");
       break;
     }
-    auto currentName = current->name();
+    std::string currentName = current->name();
     mNameRawIndex[currentName] = current;
     auto entry = new Entry(currentName, 0, current);
     mEntries.push_back(entry);
@@ -34,7 +37,7 @@ void AdsDatatypeIndex::build()
 }
 
 AdsDatatypeIndex::Entry::Entry(const std::string &name, uint32_t offset, const AdsDatatypeEntry *_adsType, const Entry *_parent)
-    : mParent(_parent), mName(name), mOffset(offset), mAdsType(_adsType)
+    : mName(name), mParent(_parent), mOffset(offset), mAdsType(_adsType)
 {
 }
 
@@ -57,14 +60,23 @@ int AdsDatatypeIndex::Entry::arrayCount(const AdsDatatypeEntry *adsType, const A
     auto arrayInfo = adsType->arrayInfo()[iArrayDim];
     count *= arrayInfo.elements;
   }
-  auto type = index.mNameRawIndex.at(adsType->type());
-  if (!type)
+  std::string adsTypeStr = adsType->type();
+  auto it = index.mNameRawIndex.find(adsTypeStr);
+  if (it == index.mNameRawIndex.end())
   {
     printf("Unresolved type: [%s] in [%s]\n", adsType->type(), adsType->name());
   }
-  else if (count * type->size != adsType->size)
+  else
   {
-    return 0;
+    auto type = index.mNameRawIndex.at(adsTypeStr);
+    if (type && (count * type->size != adsType->size))
+    {
+      return 0;
+    }
+    else if (!type)
+    {
+      printf("Unresolved type: [%s] in [%s]\n", adsType->type(), adsType->name());
+    }
   }
   return count;
 }
@@ -101,18 +113,27 @@ int AdsDatatypeIndex::Entry::childCount(const AdsDatatypeIndex &index) const
     return mChildren.size();
 
   std::string typeName = mAdsType->type();
-  auto declaration = !typeName.empty() ? index.mNameRawIndex.at(typeName) : mAdsType;
-
-  if (!declaration)
+  auto declaration = mAdsType;
+  if (!typeName.empty())
   {
-    printf("Unresolved type [%s] in [%s]\n", typeName.c_str(), mAdsType->name());
-    return 0;
+    auto it = index.mNameRawIndex.find(typeName);
+    if (it == index.mNameRawIndex.end())
+    {
+      printf("Unresolved type [%s] in [%s]\n", typeName.c_str(), mAdsType->name());
+      return 0;
+    }
+    declaration = index.mNameRawIndex.at(typeName);
+    if (!declaration)
+    {
+      printf("Unresolved type [%s] in [%s]\n", typeName.c_str(), mAdsType->name());
+      return 0;
+    }
   }
 
   return declaration->subItemCount + arrayCount(declaration, index);
 }
 
-std::list<const AdsDatatypeIndex::Entry *> AdsDatatypeIndex::Entry::children(const AdsDatatypeIndex &index)
+std::list<AdsDatatypeIndex::Entry *> AdsDatatypeIndex::Entry::children(const AdsDatatypeIndex &index)
 {
   if (mChildrenLoaded)
     return mChildren;
@@ -120,14 +141,23 @@ std::list<const AdsDatatypeIndex::Entry *> AdsDatatypeIndex::Entry::children(con
   mChildrenLoaded = true;
 
   std::string typeName = mAdsType->type();
-  auto declaration = !typeName.empty() ? index.mNameRawIndex.at(typeName) : mAdsType;
-
-  if (!declaration)
+  
+  auto declaration = mAdsType;
+  if (!typeName.empty())
   {
-    printf("Unresolved type [%s] in [%s]\n", typeName.c_str(), mAdsType->name());
-    return mChildren;
+    auto it = index.mNameRawIndex.find(typeName);
+    if (it == index.mNameRawIndex.end())
+    {
+      printf("Unresolved type [%s] in [%s]\n", typeName.c_str(), mAdsType->name());
+      return mChildren;
+    }
+    declaration = index.mNameRawIndex.at(typeName);
+    if (!declaration)
+    {
+      printf("Unresolved type [%s] in [%s]\n", typeName.c_str(), mAdsType->name());
+      return mChildren;
+    }
   }
-
   auto currentChild = declaration->subItems();
   for (int iChild = 0; iChild < declaration->subItemCount; ++iChild)
   {

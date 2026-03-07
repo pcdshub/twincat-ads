@@ -16,6 +16,10 @@
 #define ADSDATATYPEENTRY_H_
 
 #include <cstdint>
+#include <string>
+#include <iostream>
+
+#pragma pack(push, 1)
 
 #define ADSDATATYPEFLAG_DATATYPE 1
 #define ADSDATATYPEFLAG_DATAITEM 2
@@ -68,7 +72,7 @@ enum class AdsDatatypeId : int
   MaxTypes = 34
 };
 
-const char *adsDatatypeIdToString(AdsDatatypeId type);
+std::string adsDatatypeIdToString(AdsDatatypeId type);
 
 struct AdsDatatypeEntry
 {
@@ -111,10 +115,31 @@ struct AdsDatatypeEntry
   {
     return reinterpret_cast<const AdsDatatypeEntry *>(reinterpret_cast<const char *>(arrayInfo()) + arrayDim * sizeof(AdsDatatypeArrayInfo));
   }
-  class QJsonObject toJson() const;
+  void print() const
+  {
+      std::cout << "sizeof(AdsDatatypeEntry): [" << sizeof(AdsDatatypeEntry) << "]" << std::endl;
+      std::cout << "uint32_t entryLength;   : [" << entryLength    << "]" << std::endl;
+      std::cout << "uint32_t version;       : [" << version        << "]" << std::endl;
+      std::cout << "uint32_t hashValue;     : [" << hashValue      << "]" << std::endl;
+      std::cout << "uint32_t typeHashValue; : [" << typeHashValue  << "]" << std::endl;
+      std::cout << "uint32_t size;          : [" << size           << "]" << std::endl;
+      std::cout << "uint32_t offs;          : [" << offs           << "]" << std::endl;
+      std::cout << "uint32_t dataType;      : [" << dataType       << "]" << std::endl;
+      std::cout << "uint32_t flags;         : [" << flags          << "]" << std::endl;
+      std::cout << "uint16_t nameLength;    : [" << nameLength     << "]" << std::endl;
+      std::cout << "uint16_t typeLength;    : [" << typeLength     << "]" << std::endl;
+      std::cout << "uint16_t commentLength; : [" << commentLength  << "]" << std::endl;
+      std::cout << "uint16_t arrayDim;      : [" << arrayDim       << "]" << std::endl;
+      std::cout << "uint16_t subItemCount;  : [" << subItemCount   << "]" << std::endl;
+  }
 };
 
 AdsDatatypeEntry *AdsDatatypeStructItem(AdsDatatypeEntry *p,
                                         unsigned short iItem);
+
+                                        
+std::string adsDatatypeFlagsToString(uint32_t flags);
+
+#pragma pack(pop)
 
 #endif // ADSDATATYPEENTRY_H_

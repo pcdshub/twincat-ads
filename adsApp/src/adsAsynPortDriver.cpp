@@ -298,7 +298,7 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
                      asynInt32Mask | asynFloat64Mask | asynInt64Mask | asynInt8ArrayMask | asynInt16ArrayMask | asynInt32ArrayMask | asynInt64ArrayMask | asynFloat32ArrayMask | asynFloat64ArrayMask | asynDrvUserMask | asynOctetMask, /* Interface mask */
                      asynInt32Mask | asynFloat64Mask | asynInt64Mask | asynInt8ArrayMask | asynInt16ArrayMask | asynInt32ArrayMask | asynInt64ArrayMask | asynFloat32ArrayMask | asynFloat64ArrayMask | asynDrvUserMask | asynOctetMask, /* Interrupt mask */
                      ASYN_CANBLOCK,                                                                                                                                                                                                      /* asynFlags.  This driver does not block and it is not multi-device, so flag is 0 */
-                     0,                                                                                                                                                                                                        /* Autoconnect */
+                     0,                                                                                                                                                                                                                  /* Autoconnect */
                      priority,                                                                                                                                                                                                           /* Default priority */
                      0)                                                                                                                                                                                                                  /* Default stack size*/
 {
@@ -520,9 +520,11 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
       }
       for (auto &adsSymbolEntryPair : adsSymbolMap_)
       {
-        asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
-                  "%s:%s: found symbol: %s.\n",
-                  driverName, __func__, adsSymbolEntryPair.first.c_str());
+        // asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+        //           "%s:%s: found symbol: %s.\n",
+        //           driverName, __func__, adsSymbolEntryPair.first.c_str());
+        printf("%s:%s: found symbol: %s.\n",
+               driverName, __func__, adsSymbolEntryPair.first.c_str());
       }
       return;
     }
@@ -839,7 +841,7 @@ void adsAsynPortDriver::bulkReadThread()
           paramInfo->dataBulkReadLastRead = paramInfo->dataBulkReadThisRead;
         }
       }
-      callbackQueueShow(0);
+      //callbackQueueShow(0);
       gettimeofday(&now, NULL);
       bulkReadTimeElapsed_us_ = (now.tv_sec - start.tv_sec) * 1000000 +
                                 (now.tv_usec - start.tv_usec);
@@ -3807,15 +3809,15 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
   }
   else
   {
-    info.entryLen = it->second.entryLength;
-    info.iGroup = it->second.iGroup;
-    info.iOffset = it->second.iOffs;
-    info.size = it->second.size;
-    info.dataType = it->second.dataType;
-    info.flags = it->second.flags;
-    info.nameLength = it->second.nameLength;
-    info.typeLength = it->second.typeLength;
-    info.commentLength = it->second.commentLength;
+    info.entryLen = it->second->entryLength;
+    info.iGroup = it->second->iGroup;
+    info.iOffset = it->second->iOffs;
+    info.size = it->second->size;
+    info.dataType = it->second->dataType;
+    info.flags = it->second->flags;
+    info.nameLength = it->second->nameLength;
+    info.typeLength = it->second->typeLength;
+    info.commentLength = it->second->commentLength;
   }
 
   info.variableName = info.buffer;

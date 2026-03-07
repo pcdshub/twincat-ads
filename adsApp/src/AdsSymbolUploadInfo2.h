@@ -13,7 +13,7 @@ struct AdsSymbolUploadInfo2
   uint32_t nMaxDynSymbols = 0;
   uint32_t nUsedDynSymbols = 0;
 
-  static AdsSymbolUploadInfo2 fromAmsAddr(long adsClientPort, const AmsAddr &amsAddr);
+  static AdsSymbolUploadInfo2 fromAmsAddr(long adsClientPort, const AmsAddr &amsAddr, long& errorCode);
 
   long uploadSymbols(long adsClientPort, const AmsAddr &amsAddr, std::vector<char> &symbols) const;
   long uploadDatatypes(long adsClientPort, const AmsAddr &amsAddr, std::vector<char> &datatypes) const;

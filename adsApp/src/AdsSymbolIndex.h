@@ -37,7 +37,7 @@ private: // methods
   void build();
 
 private: // attributes
-  std::vector<char> mSymbolUpload;
+  const std::vector<char>& mSymbolUpload;
   std::list<const AdsSymbolEntryAccess *> mEntries;
   std::unordered_map<std::string, const AdsSymbolEntryAccess *> mNameIndex;
 };

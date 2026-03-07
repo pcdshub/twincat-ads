@@ -4,7 +4,7 @@
 #include "AdsLib.h"
 #include "adsAsynPortDriverUtils.h"
 #include "asynPortDriver.h"
-#include "AdsParseSymbols.h"
+#include "AdsSymbolParser.h"
 #include <dbBase.h>
 #include <dbCommon.h>
 #include <dbStaticLib.h>
@@ -264,7 +264,7 @@ private:
   std::vector<adsParamInfo> adsParamArray_;
   std::vector<amsPortInfo> amsPortList_;
   std::vector<AdsSymbolParser> adsSymbolParserList_;
-  std::unordered_map<std::string, AdsSymbolEntry> adsSymbolMap_;
+  std::unordered_map<std::string, const AdsSymbolEntry*> adsSymbolMap_;
   ADSTIMESOURCE defaultTimeSource_;
   std::recursive_mutex threadIdToAmsClientPortMapMutex_;
   std::mutex callbacksMutex_;
