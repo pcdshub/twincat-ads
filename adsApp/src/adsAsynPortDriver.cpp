@@ -11,7 +11,6 @@
 * Created January 25, 2018
 * Edited  December 6, 2019
 */
-
 #define USE_TYPED_RSET    // Shut up about rset already!
 #include "adsAsynPortDriver.h"
 
@@ -36,8 +35,9 @@
 #include <dbAccess.h>
 #include <alarm.h>
 
-#include <fstream>    // for std::ifstream
-#include <algorithm>  // for std::transform
+#include <fstream>        // for std::ifstream
+#include <algorithm>      // for std::transform
+#include <unordered_map>  // for drvInfo record-info cache
 
 static const char *driverName="adsAsynPortDriver";
 static adsAsynPortDriver *adsAsynPortObj;
@@ -45,6 +45,7 @@ static long oldTimeStamp=0;
 static struct timeval oldTime={0};
 static int allowCallbackEpicsState=0;
 static initHookState currentEpicsState=initHookAtIocBuild;
+static struct timeval s_iocStartTime;  /* captured at initHookAtIocBuild */
 
 
 /** Callback hook for EPICS state.
@@ -67,13 +68,16 @@ static void getEpicsState(initHookState state)
 
   switch(state) {
       break;
+    case initHookAtIocBuild:
+        gettimeofday(&s_iocStartTime, NULL);
+        break;
     case initHookAfterInitDevSup:
         gettimeofday(&start, NULL);
         break;
     case initHookAfterInitDatabase:
         gettimeofday(&now, NULL);
         timersub(&now, &start, &diff);
-        printf("Database initialization took %ld.%05ld seconds.\n", diff.tv_sec, diff.tv_usec);
+        printf("Database initialization took %ld.%06ld seconds.\n", diff.tv_sec, diff.tv_usec);
         break;
     case initHookAfterScanInit:
       allowCallbackEpicsState=1;
@@ -87,6 +91,12 @@ static void getEpicsState(initHookState state)
       adsAsynPortObj->bulkOK = 1;
       printf("Begin polling PLC!\n");
       break;
+    case initHookAfterIocRunning:
+        gettimeofday(&now, NULL);
+        timersub(&now, &s_iocStartTime, &diff);
+        printf("IOC fully running — total startup time %ld.%06ld seconds.\n",
+               diff.tv_sec, diff.tv_usec);
+        break;
     default:
       break;
   }
@@ -294,7 +304,8 @@ static uint32_t datatypeToAdst(const std::string &dt)
     if (dt == "LINT")              return ADST_INT64;
     if (dt == "REAL")              return ADST_REAL32;
     if (dt == "LREAL")             return ADST_REAL64;
-    if (dt.substr(0,6) == "STRING") return ADST_STRING;
+    if (dt.substr(0,6) == "STRING" ||
+        dt.substr(0,4) == "CHAR")  return ADST_STRING;  /* CHAR[N] waveform strings */
     /* arrays and structs — treat as void/raw */
     return ADST_VOID;
 }
@@ -774,7 +785,7 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
           asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
                     "%s:%s: failed to load symbol dictionary '%s' — aborting\n",
                     driverName, functionName, symbolDictPath_);
-          return;
+          exit(-1);
       }
       asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
                 "%s:%s: symbol dictionary loaded with %zu entries\n",
@@ -813,7 +824,7 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
                             "%s:%s: SUMUP handle resolution failed — "
                             "drvUserCreate will fall back to per-record ADS calls\n",
                             driverName, functionName);
-                return;
+                exit(-1);
               }
           }
           // ─────────────────────────────────────────────────────────
@@ -906,8 +917,8 @@ void adsAsynPortDriver::cyclicThread()
           invalidateParamsLock(port->amsPort);
           port->refreshNeeded=true;
           setAlarmPortLock(port->amsPort,COMM_ALARM,INVALID_ALARM);
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
-            "%s:%s: connection failed for port %s.\n", 
+		  asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
+            "%s:%s: connection lost for port %s — exiting for clean restart.\n", 
             driverName, functionName, portName);
       exit(-1);
         }
@@ -1020,10 +1031,14 @@ void adsAsynPortDriver::bulkReadThread()
                 nTimeStamp = now.tv_sec + SEC_TO_UNIX_EPOCH;
                 nTimeStamp = (nTimeStamp * 1000000 + now.tv_usec) * 10;
             }
-            if (!stat[0])
-                srd += sizeof(uint32_t);
-            if (!stat[1])
-                srd += sizeof(uint32_t);
+            /* Always advance srd past the two timestamp data slots.
+             * SUMUP_READ writes iSize response bytes for every slot regardless
+             * of whether that slot's status is success or failure.  Skipping
+             * advancement on failure (original code) shifts srd for every
+             * subsequent param, producing zeros or garbage across the whole
+             * poll cycle whenever the timestamp handles are transiently bad. */
+            srd += bulk[i].sum[0].iSize;
+            srd += bulk[i].sum[1].iSize;
             stat += 2;
             for (uint32_t j = 2; j < cnt; j++) {
                 adsParamInfo *paramInfo=getAdsParamInfo(bulk[i].paramID[j]);
@@ -1408,21 +1423,9 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
     }
 
     if(pAdsParamArray_[index]->dataSource==ADS_DATASOURCE_AMS_STATE){ //Local variable (not in PLC) like AMS port state.
-
       return asynPortDriver::drvUserCreate(pasynUser,drvInfo,pptypeName,psize);
     }
 
-    if(!connectedAds_){
-      //try to connect without error handling
-      connect(pasynUser);
-    }
-
-    if(connectedAds_){
-      status =adsReadParam(pAdsParamArray_[index]);
-      if(status!=asynSuccess){
-        return asynError;
-      }
-    }
     return asynPortDriver::drvUserCreate(pasynUser,drvInfo,pptypeName,psize);
   }
 
@@ -1430,6 +1433,9 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
       printf("Linking EPICS PVs to PLC variables...\n");
   if (vcnt % 1000 == 0)
       printf("%d...\n", vcnt);
+
+  struct timeval t0, t1;
+  gettimeofday(&t0, NULL);
 
   //Ensure space left in param table
   if(adsParamArrayCount_>=(paramTableSize_-1)){
@@ -1504,6 +1510,54 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
       return asynError;
     }
   }
+
+  /**
+   * Per-record benchmark + dict vs resolved diagnostic.
+   *
+   * Prints one line per new param showing:
+   *   [N us]     wall-clock cost of this entire drvUserCreate call
+   *   [DICT]     what the symbol dict had, or MISS if not found
+   *   [RESOLVED] what updateParamInfoWithPLCInfo() placed in paramInfo
+   *
+   * Used to benchmark new implementation against original.
+   * Remove once benchmarking is complete.
+   */
+  gettimeofday(&t1, NULL);
+  long elapsed_us = (t1.tv_sec - t0.tv_sec) * 1000000L + (t1.tv_usec - t0.tv_usec);
+
+  if(connectedAds_ && paramInfo->dataSource == ADS_DATASOURCE_PLC
+     && !paramInfo->isAdrCommand) {
+    std::string dictKey(paramInfo->plcAdrStr);
+    std::transform(dictKey.begin(), dictKey.end(), dictKey.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
+    auto dictIt = symbolDict_.find(dictKey);
+    if(dictIt != symbolDict_.end()) {
+      const AdsSymbolDictEntry &e = dictIt->second;
+      asynPrint(pasynUser, ASYN_TRACE_ERROR,
+                "%s:%s: [%4ld us] drvInfo='%s' plcAdrStr='%s'\n"
+                "  [DICT]     symbol='%s' handle=0x%08x size=%-5u adst=%-2u resolved=%d\n"
+                "  [RESOLVED] handle=0x%08x size=%-5u adst=%-2u plcDataIsArray=%d\n",
+                driverName, functionName, elapsed_us,
+                drvInfo, paramInfo->plcAdrStr,
+                e.symbol.c_str(), e.handle, e.size, e.adst, (int)e.resolved,
+                paramInfo->hSymbolicHandle, paramInfo->plcSize,
+                paramInfo->plcDataType, (int)paramInfo->plcDataIsArray);
+    } else {
+      asynPrint(pasynUser, ASYN_TRACE_ERROR,
+                "%s:%s: [%4ld us] drvInfo='%s' plcAdrStr='%s'\n"
+                "  [DICT]     MISS (not in dict — used ADS fallback)\n"
+                "  [RESOLVED] handle=0x%08x size=%-5u adst=%-2u plcDataIsArray=%d\n",
+                driverName, functionName, elapsed_us,
+                drvInfo, paramInfo->plcAdrStr,
+                paramInfo->hSymbolicHandle, paramInfo->plcSize,
+                paramInfo->plcDataType, (int)paramInfo->plcDataIsArray);
+    }
+  } else {
+    asynPrint(pasynUser, ASYN_TRACE_ERROR,
+              "%s:%s: [%4ld us] drvInfo='%s' (non-PLC or ADR param)\n",
+              driverName, functionName, elapsed_us, drvInfo);
+  }
+
   return asynPortDriver::drvUserCreate(pasynUser,drvInfo,pptypeName,psize); //Assigns pasynUser->reason;
 }
 
@@ -1526,9 +1580,70 @@ asynStatus adsAsynPortDriver::updateParamInfoWithPLCInfo(adsParamInfo *paramInfo
     return asynSuccess;
   }
 
+  /**
+   * Dict fast-path — RTT ① elimination
+   *
+   * parsePlcInfofromDrvInfo() has already filled paramInfo->plcAdrStr with
+   * the bare symbol path (e.g. "MAIN.fbSlitX.stMotionStatus.bError").
+   * symbolDict_ is keyed on the lower-cased symbol path and was populated at
+   * construction by loadSymbolDict() + resolveSymbolHandles().
+   *
+   * If this symbol is in the dict AND its handle was resolved by the SUMUP
+   * batch call, we inject plcDataType, plcSize, and hSymbolicHandle directly
+   * into paramInfo — skipping BOTH:
+   *   RTT ①  adsGetSymInfoByName()   (ADSIGRP_SYM_INFOBYNAMEEX, 0xF009)
+   *   RTT ②  adsGetSymHandleByName() (ADSIGRP_SYM_HNDBYNAME,    0xF003)
+   *
+   * The injected plcDataType and plcSize values are consumed by the array-
+   * detection, buffer-allocation, callback-setup, and first-read code below —
+   * all of which remain unchanged regardless of which path populated them.
+   *
+   * Non-dict symbols (e.g. TwinCAT_AppInfo.db, ~24 records) fall through to
+   * the original per-record ADS calls below.
+   */
+  bool fromDict = false;
+  if (!paramInfo->isAdrCommand && !symbolDict_.empty()) {
+    std::string key(paramInfo->plcAdrStr);
+    std::transform(key.begin(), key.end(), key.begin(),
+                   [](unsigned char c){ return std::tolower(c); });
+    auto it = symbolDict_.find(key);
+    if (it != symbolDict_.end() && it->second.resolved
+        && it->second.size > 0              /* guard: JSON size must be non-zero   */
+        && it->second.adst != ADST_VOID) {  /* guard: datatype must be mappable    */
+      const AdsSymbolDictEntry &e = it->second;
+      paramInfo->plcDataType          = e.adst;
+      paramInfo->plcSize              = e.size;
+      paramInfo->hSymbolicHandle      = e.handle;
+      paramInfo->bSymbolicHandleValid = true;
+      /* plcAbsAdrValid is intentionally left false — this param uses the
+       * symbolic-handle path (ADSIGRP_SYM_VALBYHND), not the abs-address
+       * path.  adsReadParam() / adsWriteParam() / adsAddDataCallback() all
+       * check bSymbolicHandleValid before plcAbsAdrValid, so this is safe. */
+      fromDict = true;
+      asynPrint(pasynUserSelf, ASYN_TRACE_INFO,
+                "%s:%s: dict hit '%s' handle=0x%x size=%u adst=%u\n",
+                driverName, functionName,
+                paramInfo->plcAdrStr,
+                paramInfo->hSymbolicHandle,
+                paramInfo->plcSize,
+                paramInfo->plcDataType);
+    } else if (it != symbolDict_.end()) {
+      /* Entry found but unusable — log and fall back to ADS RTT */
+      asynPrint(pasynUserSelf, ASYN_TRACE_WARNING,
+                "%s:%s: dict entry for '%s' unusable "
+                "(resolved=%d size=%u adst=%u) — falling back to ADS\n",
+                driverName, functionName,
+                paramInfo->plcAdrStr,
+                (int)it->second.resolved,
+                it->second.size,
+                it->second.adst);
+    }
+  }
+
   // Read symbolic information if needed (to get paramInfo->plcSize)
-  if(!paramInfo->isAdrCommand){
-    status=adsGetSymInfoByName(paramInfo);
+  // Skipped for dict symbols — plcDataType and plcSize already injected above.
+  if(!paramInfo->isAdrCommand && !fromDict){
+    status=adsGetSymInfoByName(paramInfo);    // RTT ① — non-dict symbols only
     if(status!=asynSuccess){
       return asynError;
     }
@@ -1576,11 +1691,23 @@ asynStatus adsAsynPortDriver::updateParamInfoWithPLCInfo(adsParamInfo *paramInfo
     }
   }
 
-  if (!paramInfo->isAdrCommand) {
-      adsReleaseSymbolicHandle(paramInfo,true); //try to delete
-      status=adsGetSymHandleByName(paramInfo);
+  /**
+   * Handle acquisition — RTT ② elimination
+   *
+   * For dict symbols hSymbolicHandle + bSymbolicHandleValid were already set
+   * in the dict fast-path above.  adsReleaseSymbolicHandle() would attempt to
+   * release the batch-resolved handle via ADSIGRP_SYM_RELEASEHND — which we
+   * must NOT do here because resolveSymbolHandles() owns the lifetime of these
+   * handles for the duration of the IOC session.
+   *
+   * For non-dict symbols the original release-then-acquire sequence runs
+   * unchanged.
+   */
+  if (!paramInfo->isAdrCommand && !fromDict) {
+      adsReleaseSymbolicHandle(paramInfo,true); // try to delete — non-dict only
+      status=adsGetSymHandleByName(paramInfo);  // RTT ② — non-dict symbols only
       if(status!=asynSuccess){
-      return asynError;
+          return asynError;
       }
   }
 
@@ -1598,18 +1725,6 @@ asynStatus adsAsynPortDriver::updateParamInfoWithPLCInfo(adsParamInfo *paramInfo
               return asynError;
           }
       }
-  }
-
-  // Make first read
-  long errorCode=0;
-  status = adsReadParam(paramInfo,&errorCode,0);
-  if(status!=asynSuccess){
-    // Try read again
-    asynStatus stat=adsReadParam(paramInfo,&errorCode,0);
-    if(stat!=asynSuccess){
-      paramInfo->refreshNeeded=true;
-      return asynError;
-    }
   }
 
   paramInfo->refreshNeeded=false;
@@ -1746,112 +1861,157 @@ int adsAsynPortDriver::adsFindBulkTimeStamp(uint16_t amsPort)
  * \param[in/out] paramInfo Parameter information structure.
  * \return asynSuccess or asynError.
  */
+/* ── drvInfo record-info cache ───────────────────────────────────────────────
+ *
+ * getRecordInfoFromDrvInfo() historically walked the entire EPICS database
+ * for every drvUserCreate() call — O(N²) in the number of records.  For a
+ * 500-record IOC this was ~1.6 s of pure CPU; for a 10k-record IOC it would
+ * be >100 s.
+ *
+ * The cache below is built once (O(N)) on the first call and consulted in
+ * O(1) on every subsequent call.  The map key is "portName\0drvInfo" so that
+ * multiple driver instances sharing the same IOC do not collide.
+ * ─────────────────────────────────────────────────────────────────────────── */
+struct RecordInfoCache {
+    std::string recordType;
+    std::string recordName;
+    std::string inp;
+    std::string out;
+    std::string dtyp;
+    asynParamType asynType = asynParamNotDefined;
+};
+
+/* key: portName + '\0' + drvInfo  →  first matching record's info */
+static std::unordered_map<std::string, RecordInfoCache> s_drvInfoCache;
+static bool s_drvInfoCacheBuilt = false;
+
+static void buildDrvInfoCache()
+{
+    if (s_drvInfoCacheBuilt) return;
+    s_drvInfoCacheBuilt = true;
+
+    if (!pdbbase) return;  /* DB not loaded yet — should not happen but guard anyway */
+
+    DBENTRY *pdb = dbAllocEntry(pdbbase);
+    long st = dbFirstRecordType(pdb);
+    while (!st) {
+        /* capture as std::string immediately — raw ptr invalidated by dbNext* */
+        std::string rtype = dbGetRecordTypeName(pdb);
+        long sr = dbFirstRecord(pdb);
+        while (!sr) {
+            if (!dbIsAlias(pdb)) {
+                std::string rname = dbGetRecordName(pdb);
+
+                /* extract DTYP — must be done before tryLink repositions cursor */
+                std::string dtyp_str;
+                asynParamType atype = asynParamNotDefined;
+                if (!dbFindField(pdb, "DTYP")) {
+                    const char *dtypVal = dbGetString(pdb);
+                    if (dtypVal) {
+                        dtyp_str = dtypVal;
+                        /* dtypStringToAsynType takes char* (may modify) — pass writable copy */
+                        char dtypBuf[256] = {};
+                        strncpy(dtypBuf, dtypVal, sizeof(dtypBuf)-1);
+                        atype = dtypStringToAsynType(dtypBuf);
+                    }
+                }
+
+                /* parse "@asyn(port,adr,tmo)drvInfo" from INP or OUT field.
+                 * Returns (port, drvInfo) strings, or ("","") if not an asyn link.
+                 * The link string itself is also returned as the third element so
+                 * we never need to re-query the DBENTRY after this call. */
+                auto tryLink = [&](const char *field)
+                    -> std::pair<std::pair<std::string,std::string>, std::string>
+                {
+                    typedef std::pair<std::pair<std::string,std::string>,std::string> R;
+                    if (dbFindField(pdb, field))
+                        return R(std::make_pair(std::string(),std::string()), std::string());
+                    const char *val = dbGetString(pdb);
+                    if (!val)
+                        return R(std::make_pair(std::string(),std::string()), std::string());
+                    std::string linkStr(val);
+                    char port[256]={}, drvI[1024]={};
+                    int adr=0, tmo=0;
+                    if (sscanf(val, "@asyn(%255[^,],%d,%d)%1023s", port, &adr, &tmo, drvI) == 4)
+                        return R(std::make_pair(std::string(port),std::string(drvI)), linkStr);
+                    return R(std::make_pair(std::string(),std::string()), std::string());
+                };
+
+                /* INP link */
+                std::pair<std::pair<std::string,std::string>,std::string> inpRes = tryLink("INP");
+                const std::string &inpPort = inpRes.first.first;
+                const std::string &inpDrv  = inpRes.first.second;
+                const std::string &inpStr  = inpRes.second;
+
+                /* OUT link */
+                std::pair<std::pair<std::string,std::string>,std::string> outRes = tryLink("OUT");
+                const std::string &outPort = outRes.first.first;
+                const std::string &outDrv  = outRes.first.second;
+                const std::string &outStr  = outRes.second;
+
+                /* store INP entry — link string already captured, no re-query */
+                if (!inpPort.empty()) {
+                    std::string key = inpPort + '\0' + inpDrv;
+                    if (!s_drvInfoCache.count(key)) {
+                        RecordInfoCache e;
+                        e.recordType = rtype;
+                        e.recordName = rname;
+                        e.dtyp       = dtyp_str;
+                        e.asynType   = atype;
+                        e.inp        = inpStr;
+                        s_drvInfoCache[key] = std::move(e);
+                    }
+                }
+
+                /* store OUT entry — link string already captured, no re-query */
+                if (!outPort.empty()) {
+                    std::string key = outPort + '\0' + outDrv;
+                    if (!s_drvInfoCache.count(key)) {
+                        RecordInfoCache e;
+                        e.recordType = rtype;
+                        e.recordName = rname;
+                        e.dtyp       = dtyp_str;
+                        e.asynType   = atype;
+                        e.out        = outStr;
+                        s_drvInfoCache[key] = std::move(e);
+                    }
+                }
+            }
+            sr = dbNextRecord(pdb);
+        }
+        st = dbNextRecordType(pdb);
+    }
+    dbFreeEntry(pdb);
+}
+
 asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char *drvInfo,adsParamInfo *paramInfo)
 {
   const char* functionName = "getRecordInfoFromDrvInfo";
   asynPrint(pasynUserSelf,ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, functionName,drvInfo);
 
-  bool isInput=false;
-  bool isOutput=false;
-  paramInfo->amsPort=amsportDefault_;
-  DBENTRY *pdbentry;
-  pdbentry = dbAllocEntry(pdbbase);
-  long status = dbFirstRecordType(pdbentry);
-  bool recordFound=false;
-  if(status) {
-    dbFreeEntry(pdbentry);
-    return asynError;
-  }
-  while(!status) {
-    paramInfo->recordType=strdup(dbGetRecordTypeName(pdbentry));
-    status = dbFirstRecord(pdbentry);
-    while(!status) {
-      paramInfo->recordName=strdup(dbGetRecordName(pdbentry));
-      if(!dbIsAlias(pdbentry)){
-        status=dbFindField(pdbentry,"INP");
-        if(!status){
-          paramInfo->inp=strdup(dbGetString(pdbentry));
-          isInput=true;
-          char port[ADS_MAX_FIELD_CHAR_LENGTH];
-          int adr;
-          int timeout;
-          char currdrvInfo[ADS_MAX_FIELD_CHAR_LENGTH];
-          int nvals=sscanf(paramInfo->inp,"@asyn(%[^,],%d,%d)%s",port,&adr,&timeout,currdrvInfo);
-          if(nvals==4){
-            // Ensure correct port and drvinfo
-            if(strcmp(port,portName)==0 && strcmp(drvInfo,currdrvInfo)==0){
-              recordFound=true;  // Correct port and drvinfo!\n");
-            }
-          }
-        }
-        else{
-          isInput=false;
-        }
-        status=dbFindField(pdbentry,"OUT");
-        if(!status){
-          paramInfo->out=strdup(dbGetString(pdbentry));
-          isOutput=true;
-          char port[ADS_MAX_FIELD_CHAR_LENGTH];
-          int adr;
-          int timeout;
-          char currdrvInfo[ADS_MAX_FIELD_CHAR_LENGTH];
-          int nvals=sscanf(paramInfo->out,"@asyn(%[^,],%d,%d)%s",port,&adr,&timeout,currdrvInfo);
-          if(nvals==4){
-            // Ensure correct port and drvinfo
-            if(strcmp(port,portName)==0 && strcmp(drvInfo,currdrvInfo)==0){
-              recordFound=true;  // Correct port and drvinfo!\n");
-            }
-          }
-        }
-        else{
-          isOutput=false;
-        }
+  paramInfo->amsPort = amsportDefault_;
 
-        if(recordFound){
-          // Correct record found. Collect data from fields
-          //DTYP
-          status=dbFindField(pdbentry,"DTYP");
-          if(!status){
-            paramInfo->dtyp=strdup(dbGetString(pdbentry));
-            paramInfo->asynType=dtypStringToAsynType(dbGetString(pdbentry));
-          }
-          else{
-            paramInfo->dtyp=0;
-            paramInfo->asynType=asynParamNotDefined;
-          }
+  /* Build cache on first call — O(N) scan of entire database, done once. */
+  buildDrvInfoCache();
 
-          //drvInput (not a field)
-          paramInfo->drvInfo=strdup(drvInfo);
-          dbFreeEntry(pdbentry);
-          return asynSuccess;  // The correct record was found and the paramInfo structure is filled
-        }
-        else{
-          //Not correct record. Do cleanup.
-          if(isInput){
-            free(paramInfo->inp);
-            paramInfo->inp=0;
-          }
-          if(isOutput){
-            free(paramInfo->out);
-            paramInfo->out=0;
-          }
-          paramInfo->drvInfo=0;
-          paramInfo->scan=0;
-          paramInfo->dtyp=0;
-          isInput=false;
-          isOutput=false;
-        }
-      }
-      status = dbNextRecord(pdbentry);
-      free(paramInfo->recordName);
-      paramInfo->recordName=0;
-    }
-    status = dbNextRecordType(pdbentry);
-    free(paramInfo->recordType);
-    paramInfo->recordType=0;
+  std::string key = std::string(portName) + '\0' + drvInfo;
+  auto it = s_drvInfoCache.find(key);
+  if (it == s_drvInfoCache.end()) {
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                "%s:%s: no record found for drvInfo '%s' on port '%s'\n",
+                driverName, functionName, drvInfo, portName);
+      return asynError;
   }
-  dbFreeEntry(pdbentry);
-  return asynError;
+
+  const RecordInfoCache &e = it->second;
+  paramInfo->recordType = e.recordType.empty() ? nullptr : strdup(e.recordType.c_str());
+  paramInfo->recordName = e.recordName.empty() ? nullptr : strdup(e.recordName.c_str());
+  paramInfo->dtyp       = e.dtyp.empty()       ? nullptr : strdup(e.dtyp.c_str());
+  paramInfo->inp        = e.inp.empty()         ? nullptr : strdup(e.inp.c_str());
+  paramInfo->out        = e.out.empty()         ? nullptr : strdup(e.out.c_str());
+  paramInfo->asynType   = e.asynType;
+  paramInfo->drvInfo    = strdup(drvInfo);
+  return asynSuccess;
 }
 
 /** Get variable information from drvInfo string.
@@ -5290,3 +5450,6 @@ extern "C" {
 
   epicsExportRegistrar(adsAsynPortDriverRegister);
 }
+
+
+
