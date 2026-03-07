@@ -1,1 +1,1 @@
-../../ADS/AdsLib/AmsConnection.cpp
+../../ADS/AdsLib/standalone/AmsConnection.cpp

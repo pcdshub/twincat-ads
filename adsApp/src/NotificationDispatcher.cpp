@@ -1,1 +1,1 @@
-../../ADS/AdsLib/NotificationDispatcher.cpp
+../../ADS/AdsLib/standalone/NotificationDispatcher.cpp

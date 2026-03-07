@@ -1,1 +1,1 @@
-../../ADS/AdsLib/AmsRouter.cpp
+../../ADS/AdsLib/standalone/AmsRouter.cpp

@@ -9,6 +9,7 @@
 #include "AdsLib.h"
 #include <vector>
 #include "adsAsynPortDriverUtils.h"
+#include "adsSymbolTable.h"
 #include <mutex>
 #include <queue>
 
@@ -299,6 +300,20 @@ private:
  public:
   int bulkOK;                // OK to process bulk reads!
   int bulk_elapsed_us;       // Time of last bulk read loop.
+
+/** Symbol-table cache, one SymbolMap per AMS port.
+    *  Key:   AMS port number (e.g. 851).
+       *  Value: unordered_map<lowercase_symbol_name, AdsSymbolInfo>.
+       *  Populated by adsLoadSymbolTable(), read by adsGetSymInfoByName().
+       *  Cleared by adsInvalidateSymbolCache() in invalidateParams().   */
+//     SymbolCache symbolCache_;
+
+
+// member declarations
+char 	*symbolDictPath_;
+std::unordered_map<std::string, AdsSymbolDictEntry> symbolDict_;
+asynStatus loadSymbolDict(const char *jsonPath);
+asynStatus resolveSymbolHandles();
 };
 
 #endif /* ADSASYNPORTDRIVER_H_ */

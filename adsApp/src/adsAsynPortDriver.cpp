@@ -36,6 +36,9 @@
 #include <dbAccess.h>
 #include <alarm.h>
 
+#include <fstream>    // for std::ifstream
+#include <algorithm>  // for std::transform
+
 static const char *driverName="adsAsynPortDriver";
 static adsAsynPortDriver *adsAsynPortObj;
 static long oldTimeStamp=0;
@@ -219,6 +222,367 @@ void dataCallbackThread(void *drvPvt)
   pPvt->dataCallbackThread();
 }
 
+/**
+ * adsAsynPortDriver constructor — with JSON symbol dictionary loading
+ *
+ * Performance goals:
+ *   - Load symbol dict at construction time (before IOC records load)
+ *   - drvUserCreate() does dictionary lookup only — zero ADS RTTs
+ *   - SUMUP handle resolution in connect() — one RTT for all symbols
+ *   - SYM_UPLOAD blob walk retained as fallback for symbols not in dict
+ *
+ * Static JSON path — to be replaced by constructor argument in Phase 2.
+ * Place ads_symbol_dict.json in the IOC boot directory or adjust path below.
+ */
+
+#define ADS_SYMBOL_DICT_PATH "ads_symbol_dict.json"
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Minimal JSON parser — no external dependencies
+ * Parses the flat structure produced by db_to_ads_symbol_dict.py:
+ * {
+ *   "PV:NAME": {
+ *     "symbol":   "GVL.varName",
+ *     "datatype": "LREAL",
+ *     "size":     8,
+ *     "name":     "PV:NAME"
+ *   }, ...
+ * }
+ * ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Parse a quoted JSON string value following a colon.
+ * e.g.  "symbol":   "GVL.varName"  → returns "GVL.varName"
+ */
+static std::string jsonStringVal(const std::string &line)
+{
+    size_t first = line.find('"', line.find(':'));
+    if (first == std::string::npos) return "";
+    size_t second = line.find('"', first + 1);
+    if (second == std::string::npos) return "";
+    return line.substr(first + 1, second - first - 1);
+}
+
+/**
+ * Parse a numeric JSON value following a colon.
+ * e.g.  "size":  8  → returns 8
+ */
+static uint32_t jsonUintVal(const std::string &line)
+{
+    size_t colon = line.find(':');
+    if (colon == std::string::npos) return 0;
+    return (uint32_t)std::stoul(line.substr(colon + 1));
+}
+
+/**
+ * Map PLC datatype string from JSON to ADS ADST_* type code.
+ */
+static uint32_t datatypeToAdst(const std::string &dt)
+{
+    if (dt == "BOOL")              return ADST_BIT;
+    if (dt == "BYTE"  ||
+        dt == "USINT")             return ADST_UINT8;
+    if (dt == "SINT")              return ADST_INT8;
+    if (dt == "WORD"  ||
+        dt == "UINT")              return ADST_UINT16;
+    if (dt == "INT")               return ADST_INT16;
+    if (dt == "DWORD" ||
+        dt == "UDINT")             return ADST_UINT32;
+    if (dt == "DINT")              return ADST_INT32;
+    if (dt == "LWORD" ||
+        dt == "ULINT")             return ADST_UINT64;
+    if (dt == "LINT")              return ADST_INT64;
+    if (dt == "REAL")              return ADST_REAL32;
+    if (dt == "LREAL")             return ADST_REAL64;
+    if (dt.substr(0,6) == "STRING") return ADST_STRING;
+    /* arrays and structs — treat as void/raw */
+    return ADST_VOID;
+}
+
+/**
+ * loadSymbolDict()
+ *
+ * Reads ads_symbol_dict.json and populates symbolDict_.
+ * Called from constructor before IOC records load.
+ * Non-fatal: on failure the driver falls back to SYM_UPLOAD + INFOBYNAMEEX.
+ *
+ * Performance: pure file I/O + string parsing, zero ADS RTTs.
+ */
+
+asynStatus adsAsynPortDriver::loadSymbolDict(const char *jsonPath)
+{
+    static const char *functionName = "loadSymbolDict";
+
+    std::ifstream f(jsonPath);
+    if (!f.is_open()) {
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                  "%s::%s: cannot open '%s'\n",
+                  driverName, functionName, jsonPath);
+        return asynError;
+    }
+
+    asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+              "%s::%s: opened '%s' — parsing\n",
+              driverName, functionName, jsonPath);
+
+    symbolDict_.clear();
+    AdsSymbolDictEntry entry = {};
+    bool   inEntry = false;
+    size_t loaded  = 0;
+    size_t skipped = 0;
+
+    std::string line;
+    while (std::getline(f, line)) {
+
+        /* trim leading whitespace */
+        size_t start = line.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos) continue;
+        line = line.substr(start);
+
+        /* ── detect start of a top-level PV entry ───────────────────── */
+        /* matches:  "some:pv:name": {          (with or without space)  */
+        if (!inEntry && line.front() == '"') {
+            /* find the closing quote of the key */
+            size_t closeQuote = line.find('"', 1);
+            if (closeQuote != std::string::npos) {
+                /* remainder after the closing quote should be `: {` */
+                std::string rest = line.substr(closeQuote + 1);
+                /* trim spaces in rest */
+                size_t r = rest.find_first_not_of(" \t");
+                if (r != std::string::npos) rest = rest.substr(r);
+                if (rest.size() >= 2 && rest[0] == ':') {
+                    rest = rest.substr(1);
+                    r = rest.find_first_not_of(" \t");
+                    if (r != std::string::npos) rest = rest.substr(r);
+                    if (!rest.empty() && rest[0] == '{') {
+                        entry   = {};
+                        inEntry = true;
+                        continue;
+                    }
+                }
+            }
+        }
+
+        if (!inEntry) continue;
+
+        /* ── parse fields inside entry ───────────────────────────────── */
+        if (line.find("\"symbol\"") != std::string::npos) {
+            entry.symbol = jsonStringVal(line);
+            entry.symbolLower = entry.symbol;
+            std::transform(entry.symbolLower.begin(),
+                           entry.symbolLower.end(),
+                           entry.symbolLower.begin(),
+                           [](unsigned char c){ return std::tolower(c); });
+            continue;
+        }
+        if (line.find("\"datatype\"") != std::string::npos) {
+            entry.datatype = jsonStringVal(line);
+            entry.adst     = datatypeToAdst(entry.datatype);
+            continue;
+        }
+        if (line.find("\"size\"") != std::string::npos) {
+            entry.size = jsonUintVal(line);
+            continue;
+        }
+        if (line.find("\"name\"") != std::string::npos) {
+            entry.pvName = jsonStringVal(line);
+            continue;
+        }
+
+        /* ── detect end of entry — bare } or }, ─────────────────────── */
+        if (line == "}" || line == "},") {
+            if (!entry.symbolLower.empty() && entry.size > 0) {
+                symbolDict_[entry.symbolLower] = entry;
+                ++loaded;
+            } else {
+                asynPrint(pasynUserSelf, ASYN_TRACE_WARNING,
+                          "%s::%s: skipping incomplete entry "
+                          "symbol='%s' size=%u\n",
+                          driverName, functionName,
+                          entry.symbol.c_str(), entry.size);
+                ++skipped;
+            }
+            inEntry = false;
+            entry   = {};
+        }
+    }
+
+    asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+              "%s::%s: loaded %zu symbols from '%s' (%zu skipped)\n",
+              driverName, functionName, loaded, jsonPath, skipped);
+
+    if (loaded == 0) {
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                  "%s::%s: no symbols loaded from '%s' — "
+                  "check JSON format\n",
+                  driverName, functionName, jsonPath);
+        return asynError;
+    }
+
+    return asynSuccess;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * SUMUP handle resolution
+ *
+ * Issues a single ADS SUMUP write+read to resolve handles for every symbol
+ * in symbolDict_ in one RTT.
+ *
+ * ADS SUMUP protocol:
+ *   Group  : ADSIGRP_SUMUP_READWRITE  (0xF081)
+ *   Offset : number of sub-requests   (N)
+ *   Write  : N × (iGroup=0xF003, iOffs=nameLen, readLen=4)
+ *            followed by N × name strings (no null terminator needed)
+ *   Read   : N × (result_code uint32 + handle uint32)  = N×8 bytes
+ * ───────────────────────────────────────────────────────────────────────── */
+asynStatus adsAsynPortDriver::resolveSymbolHandles()
+{
+    static const char *functionName = "resolveSymbolHandles";
+    if (symbolDict_.empty()) return asynSuccess;
+
+    /* collect entries in stable order */
+    std::vector<AdsSymbolDictEntry*> entries;
+    entries.reserve(symbolDict_.size());
+    for (auto &kv : symbolDict_)
+        entries.push_back(&kv.second);
+
+    const size_t N          = entries.size();
+    const size_t CHUNK_SIZE = 500;
+    const size_t nChunks    = (N + CHUNK_SIZE - 1) / CHUNK_SIZE;
+
+    size_t totalResolved = 0;
+
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s::%s: resolving %zu handles in %zu chunk(s) of max %zu\n",
+              driverName, functionName, N, nChunks, CHUNK_SIZE);
+
+    for (size_t chunk = 0; chunk < nChunks; ++chunk) {
+
+        const size_t chunkStart = chunk * CHUNK_SIZE;
+        const size_t chunkEnd   = std::min(chunkStart + CHUNK_SIZE, N);
+        const size_t chunkN     = chunkEnd - chunkStart;
+
+        /* ── build write buffer ─────────────────────────────────────── */
+        /* Header: chunkN × 16 bytes                                     */
+        /*   iGroup   (4) = ADSIGRP_SYM_HNDBYNAME  (0xF003)             */
+        /*   iOffs    (4) = 0                                            */
+        /*   readLen  (4) = 4  (sizeof handle returned)                  */
+        /*   writeLen (4) = symbol name length in bytes                  */
+        /* Data: concatenated symbol name bytes (no null terminator)     */
+        size_t namesTotal = 0;
+        for (size_t i = chunkStart; i < chunkEnd; ++i)
+            namesTotal += entries[i]->symbol.size();
+
+        const size_t headerBytes = chunkN * 16;
+        const size_t writeBytes  = headerBytes + namesTotal;
+
+        /* ── read buffer layout ─────────────────────────────────────── */
+        /* Confirmed empirically (60 bytes for N=5):                     */
+        /*   [N × (result(4) + retLen(4))]  then  [N × handle(4)]       */
+        /*   = N*8 + N*4 = N*12                                          */
+        const size_t readBytes = chunkN * 12;
+
+        std::vector<uint8_t> writeBuf(writeBytes, 0);
+        std::vector<uint8_t> readBuf (readBytes,  0);
+
+        uint8_t *hdr  = writeBuf.data();
+        uint8_t *name = writeBuf.data() + headerBytes;
+
+        for (size_t i = chunkStart; i < chunkEnd; ++i) {
+            uint32_t iGroup   = ADSIGRP_SYM_HNDBYNAME;
+            uint32_t iOffs    = 0;
+            uint32_t readLen  = 4;
+            uint32_t writeLen = (uint32_t)entries[i]->symbol.size();
+            memcpy(hdr, &iGroup,   4); hdr += 4;
+            memcpy(hdr, &iOffs,    4); hdr += 4;
+            memcpy(hdr, &readLen,  4); hdr += 4;
+            memcpy(hdr, &writeLen, 4); hdr += 4;
+            memcpy(name, entries[i]->symbol.data(), entries[i]->symbol.size());
+            name += entries[i]->symbol.size();
+        }
+
+        /* ── ADS SUMUP READWRITE call ───────────────────────────────── */
+        AmsAddr remote;
+        remote.netId = remoteNetId_;
+        remote.port  = amsportDefault_;
+        uint32_t bytesRead = 0;
+
+        adsLock();
+        long rc = AdsSyncReadWriteReqEx2(
+            adsPort_,
+            &remote,
+            ADSIGRP_SUMUP_READWRITE,   /* 0xF082 */
+            (uint32_t)chunkN,          /* iOffset = number of sub-requests */
+            (uint32_t)readBytes,
+            readBuf.data(),
+            (uint32_t)writeBytes,
+            writeBuf.data(),
+            &bytesRead);
+        adsUnlock();
+
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                  "%s::%s: chunk %zu/%zu rc=0x%lx "
+                  "bytesRead=%u expected=%zu\n",
+                  driverName, functionName,
+                  chunk + 1, nChunks, rc, bytesRead, readBytes);
+
+        if (rc != 0) {
+            asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                      "%s::%s: chunk %zu/%zu SUMUP failed rc=0x%lx — "
+                      "aborting handle resolution\n",
+                      driverName, functionName,
+                      chunk + 1, nChunks, rc);
+            return asynError;
+        }
+
+        /* ── extract handles ────────────────────────────────────────── */
+        /* Layout: [N × (result(4) + retLen(4))]  then  [N × handle(4)] */
+        /* result/retLen pairs are consecutive, handles follow after     */
+        const uint8_t  *statusBlock = readBuf.data();
+        const uint32_t *handleBlock = reinterpret_cast<const uint32_t*>(
+                                          readBuf.data() + chunkN * 8);
+
+        for (size_t i = 0; i < chunkN; ++i) {
+            uint32_t result, retLen;
+            memcpy(&result, statusBlock + i * 8 + 0, 4);
+            memcpy(&retLen, statusBlock + i * 8 + 4, 4);
+            uint32_t handle = handleBlock[i];
+
+            asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                      "%s::%s: sub-req[%zu] '%s' "
+                      "result=0x%x retLen=%u handle=0x%x\n",
+                      driverName, functionName,
+                      chunkStart + i,
+                      entries[chunkStart + i]->symbol.c_str(),
+                      result, retLen, handle);
+
+            if (result == 0 && handle != 0) {
+                entries[chunkStart + i]->handle   = handle;
+                entries[chunkStart + i]->resolved = true;
+                ++totalResolved;
+            } else {
+                asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                          "%s::%s: handle resolution failed for '%s' "
+                          "result=0x%x retLen=%u handle=0x%x — aborting\n",
+                          driverName, functionName,
+                          entries[chunkStart + i]->symbol.c_str(),
+                          result, retLen, handle);
+                return asynError;
+            }
+        }
+
+        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                  "%s::%s: chunk %zu/%zu done — %zu/%zu resolved\n",
+                  driverName, functionName,
+                  chunk + 1, nChunks, totalResolved, N);
+    }
+
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s::%s: all %zu handles resolved successfully\n",
+              driverName, functionName, totalResolved);
+
+    return asynSuccess;
+}
 
 /** Constructor for the adsAsynPortDriver class.
  * \param[in] portName Asyn port name.
@@ -256,8 +620,8 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
                                      ADSTIMESOURCE defaultTimeSource)
                      :asynPortDriver(portName,
                                      1, /* maxAddr */
-									asynInt32Mask | asynFloat64Mask | asynInt64Mask | asynInt8ArrayMask | asynInt16ArrayMask | asynInt32ArrayMask | asynInt64ArrayMask | asynFloat32ArrayMask | asynFloat64ArrayMask | asynDrvUserMask | asynOctetMask, /* Interface mask */
-									asynInt32Mask | asynFloat64Mask | asynInt64Mask | asynInt8ArrayMask | asynInt16ArrayMask | asynInt32ArrayMask | asynInt64ArrayMask | asynFloat32ArrayMask | asynFloat64ArrayMask | asynDrvUserMask | asynOctetMask,  /* Interrupt mask */
+                                    asynInt32Mask | asynFloat64Mask | asynInt64Mask | asynInt8ArrayMask | asynInt16ArrayMask | asynInt32ArrayMask | asynInt64ArrayMask | asynFloat32ArrayMask | asynFloat64ArrayMask | asynDrvUserMask | asynOctetMask, /* Interface mask */
+                                    asynInt32Mask | asynFloat64Mask | asynInt64Mask | asynInt8ArrayMask | asynInt16ArrayMask | asynInt32ArrayMask | asynInt64ArrayMask | asynFloat32ArrayMask | asynFloat64ArrayMask | asynDrvUserMask | asynOctetMask,  /* Interrupt mask */
                                      ASYN_CANBLOCK, /* asynFlags.  This driver does not block and it is not multi-device, so flag is 0 */
                                      autoConnect, /* Autoconnect */
                                      priority, /* Default priority */
@@ -286,6 +650,10 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
   oneAmsConnectionOKold_=0;
   adsUnlock();
 
+  // ── Symbol dictionary path ────────────────────────────────────────────
+  symbolDictPath_ = strdup("ads_symbol_dict.json");
+  // ────────────
+  
   //Octet interface
   octetAsciiBuffer_.bufferSize = ADS_CMD_BUFFER_SIZE;
   octetAsciiBuffer_.bytesUsed=0;
@@ -399,29 +767,58 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
     printf("%s:%s: epicsThreadCreate failure\n", driverName, functionName);
     return;
   }
+ 
+ // ── Load symbol dictionary (pure file I/O, no ADS needed) ────────────
+  if (symbolDictPath_) {
+      if (loadSymbolDict(symbolDictPath_) != asynSuccess) {
+          asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                    "%s:%s: failed to load symbol dictionary '%s' — aborting\n",
+                    driverName, functionName, symbolDictPath_);
+          return;
+      }
+      asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+                "%s:%s: symbol dictionary loaded with %zu entries\n",
+                driverName, functionName, symbolDict_.size());
+  }
+  // ─────────────────────────────────────────────────────────────────────
+
+
   //try to connect, and hang until we succeed!
   for (;;) {
       if (connect(pasynUserSelf) != asynSuccess) {
-	  asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
-		    "%s:%s: connect failed for port %s.\n", 
-		    driverName, functionName, portName);
-	  epicsThreadSleep(1.0);
-	  continue;
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
+            "%s:%s: connect failed for port %s.\n", 
+            driverName, functionName, portName);
+      epicsThreadSleep(1.0);
+      continue;
       }
       long error = 0;
       uint16_t adsState = 0;
       if (adsReadStateLock(amsport,&adsState,true,&error) != asynSuccess) {
-	  asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
-		    "%s:%s: adsReadStateLock failed for port %s.\n", 
-		    driverName, functionName, portName);
-	  disconnect(pasynUserSelf);
-	  continue;
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
+            "%s:%s: adsReadStateLock failed for port %s.\n", 
+            driverName, functionName, portName);
+      disconnect(pasynUserSelf);
+      continue;
       }
       if (adsState == ADSSTATE_RUN) {
-	  asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
-		    "%s:%s: connection established for port %s.\n", 
-		    driverName, functionName, portName);
-	  return;
+		asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
+            "%s:%s: connection established for port %s.\n", 
+            driverName, functionName, portName);
+			
+		  // ── Resolve symbol handles — PLC confirmed RUN ────────────
+          if (!symbolDict_.empty()) {
+              if (resolveSymbolHandles() != asynSuccess) {
+                  asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+                            "%s:%s: SUMUP handle resolution failed — "
+                            "drvUserCreate will fall back to per-record ADS calls\n",
+                            driverName, functionName);
+                return;
+              }
+          }
+          // ─────────────────────────────────────────────────────────
+
+      return;
       }
   }
 }
@@ -509,10 +906,10 @@ void adsAsynPortDriver::cyclicThread()
           invalidateParamsLock(port->amsPort);
           port->refreshNeeded=true;
           setAlarmPortLock(port->amsPort,COMM_ALARM,INVALID_ALARM);
-	  asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
-		    "%s:%s: connection failed for port %s.\n", 
-		    driverName, functionName, portName);
-	  exit(-1);
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
+            "%s:%s: connection failed for port %s.\n", 
+            driverName, functionName, portName);
+      exit(-1);
         }
         if(!port->connectedOld && port->connected){
           adsReadVersion(port);
@@ -541,7 +938,7 @@ void adsAsynPortDriver::cyclicThread()
     if(!oneAmsConnectionOK){
       notConnectedCounter_++;
       if (notConnectedCounter_ < 100 || notConnectedCounter_ % 100 == 0) {
-	asynPrint(pasynUserSelf,ASYN_TRACE_FLOW, "%s:%s: Not connected counter: %d.\n",driverName,functionName,notConnectedCounter_);
+    asynPrint(pasynUserSelf,ASYN_TRACE_FLOW, "%s:%s: Not connected counter: %d.\n",driverName,functionName,notConnectedCounter_);
       }
     }
     if(oneAmsConnectionOK){
@@ -554,7 +951,7 @@ void adsAsynPortDriver::cyclicThread()
       }
       connectedAds_=0;
       if((notConnectedCounter_&2)==2){
-	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "cyclicThread: forcing disconnect.\n");
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "cyclicThread: forcing disconnect.\n");
         disconnectLock(pasynUserSelf);
       }
     }
@@ -651,7 +1048,7 @@ void adsAsynPortDriver::bulkReadThread()
         adsUnlock();
         gettimeofday(&now, NULL);
         bulk_elapsed_us = (now.tv_sec - start.tv_sec) * 1000000 + 
-	                  (now.tv_usec - start.tv_usec);
+                      (now.tv_usec - start.tv_usec);
 #ifdef MCB_DEBUG
         printf("ELAPSED: %g\n", bulk_elapsed_us / 1000000.0);
 #endif
@@ -1183,7 +1580,7 @@ asynStatus adsAsynPortDriver::updateParamInfoWithPLCInfo(adsParamInfo *paramInfo
       adsReleaseSymbolicHandle(paramInfo,true); //try to delete
       status=adsGetSymHandleByName(paramInfo);
       if(status!=asynSuccess){
-	  return asynError;
+      return asynError;
       }
   }
 
@@ -1196,7 +1593,7 @@ asynStatus adsAsynPortDriver::updateParamInfoWithPLCInfo(adsParamInfo *paramInfo
               return asynError;
           }
       } else { /* Otherwise, put it in a bulk read! */
-	  status=adsAddToBulkRead(paramInfo);
+      status=adsAddToBulkRead(paramInfo);
           if(status!=asynSuccess){
               return asynError;
           }
@@ -1230,19 +1627,19 @@ void adsAsynPortDriver::poll_info(char *name)
     for (i = 0; bulk[i].cnt && i < MAXBULK; i++) {
       printf("Bulk Read #%d:\n", i);
       if (!name) {
-	  printf("    0: MAIN.fbSystemTime.timeLoDW (G=0x%x, O=0x%x, S=%d)\n",
-		 bulk[i].sum[0].iGroup, bulk[i].sum[0].iOffset, bulk[i].sum[0].iSize);
-	  printf("    1: MAIN.fbSystemTime.timeHiDW (G=0x%x, O=0x%x, S=%d)\n",
-		 bulk[i].sum[1].iGroup, bulk[i].sum[1].iOffset, bulk[i].sum[1].iSize);
+      printf("    0: MAIN.fbSystemTime.timeLoDW (G=0x%x, O=0x%x, S=%d)\n",
+         bulk[i].sum[0].iGroup, bulk[i].sum[0].iOffset, bulk[i].sum[0].iSize);
+      printf("    1: MAIN.fbSystemTime.timeHiDW (G=0x%x, O=0x%x, S=%d)\n",
+         bulk[i].sum[1].iGroup, bulk[i].sum[1].iOffset, bulk[i].sum[1].iSize);
       }
       for (int j = 2; j < bulk[i].cnt; j++) {
         adsParamInfo *paramInfo=getAdsParamInfo(bulk[i].paramID[j]);
-	if (!paramInfo)
-	  continue;
-	if (!name || strstr(paramInfo->plcAdrStr, name))
-	    printf("  %3d: %s (G=0x%x, O=0x%x, S=%d, TS=%d.%09d)\n", j, paramInfo->plcAdrStr,
-		   bulk[i].sum[j].iGroup, bulk[i].sum[j].iOffset, bulk[i].sum[j].iSize,
-		   paramInfo->epicsTimestamp.secPastEpoch, paramInfo->epicsTimestamp.nsec);
+    if (!paramInfo)
+      continue;
+    if (!name || strstr(paramInfo->plcAdrStr, name))
+        printf("  %3d: %s (G=0x%x, O=0x%x, S=%d, TS=%d.%09d)\n", j, paramInfo->plcAdrStr,
+           bulk[i].sum[j].iGroup, bulk[i].sum[j].iOffset, bulk[i].sum[j].iSize,
+           paramInfo->epicsTimestamp.secPastEpoch, paramInfo->epicsTimestamp.nsec);
       }
     }
 }
@@ -3101,6 +3498,10 @@ asynStatus adsAsynPortDriver::adsGetSymHandleByName(adsParamInfo *paramInfo,bool
   amsServer={remoteNetId_,paramInfo->amsPort};
 
   uint32_t symbolHandle=0;
+  asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+          "%s:%s: using amsPort=%u for symbol '%s'\n",
+          driverName, functionName,
+          paramInfo->amsPort, paramInfo->plcAdrStr);
   adsLock();
   const long handleStatus = AdsSyncReadWriteReqEx2(adsPort_,
                                                    &amsServer,
@@ -3382,10 +3783,10 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(uint16_t amsPort,const char *v
   if (infoStatus) {
     asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Get symbolic information failed for %s with: %s (0x%lx)\n", driverName, functionName,varName,adsErrorToString(infoStatus),infoStatus);
     if (infoStatus == GLOBALERR_TARGET_PORT) {
-	/* Sigh.  It was up, now it's down.  Let's go home. */
-	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Port error, giving up!\n", 
-		  driverName, functionName);
-	exit(1);
+    /* Sigh.  It was up, now it's down.  Let's go home. */
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Port error, giving up!\n", 
+          driverName, functionName);
+    exit(1);
     }
     return asynError;
   }
@@ -3466,11 +3867,11 @@ asynStatus adsAsynPortDriver::adsConnect()
     if (stat!=asynSuccess) {
       adsDelRoute(1);
       if (adsPort_) {
-	  adsLock();
-	  AdsPortCloseEx(adsPort_);
-	  adsPort_=0;
-	  adsUnlock();
-	  return asynError;
+      adsLock();
+      AdsPortCloseEx(adsPort_);
+      adsPort_=0;
+      adsUnlock();
+      return asynError;
       }
     }
   }
@@ -4400,7 +4801,7 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo* paramInfo)
           break;
       }
       break;
-	// No 64 bit uint array callback type -> cast into int64_t and use doCallbacksInt64Array
+    // No 64 bit uint array callback type -> cast into int64_t and use doCallbacksInt64Array
     case ADST_UINT64:
       switch(paramInfo->asynType){
         case asynParamInt64Array:

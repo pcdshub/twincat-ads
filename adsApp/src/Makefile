@@ -5,7 +5,7 @@ include $(TOP)/configure/CONFIG
 #  ADD MACRO DEFINITIONS AFTER THIS LINE
 #=============================
 
-USR_CXXFLAGS += -std=c++11
+USR_CXXFLAGS += -std=c++11 -DCONFIG_DEFAULT_LOGLEVEL=1
 USR_CPPFLAGS += -I ../../../ADS/AdsLib/
 USR_LDFLAGS  += -lpthread
 
@@ -21,6 +21,7 @@ ADSSUPPORTSOURCES = \
   AdsDef.cpp \
   AdsLib.cpp \
   AmsConnection.cpp \
+  AmsNetId.cpp \
   AmsPort.cpp \
   AmsRouter.cpp \
   Log.cpp \
