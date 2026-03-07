@@ -49,6 +49,7 @@ private:
   std::shared_ptr<AdsDatatypeIndex> mDatatypeIndex;
   std::shared_ptr<AdsSymbolIndex> mSymbolIndex;
   SymbolNode *mRootNode;
+  long treeSize;
 };
 
 #endif // ADSSYMBOLPARSER_H_

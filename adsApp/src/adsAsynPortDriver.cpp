@@ -514,17 +514,11 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
                 driverName, __func__, ipaddr_.c_str(), amsaddr_.c_str());
       if (!adsSymbolParserList_[0].load(adsSymbolMap_))
       {
+        printf("%s:%s: loaded all ads symbols for port %u.\n",
+               driverName, __func__, amsportDefault_);
         asynPrint(pasynUserSelf, ASYN_TRACE_INFO,
                   "%s:%s: loaded all ads symbols for port %u.\n",
                   driverName, __func__, amsportDefault_);
-      }
-      for (auto &adsSymbolEntryPair : adsSymbolMap_)
-      {
-        // asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
-        //           "%s:%s: found symbol: %s.\n",
-        //           driverName, __func__, adsSymbolEntryPair.first.c_str());
-        printf("%s:%s: found symbol: %s.\n",
-               driverName, __func__, adsSymbolEntryPair.first.c_str());
       }
       return;
     }
@@ -570,6 +564,7 @@ void adsAsynPortDriver::cyclicThread()
   {
     if (!allowCallbackEpicsState || !routeEstablished_)
     {
+      printf("%s:%s: cyclic thread waiting to start...\n", driverName, __func__);
       epicsThreadSleep(cyclicThreadCycleTime_s_);
       continue; // Epics has not yet started, so don't start the cyclic thread yet.
     }
@@ -697,6 +692,7 @@ void adsAsynPortDriver::bulkReadThread()
   {
     while (!okToProcessBulkReads() || !routeEstablished_)
     {
+      printf("%s:%s: bulk thread waiting to start...\n", driverName, __func__);
       epicsThreadSleep(0.5);
       continue;
     }
@@ -841,7 +837,7 @@ void adsAsynPortDriver::bulkReadThread()
           paramInfo->dataBulkReadLastRead = paramInfo->dataBulkReadThisRead;
         }
       }
-      //callbackQueueShow(0);
+      // callbackQueueShow(0);
       gettimeofday(&now, NULL);
       bulkReadTimeElapsed_us_ = (now.tv_sec - start.tv_sec) * 1000000 +
                                 (now.tv_usec - start.tv_usec);
@@ -3790,6 +3786,7 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
   auto it = adsSymbolMap_.find(varName);
   if (it == adsSymbolMap_.end())
   {
+    printf("%s:%s: did not find %s in the symbol map.\n", driverName, __func__, varName);
     const long infoStatus = AdsSyncReadWriteReqEx2(adsClientPort,
                                                    &amsServer,
                                                    ADSIGRP_SYM_INFOBYNAMEEX,
@@ -3809,6 +3806,24 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
   }
   else
   {
+    printf("%s:%s: found %s in the symbol map.\n", driverName, __func__, varName);
+    // const long infoStatus = AdsSyncReadWriteReqEx2(adsClientPort,
+    //                                                &amsServer,
+    //                                                ADSIGRP_SYM_INFOBYNAMEEX,
+    //                                                0,
+    //                                                sizeof(adsSymbolEntry),
+    //                                                &info,
+    //                                                strlen(varName),
+    //                                                varName,
+    //                                                &bytesRead);
+    // *errorCode = infoStatus;
+
+    // if (infoStatus)
+    // {
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Get symbolic information failed for %s with: %s (0x%lx)\n", driverName, __func__, varName, adsErrorToString(infoStatus), infoStatus);
+    //   return asynError;
+    // }
+
     info.entryLen = it->second->entryLength;
     info.iGroup = it->second->iGroup;
     info.iOffset = it->second->iOffs;
@@ -3818,6 +3833,25 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
     info.nameLength = it->second->nameLength;
     info.typeLength = it->second->typeLength;
     info.commentLength = it->second->commentLength;
+
+    // if (info.entryLen != it->second->entryLength)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong entry length. should be: %u is: %u\n", driverName, __func__, varName, info.entryLen, it->second->entryLength);
+    // if (info.iGroup != it->second->iGroup)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong group. should be: %u is: %u\n", driverName, __func__, varName, info.iGroup, it->second->iGroup);
+    // if (info.iOffset != it->second->iOffs)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong offset. should be: %u is: %u\n", driverName, __func__, varName, info.iOffset, it->second->iOffs);
+    // if (info.size != it->second->size)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong size. should be: %u is: %u\n", driverName, __func__, varName, info.size, it->second->size);
+    // if (info.dataType != it->second->dataType)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong datatype. should be: %u is: %u\n", driverName, __func__, varName, info.dataType, it->second->dataType);
+    // if (info.flags != it->second->flags)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong flags. should be: %u is: %u\n", driverName, __func__, varName, info.flags, it->second->flags);
+    // if (info.nameLength != it->second->nameLength)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong nameLength. should be: %u is: %u\n", driverName, __func__, varName, info.nameLength, it->second->nameLength);
+    // if (info.typeLength != it->second->typeLength)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong typeLength. should be: %u is: %u\n", driverName, __func__, varName, info.typeLength, it->second->typeLength);
+    // if (info.commentLength != it->second->commentLength)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong commentLength. should be: %u is: %u\n", driverName, __func__, varName, info.commentLength, it->second->commentLength);
   }
 
   info.variableName = info.buffer;

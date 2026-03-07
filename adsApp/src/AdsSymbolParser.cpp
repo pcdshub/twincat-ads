@@ -38,6 +38,9 @@ long AdsSymbolParser::load(std::unordered_map<std::string, const AdsSymbolEntry 
   buildSymbolTree();
   // std::cout << "----------" << std::endl;
   // printTree(mRootNode);
+  std::cout << "Number of symbol nodes: " << treeSize << std::endl;
+  std::cout << "Begin filling map..." << std::endl;
+  adsSymbolMap.reserve(treeSize);
   fillAdsSymbolMap(mRootNode, adsSymbolMap);
 
   return errorCode;
@@ -59,6 +62,7 @@ AdsSymbolParser::~AdsSymbolParser()
 void AdsSymbolParser::buildSymbolTree()
 {
   std::cout << "Parsing symbol indices: " << std::endl;
+  treeSize = 0;
   for (auto symbol : mSymbolIndex->entries())
   {
     std::string typeStr = symbol->type();
@@ -78,6 +82,8 @@ void AdsSymbolParser::buildSymbolTree()
 
 void AdsSymbolParser::addSymbol(SymbolNode *parentNode, const AdsSymbolEntry *symbol, const std::string &symbolName, const std::string &symbolType, AdsDatatypeIndex::Entry *datatypeEntry)
 {
+  treeSize++;
+
   auto newNode = new SymbolNode();
   newNode->symbolName = symbolName;
   newNode->symbolType = symbolType;
@@ -134,9 +140,12 @@ void AdsSymbolParser::fillAdsSymbolMap(SymbolNode *node, std::unordered_map<std:
   if (!node)
     return;
 
-  // We only query basic types, so only grab symbols with no children, because these are the only basic types
-  if (node->children.empty())
+  if (node->symbol)
+  {
+    if (adsSymbolMap.size() % 1000 == 0)
+      std::cout << "Map size at: " << adsSymbolMap.size() << std::endl;
     adsSymbolMap[node->symbolName] = node->symbol;
+  }
 
   for (auto child : node->children)
   {
