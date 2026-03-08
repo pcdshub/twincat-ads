@@ -13,6 +13,7 @@
 
 #include "AdsLib.h"         //error codes
 #include "asynPortDriver.h" //data types
+#include "AdsSymbolIndex.h"
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #include <memory>
@@ -107,6 +108,7 @@ typedef struct adsParamInfo
   int bulkIndex;
   int bulkOffset;
   std::shared_ptr<std::recursive_mutex> mutex;
+  bool callbackPending;
 } adsParamInfo;
 
 typedef struct amsPortInfo
@@ -126,24 +128,6 @@ typedef struct amsPortInfo
   size_t retryCount;
   bool stale;
 } amsPortInfo;
-
-// For info from symbolic name Actually this data type should be in the adslib (but missing)..
-typedef struct
-{
-  uint32_t entryLen;
-  uint32_t iGroup;
-  uint32_t iOffset;
-  uint32_t size;
-  uint32_t dataType;
-  uint32_t flags;
-  uint16_t nameLength;
-  uint16_t typeLength;
-  uint16_t commentLength;
-  char buffer[768]; // 256*3, 256 is string size in TwinCAT then 768 is max
-  char *variableName;
-  char *symDataType;
-  char *symComment;
-} adsSymbolEntry;
 
 typedef enum
 {
@@ -207,7 +191,7 @@ int octetCreateArgvSepv(const char *line,
 int octetBinary2ascii(bool returnVarName,
                       void *binaryBuffer,
                       uint32_t binaryBufferSize,
-                      adsSymbolEntry *info,
+                      AdsSymbolEntryExpanded& info,
                       adsOctetOutputBufferType *asciiBuffer);
 int octetAscii2binary(const char *asciiBuffer,
                       uint16_t dataType,

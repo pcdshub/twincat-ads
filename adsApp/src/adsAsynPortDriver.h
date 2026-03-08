@@ -102,7 +102,7 @@ public:
                                      size_t nElements);
 
   asynStatus adsUpdateParameterLock(adsParamInfo &paramInfo,
-                                    const void *data, bool callCallbacks = true);
+                                    const void *data);
   asynStatus invalidateParamsLock(uint16_t amsPort);
   asynStatus refreshParamsLock(long adsClientPort, uint16_t amsPort);
   asynStatus adsDelRoute();
@@ -125,6 +125,7 @@ public:
   void cyclicThread();
   void bulkReadThread();
   void dataCallbackThread();
+  void triggerEpicsIoIntrCallbacksThread();
   void poll_info(char *name);
 
 protected:
@@ -142,12 +143,12 @@ private:
   asynStatus refreshParams(long adsClientPort, uint16_t amsPort);
   asynStatus invalidateParams(uint16_t amsPort);
   asynStatus adsUpdateParameter(adsParamInfo &paramInfo,
-                                const void *data, bool callCallbacks = true);
+                                const void *data);
   asynStatus adsUpdateParameter(adsParamInfo &paramInfo,
-                                const void *data, size_t dataSize, bool callCallbacks = true);
+                                const void *data, size_t dataSize);
   asynStatus adsUpdateParameterLock(adsParamInfo &paramInfo,
                                     const void *data,
-                                    size_t dataSize, bool callCallbacks = true);
+                                    size_t dataSize);
 
   // ADS methods
   asynStatus adsAddDataCallback(long adsClientPort, adsParamInfo &paramInfo);
@@ -160,10 +161,10 @@ private:
   asynStatus adsGetSymInfoByName(long adsClientPort, adsParamInfo &paramInfo);
   asynStatus adsGetSymInfoByName(long adsClientPort, uint16_t amsPort,
                                  const char *varName,
-                                 adsSymbolEntry &info);
+                                 AdsSymbolEntryExpanded &info);
   asynStatus adsGetSymInfoByName(long adsClientPort, uint16_t amsPort,
                                  const char *varName,
-                                 adsSymbolEntry &info,
+                                 AdsSymbolEntryExpanded &info,
                                  long *errorCode);
   asynStatus adsGetSymHandleByName(long adsClientPort, adsParamInfo &paramInfo);
   asynStatus adsGetSymHandleByName(long adsClientPort, adsParamInfo &paramInfo,
@@ -211,6 +212,7 @@ private:
   asynStatus setAlarmPortLock(uint16_t amsPort, int alarm, int severity);
   asynStatus setAlarmPort(uint16_t amsPort, int alarm, int severity);
   asynStatus setAlarmParam(adsParamInfo &paramInfo, int alarm, int severity);
+  asynStatus setAlarmParamLock(adsParamInfo &paramInfo, int alarm, int severity);
   asynStatus fireCallbacks(adsParamInfo &paramInfo);
   asynStatus addNewAmsPortToList(uint16_t amsPort);
   asynStatus getAmsPortObject(uint16_t amsPort, int &index);
@@ -237,7 +239,7 @@ private:
                           const char *asciiValueToWrite,
                           adsOctetOutputBufferType *outBuffer);
   int octetAdsReadByGroupOffset(long adsClientPort, uint16_t amsPort,
-                                adsSymbolEntry *info,
+                                AdsSymbolEntryExpanded& info,
                                 adsOctetOutputBufferType *outBuffer);
   int octetAdsWriteByGroupOffset(long adsClientPort, uint16_t amsPort,
                                  uint32_t group,
@@ -264,7 +266,7 @@ private:
   std::vector<adsParamInfo> adsParamArray_;
   std::vector<amsPortInfo> amsPortList_;
   std::vector<AdsSymbolParser> adsSymbolParserList_;
-  std::unordered_map<std::string, const AdsSymbolEntry*> adsSymbolMap_;
+  std::unordered_map<std::string, const std::shared_ptr<AdsSymbolEntryExpanded>> adsSymbolMap_;
   ADSTIMESOURCE defaultTimeSource_;
   std::recursive_mutex threadIdToAmsClientPortMapMutex_;
   std::mutex callbacksMutex_;

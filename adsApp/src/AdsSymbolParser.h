@@ -6,50 +6,29 @@
 #include "AdsSymbolUploadInfo2.h"
 #include <list>
 #include <memory>
+#include <string>
 #include <unordered_map>
 #include <vector>
-#include <string>
-
-struct SymbolNode
-{
-  std::string symbolName;
-  std::string symbolType;
-  SymbolNode *parent = nullptr;
-  std::list<SymbolNode *> children;
-  const AdsSymbolEntry *symbol = nullptr;
-  const AdsDatatypeIndex::Entry *datatypeEntry = nullptr;
-  uint32_t group() const
-  {
-    return symbol ? symbol->iGroup : 0;
-  }
-  uint32_t offset() const
-  {
-    return (symbol ? symbol->iOffs : 0) + (datatypeEntry ? datatypeEntry->offset() : 0);
-  }
-};
 
 class AdsSymbolParser
 {
 public:
-  AdsSymbolParser(long adsClientPort, const AmsAddr &amsAddr);
-  ~AdsSymbolParser();
-  
-  long load(std::unordered_map<std::string, const AdsSymbolEntry *> &adsSymbolMap);
-  void printTree(SymbolNode *node);
+  long load(long adsClientPort,
+            const AmsAddr &amsAddr,
+            std::unordered_map<std::string, const std::shared_ptr<AdsSymbolEntryExpanded>> &adsSymbolMap);
+
+  AmsAddr getAmsAddressLoaded() const;
 
 private:
-  void buildSymbolTree();
-  void fillAdsSymbolMap(SymbolNode *node, std::unordered_map<std::string, const AdsSymbolEntry *> &adsSymbolMap);
-  void addSymbol(SymbolNode *parentNode, const AdsSymbolEntry *symbol, const std::string& symbolName, const std::string& symbolType, AdsDatatypeIndex::Entry *type = nullptr);
+  void fillAdsSymbolMapFromStartingNode(const std::shared_ptr<AdsSymbolEntryExpanded> startingNode,
+                                        std::unordered_map<std::string, const std::shared_ptr<AdsSymbolEntryExpanded>> &adsSymbolMap) const;
 
-  long mAdsClientPort;
+  long mAdsClientPort = 0;
   AmsAddr mAmsAddr;
   std::vector<char> mSymbols;
   std::vector<char> mDatatypes;
   std::shared_ptr<AdsDatatypeIndex> mDatatypeIndex;
   std::shared_ptr<AdsSymbolIndex> mSymbolIndex;
-  SymbolNode *mRootNode;
-  long treeSize;
 };
 
 #endif // ADSSYMBOLPARSER_H_

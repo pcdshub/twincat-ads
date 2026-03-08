@@ -90,8 +90,16 @@ struct AdsDatatypeEntry
   uint16_t arrayDim;      // array dimension and number of AdsDatatypeArrayInfo entries
   uint16_t subItemCount;  // number of sub items in this datatype
   // dynamic part of the structure:
-  // ADS_INT8    name[];             // name of datatype with terminating \0
-  // ADS_INT8    type[];             // type name of dataitem with terminating \0
+  // ADS_INT8    name[];             // name of datatype with terminating \0.
+  // For example: LCLS_MotionAbstraction.FB_ResetNC for a function block type
+  // For example: ARRAY [1..1000] OF LCLS_Vacuum.PMPS.TcUnit.ST_AssertArrayResult for an array of structures type
+  // For example: ARRAY [0..99] OF INT for an array of a base type
+  //
+  // ADS_INT8    type[];             // type name of dataitem with terminating \0.
+  // For example: UDINT for a UDINT Enum, blank for a structured type.
+  // For example: LCLS_Vacuum.PMPS.TcUnit.ST_AssertArrayResult for a structure type in each index of an array type
+  // For example: INT for a base type in an array of base types
+  //
   // ADS_INT8    comment[];          // comment of datatype with terminating \0
   // AdsDatatypeArrayInfo  array[];  // array information, if arrayDim > 0
   // AdsDatatypeEntry    subItems[]; // sub items, if subItems > 0

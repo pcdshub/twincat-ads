@@ -103,14 +103,11 @@ static void getEpicsState(initHookState state)
     break;
   case initHookAfterIocRunning: /* End of iocRun/iocInit commands */
     allowCallbackEpicsState = 1;
-
-    // make all callbacks if data arrived from callback before interrupts were registered (before allowCallbackEpicsState==1)
     if (!adsAsynPortObj)
     {
       printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, __func__);
       return;
     }
-    adsAsynPortObj->fireAllCallbacksLock();
     adsAsynPortObj->setOkToProcessBulkReads(true);
     printf("Begin polling PLC\n");
     break;
@@ -257,6 +254,16 @@ void dataCallbackThread(void *drvPvt)
 {
   adsAsynPortDriver *pPvt = (adsAsynPortDriver *)drvPvt;
   pPvt->dataCallbackThread();
+}
+
+/** Start trigger IO Intr Callbacks thread
+ * \param[in] drvPvt adsAsynPortDriver object
+ * \return void
+ */
+void triggerEpicsIoIntrCallbacksThread(void *drvPvt)
+{
+  adsAsynPortDriver *pPvt = (adsAsynPortDriver *)drvPvt;
+  pPvt->triggerEpicsIoIntrCallbacksThread();
 }
 
 /** Constructor for the adsAsynPortDriver class.
@@ -406,8 +413,10 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
     asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
               "%s:%s: failed to get ads client port. Fallback to default client port.\n", driverName, __func__);
   }
-  AmsAddr addr = {remoteNetId_, amsportDefault_};
-  adsSymbolParserList_.emplace_back(adsClientPort, addr);
+  AmsAddr addr;
+  addr.netId = remoteNetId_;
+  addr.port = amsportDefault_;
+  adsSymbolParserList_.emplace_back();
 
   // Add first param for other access (like motor record or stream device).
   int index;
@@ -485,6 +494,16 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
     throw std::runtime_error(string_format("%s:%s: epicsThreadCreate failure for dataCallbackThread.\n", driverName, __func__));
   }
 
+  //* Create the thread that does the ADS subscription callbacks */
+  status = (asynStatus)(epicsThreadCreate("adsAsynPortDriverTriggerEpicsIoIntrCallbacksThread",
+                                          epicsThreadPriorityHigh,
+                                          epicsThreadGetStackSize(epicsThreadStackMedium),
+                                          (EPICSTHREADFUNC)::triggerEpicsIoIntrCallbacksThread, this) == NULL);
+  if (status)
+  {
+    throw std::runtime_error(string_format("%s:%s: epicsThreadCreate failure for dataCallbackThread.\n", driverName, __func__));
+  }
+
   // try to connect, and hang until we succeed.
   while (true)
   {
@@ -512,10 +531,8 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
       asynPrint(pasynUserSelf, ASYN_TRACE_INFO,
                 "%s:%s: connection established for the ads server at ip = %s, amsnetid = %s.\n",
                 driverName, __func__, ipaddr_.c_str(), amsaddr_.c_str());
-      if (!adsSymbolParserList_[0].load(adsSymbolMap_))
+      if (!adsSymbolParserList_[0].load(adsClientPort, addr, adsSymbolMap_))
       {
-        printf("%s:%s: loaded all ads symbols for port %u.\n",
-               driverName, __func__, amsportDefault_);
         asynPrint(pasynUserSelf, ASYN_TRACE_INFO,
                   "%s:%s: loaded all ads symbols for port %u.\n",
                   driverName, __func__, amsportDefault_);
@@ -616,7 +633,7 @@ void adsAsynPortDriver::cyclicThread()
           if (adsServerPort.paramInfo->dataSource == ADS_DATASOURCE_AMS_STATE)
           {
             void *pData = (void *)&adsServerPort.adsState;
-            adsUpdateParameterLock(*adsServerPort.paramInfo, pData, 2, true);
+            adsUpdateParameterLock(*adsServerPort.paramInfo, pData, 2);
           }
         }
         asynPrint(pasynUserSelf, ASYN_TRACE_INFO, "%s:%s: Ams-port, %u, state change: \"%s\" -> \"%s\".\n",
@@ -707,7 +724,9 @@ void adsAsynPortDriver::bulkReadThread()
           continue;
 
         numBytesReadBackFromServer = 0;
-        AmsAddr amsServer = {remoteNetId_, bulkReadInfo.amsPort};
+        AmsAddr amsServer;
+        amsServer.netId = remoteNetId_;
+        amsServer.port = bulkReadInfo.amsPort;
         bulkReadInfo.data.resize(bulkReadInfo.readSize);
         auto reqInfoSize = sizeof(BulkReadRequestInfo) * bulkReadInfo.numberOfVariables();
         auto numSubCommandsAsIndexOffset = bulkReadInfo.numberOfVariables();
@@ -793,7 +812,7 @@ void adsAsynPortDriver::bulkReadThread()
                       "%s:%s: getAdsParamInfo() for hUser %u failed\n",
                       driverName, __func__, paramId);
             errorCodePerVariable++;
-            setAlarmParam(*paramInfo, READ_ALARM, INVALID_ALARM);
+            setAlarmParamLock(*paramInfo, READ_ALARM, INVALID_ALARM);
             continue;
           }
           if (*errorCodePerVariable)
@@ -802,7 +821,7 @@ void adsAsynPortDriver::bulkReadThread()
                       "%s:%s: bulk read for %s (%s) failed\n",
                       driverName, __func__, paramInfo->drvInfo.c_str(), paramInfo->recordName.c_str());
             errorCodePerVariable++;
-            setAlarmParam(*paramInfo, READ_ALARM, INVALID_ALARM);
+            setAlarmParamLock(*paramInfo, READ_ALARM, INVALID_ALARM);
             continue;
           }
           paramInfo->plcTimeStampRaw = nTimeStamp;
@@ -817,20 +836,7 @@ void adsAsynPortDriver::bulkReadThread()
                      paramInfo->dataBulkReadLastRead.data(),
                      paramInfo->dataBulkReadThisRead.size()) != 0)
           {
-            if (paramInfo->dataBulkReadThisRead.size() >= 2)
-            {
-              asynPrint(asynTraceUser, ASYN_TRACE_FLOW,
-                        "%s:%s: new value for %s = %u\n",
-                        driverName, __func__, paramInfo->recordName.c_str(), *(uint16_t *)dataPerVariable);
-            }
-            adsUpdateParameter(*paramInfo, dataPerVariable, true);
-            // Too many adsUpdateParameter calls will overwhelm the I/O interrupt
-            // callbacks and they will fall behind. Try to wait a bit between updateParameter calls.
-            // Ideally, this sleep command would be replaced with a check that forces
-            // this thread to wait until the ads parameter I/O interrupt for this parameter has completed
-            // successfully but I cannot figure out how to get a handle to the interrupt
-            // to check that it has completed. Alternatively, we may need to switch bulk read
-            // parameters to be polled by epics instead of waiting for i/o interrupts.
+            adsUpdateParameterLock(*paramInfo, dataPerVariable, true);
           }
           dataPerVariable += paramInfo->lastCallbackSize;
           errorCodePerVariable++;
@@ -870,6 +876,23 @@ void adsAsynPortDriver::dataCallbackThread()
       adsUpdateParameterLock(info.paramInfo, info.data.data());
       datacbqueue.pop();
     }
+  }
+}
+
+// All IO Intr callbacks must be generated from this single thread.
+void adsAsynPortDriver::triggerEpicsIoIntrCallbacksThread()
+{
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
+  while (true)
+  {
+    if (!allowCallbackEpicsState)
+    {
+      epicsThreadSleep(0.5);
+      continue;
+    }
+    // Batch callback calls into 100 ms intervals
+    fireAllCallbacksLock();
+    usleep(100000);
   }
 }
 
@@ -1251,6 +1274,7 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser, const char *drv
   asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: Parameter created: \"%s\" (index %d).\n", driverName, __func__, drvInfo, index);
 
   // Set default value for basic types...
+  lock();
   switch (paramInfo.asynType)
   {
   case asynParamInt32:
@@ -1265,6 +1289,7 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser, const char *drv
   default:
     break;
   }
+  unlock();
 
   paramInfo.paramIndex = index;
 
@@ -1547,7 +1572,9 @@ int adsAsynPortDriver::adsGetBulkTimeStamp(uint16_t amsPort)
     }
 
     long statL, statH;
-    AmsAddr amsServer = {remoteNetId_, amsPort};
+        AmsAddr amsServer;
+        amsServer.netId = remoteNetId_;
+        amsServer.port = amsPort;
     statH = AdsSyncReadWriteReqEx2(adsClientPort,
                                    &amsServer,
                                    ADSIGRP_SYM_HNDBYNAME,
@@ -2480,14 +2507,13 @@ int adsAsynPortDriver::octetMotorHandleADRCmd(long adsClientPort, const char *ar
   if (myarg_1)
   {
     myarg_1++; /* Jump over '?' */
-    adsSymbolEntry info;
-    memset(&info, 0, sizeof(info));
+    AdsSymbolEntryExpanded info;
     info.dataType = type_in_PLC;
     info.size = len_in_PLC;
     info.iGroup = group_no;
-    info.iOffset = offset_in_group;
+    info.iOffs = offset_in_group;
 
-    int error = octetAdsReadByGroupOffset(adsClientPort, amsport, &info, buffer);
+    int error = octetAdsReadByGroupOffset(adsClientPort, amsport, info, buffer);
     if (error)
     {
       OCTET_RETURN_ERROR(buffer, error, "%s", adsErrorToString(error));
@@ -2510,8 +2536,7 @@ int adsAsynPortDriver::octetAdsReadByName(long adsClientPort, uint16_t amsPort, 
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable:%s, amsPort %u\n", driverName, __func__, variableAddr, amsPort);
 
-  adsSymbolEntry infoStruct;
-  memset(&infoStruct, 0, sizeof(infoStruct));
+  AdsSymbolEntryExpanded infoStruct;
 
   long errorCode = 0;
   asynStatus stat = adsGetSymInfoByName(adsClientPort, amsPort, variableAddr, infoStruct, &errorCode);
@@ -2520,7 +2545,7 @@ int adsAsynPortDriver::octetAdsReadByName(long adsClientPort, uint16_t amsPort, 
     return errorCode;
   }
 
-  return octetAdsReadByGroupOffset(adsClientPort, amsPort, &infoStruct, outBuffer);
+  return octetAdsReadByGroupOffset(adsClientPort, amsPort, infoStruct, outBuffer);
 }
 
 /** Write a variable to PLC by symbolic addressing.\
@@ -2537,8 +2562,7 @@ int adsAsynPortDriver::octetAdsWriteByName(long adsClientPort, uint16_t amsPort,
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable: %s, value: %s.\n", driverName, __func__, variableAddr, asciiValueToWrite);
 
-  adsSymbolEntry infoStruct;
-  memset(&infoStruct, 0, sizeof(infoStruct));
+  AdsSymbolEntryExpanded infoStruct;
 
   long errorCode = 0;
   asynStatus stat = adsGetSymInfoByName(adsClientPort, amsPort, variableAddr, infoStruct, &errorCode);
@@ -2547,7 +2571,7 @@ int adsAsynPortDriver::octetAdsWriteByName(long adsClientPort, uint16_t amsPort,
     return errorCode;
   }
 
-  return octetAdsWriteByGroupOffset(adsClientPort, amsPort, infoStruct.iGroup, infoStruct.iOffset, infoStruct.dataType, infoStruct.size, asciiValueToWrite, outBuffer);
+  return octetAdsWriteByGroupOffset(adsClientPort, amsPort, infoStruct.iGroup, infoStruct.iOffs, infoStruct.dataType, infoStruct.size, asciiValueToWrite, outBuffer);
 }
 
 /**Read a variable from PLC by absolute addressing.\
@@ -2559,15 +2583,20 @@ int adsAsynPortDriver::octetAdsWriteByName(long adsClientPort, uint16_t amsPort,
  *
  * \return 0 for success or error code.
  */
-int adsAsynPortDriver::octetAdsReadByGroupOffset(long adsClientPort, uint16_t amsPort, adsSymbolEntry *info, adsOctetOutputBufferType *outBuffer)
+int adsAsynPortDriver::octetAdsReadByGroupOffset(long adsClientPort, uint16_t amsPort, AdsSymbolEntryExpanded &info, adsOctetOutputBufferType *outBuffer)
 {
-  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort: %d, group: %d, offset: %d, dataType: %s (%d), dataSize: %d.\n", driverName, __func__, (int)amsPort, (int)info->iGroup, (int)info->iOffset, adsTypeToString(info->dataType), (int)info->dataType, (int)info->size);
+  asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
+            "%s:%s: amsPort: %d, group: %d, offset: %d, dataType: %s (%d), dataSize: %d.\n",
+            driverName, __func__, (int)amsPort, (int)info.iGroup, (int)info.iOffs,
+            adsTypeToString(info.dataType), (int)info.dataType, (int)info.size);
 
   uint32_t bytesRead = 0;
-  AmsAddr amsServer = {remoteNetId_, amsPort};
+        AmsAddr amsServer;
+        amsServer.netId = remoteNetId_;
+        amsServer.port = amsPort;
 
-  int dataSize = info->size;
-  if (info->size > ADS_CMD_BUFFER_SIZE)
+  int dataSize = info.size;
+  if (info.size > ADS_CMD_BUFFER_SIZE)
   {
     dataSize = ADS_CMD_BUFFER_SIZE;
     asynPrint(pasynUserSelf, ASYN_TRACE_WARNING, "%s:%s: Read buffer size smaller than size in plc.\n", driverName, __func__);
@@ -2575,7 +2604,7 @@ int adsAsynPortDriver::octetAdsReadByGroupOffset(long adsClientPort, uint16_t am
 
   memset(&octetBinaryBuffer_, 0, ADS_CMD_BUFFER_SIZE);
 
-  int error = AdsSyncReadReqEx2(adsClientPort, &amsServer, info->iGroup, info->iOffset, dataSize, &octetBinaryBuffer_, &bytesRead);
+  int error = AdsSyncReadReqEx2(adsClientPort, &amsServer, info.iGroup, info.iOffs, dataSize, &octetBinaryBuffer_, &bytesRead);
 
   if (error)
   {
@@ -2631,7 +2660,9 @@ int adsAsynPortDriver::octetAdsWriteByGroupOffset(long adsClientPort, uint16_t a
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort: %d, group: %d, offset: %d, dataType: %s (%d), dataSize: %d.\n", driverName, __func__, (int)amsPort, (int)group, (int)offset, adsTypeToString(dataType), (int)dataType, (int)dataSize);
 
   uint32_t bytesToWrite = 0;
-  AmsAddr amsServer = {remoteNetId_, amsPort};
+        AmsAddr amsServer;
+        amsServer.netId = remoteNetId_;
+        amsServer.port = amsPort;
 
   memset(&octetBinaryBuffer_, 0, ADS_CMD_BUFFER_SIZE);
 
@@ -2676,8 +2707,6 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: invalid parameter index = %d\n", driverName, __func__, paramIndex);
     pasynUser->alarmStatus = WRITE_ALARM;
-    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
-    callParamCallbacks();
     return asynError;
   }
 
@@ -2696,12 +2725,12 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
   {
     if (adsWriteState(adsClientPort, paramInfo.amsPort, (uint16_t)value) != asynSuccess)
     {
-      return setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+      return setAlarmParamLock(paramInfo, WRITE_ALARM, INVALID_ALARM);
     }
     // Write OK -> reset write alarm
     if (paramInfo.alarmStatus == WRITE_ALARM)
     {
-      return setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+      return setAlarmParamLock(paramInfo, NO_ALARM, NO_ALARM);
     }
     return asynSuccess;
   }
@@ -2780,24 +2809,20 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
   if (maxBytesToWrite != paramInfo.plcSize || maxBytesToWrite == 0)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types size missmatch (%s and %d bytes). Write canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType), maxBytesToWrite);
-    setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
-    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
-    callParamCallbacks();
+    setAlarmParamLock(paramInfo, WRITE_ALARM, INVALID_ALARM);
     return asynError;
   }
 
   // Do the write
   if (adsWriteParam(adsClientPort, paramInfo, (const void *)buffer, maxBytesToWrite) != asynSuccess)
   {
-    setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
-    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
-    callParamCallbacks();
+    setAlarmParamLock(paramInfo, WRITE_ALARM, INVALID_ALARM);
     return asynError;
   }
   // Only reset if write alarm
   if (paramInfo.alarmStatus == WRITE_ALARM)
   {
-    setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+    setAlarmParamLock(paramInfo, NO_ALARM, NO_ALARM);
   }
 
   return asynPortDriver::writeInt32(pasynUser, value);
@@ -2813,8 +2838,6 @@ asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: invalid parameter index = %d\n", driverName, __func__, paramIndex);
     pasynUser->alarmStatus = WRITE_ALARM;
-    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
-    callParamCallbacks();
     return asynError;
   }
 
@@ -2833,11 +2856,11 @@ asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
   {
     if (adsWriteState(adsClientPort, paramInfo.amsPort, (uint16_t)value) != asynSuccess)
     {
-      return setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+      return setAlarmParamLock(paramInfo, WRITE_ALARM, INVALID_ALARM);
     }
     if (paramInfo.alarmStatus == WRITE_ALARM)
     {
-      return setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+      return setAlarmParamLock(paramInfo, NO_ALARM, NO_ALARM);
     }
     return asynSuccess;
   }
@@ -2879,23 +2902,19 @@ asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types size mismatch (%s and %d bytes). Write canceled.\n",
               driverName, __func__, adsTypeToString(paramInfo.plcDataType), maxBytesToWrite);
-    setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
-    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
-    callParamCallbacks();
+    setAlarmParamLock(paramInfo, WRITE_ALARM, INVALID_ALARM);
     return asynError;
   }
 
   // Write the value
   if (adsWriteParam(adsClientPort, paramInfo, buffer, maxBytesToWrite) != asynSuccess)
   {
-    setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
-    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
-    callParamCallbacks();
+    setAlarmParamLock(paramInfo, WRITE_ALARM, INVALID_ALARM);
     return asynError;
   }
   if (paramInfo.alarmStatus == WRITE_ALARM)
   {
-    setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+    setAlarmParamLock(paramInfo, NO_ALARM, NO_ALARM);
   }
 
   return asynPortDriver::writeInt64(pasynUser, value);
@@ -2919,8 +2938,6 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL\n", driverName, __func__);
     pasynUser->alarmStatus = WRITE_ALARM;
     pasynUser->alarmSeverity = INVALID_ALARM;
-    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
-    callParamCallbacks();
     return asynError;
   }
 
@@ -2939,12 +2956,12 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
   {
     if (adsWriteState(adsClientPort, paramInfo.amsPort, (uint16_t)value) != asynSuccess)
     {
-      return setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+      return setAlarmParamLock(paramInfo, WRITE_ALARM, INVALID_ALARM);
     }
     // Write OK -> reset write alarm
     if (paramInfo.alarmStatus == WRITE_ALARM)
     {
-      return setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+      return setAlarmParamLock(paramInfo, NO_ALARM, NO_ALARM);
     }
     return asynSuccess;
   }
@@ -3035,25 +3052,21 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
   if (maxBytesToWrite != paramInfo.plcSize || maxBytesToWrite == 0)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types size mismatch (%s and %d bytes). Write canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType), maxBytesToWrite);
-    setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
-    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
-    callParamCallbacks();
+    setAlarmParamLock(paramInfo, WRITE_ALARM, INVALID_ALARM);
     return asynError;
   }
 
   // Do the write
   if (adsWriteParam(adsClientPort, paramInfo, (const void *)buffer, maxBytesToWrite) != asynSuccess)
   {
-    setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
-    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
-    callParamCallbacks();
+    setAlarmParamLock(paramInfo, WRITE_ALARM, INVALID_ALARM);
     return asynError;
   }
 
   // Only reset if write alarm
   if (paramInfo.alarmStatus == WRITE_ALARM)
   {
-    setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+    setAlarmParamLock(paramInfo, NO_ALARM, NO_ALARM);
   }
 
   return asynPortDriver::writeFloat64(pasynUser, value);
@@ -3094,7 +3107,7 @@ asynStatus adsAsynPortDriver::adsGenericArrayRead(asynUser *pasynUser, long allo
   if (!extendedAllowedType)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (%s vs %s). Read canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType), adsTypeToString(allowedType));
-    setAlarmParam(paramInfo, READ_ALARM, INVALID_ALARM);
+    setAlarmParamLock(paramInfo, READ_ALARM, INVALID_ALARM);
     return asynError;
   }
 
@@ -3107,7 +3120,7 @@ asynStatus adsAsynPortDriver::adsGenericArrayRead(asynUser *pasynUser, long allo
   if (paramInfo.arrayDataBuffer.empty() || !epicsDataBuffer)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Buffer(s) NULL. Read canceled.\n", driverName, __func__);
-    setAlarmParam(paramInfo, READ_ALARM, INVALID_ALARM);
+    setAlarmParamLock(paramInfo, READ_ALARM, INVALID_ALARM);
     return asynError;
   }
 
@@ -3117,7 +3130,7 @@ asynStatus adsAsynPortDriver::adsGenericArrayRead(asynUser *pasynUser, long allo
   // Only reset if read alarm
   if (paramInfo.alarmStatus == READ_ALARM)
   {
-    setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+    setAlarmParamLock(paramInfo, NO_ALARM, NO_ALARM);
   }
 
   // update timestamp
@@ -3166,7 +3179,7 @@ asynStatus adsAsynPortDriver::adsGenericArrayWrite(asynUser *pasynUser, long all
   if (!extendedAllowedType)
   {
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: Data types not compatible (%s vs %s). Write canceled.\n", driverName, __func__, adsTypeToString(paramInfo.plcDataType), adsTypeToString(allowedType));
-    setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+    setAlarmParamLock(paramInfo, WRITE_ALARM, INVALID_ALARM);
     return asynError;
   }
 
@@ -3180,7 +3193,7 @@ asynStatus adsAsynPortDriver::adsGenericArrayWrite(asynUser *pasynUser, long all
   asynStatus stat = adsWriteParam(adsClientPort, paramInfo, data, bytesToWrite);
   if (stat != asynSuccess)
   {
-    setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+    setAlarmParamLock(paramInfo, WRITE_ALARM, INVALID_ALARM);
     return asynError;
   }
 
@@ -3193,7 +3206,7 @@ asynStatus adsAsynPortDriver::adsGenericArrayWrite(asynUser *pasynUser, long all
   // Only reset if write alarm
   if (paramInfo.alarmStatus == WRITE_ALARM)
   {
-    setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+    setAlarmParamLock(paramInfo, NO_ALARM, NO_ALARM);
   }
 
   return asynSuccess;
@@ -3508,8 +3521,9 @@ asynStatus adsAsynPortDriver::adsGetSymHandleByName(long adsClientPort, adsParam
 
   std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
 
-  AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo.amsPort};
+        AmsAddr amsServer;
+        amsServer.netId = remoteNetId_;
+        amsServer.port = paramInfo.amsPort;
 
   uint32_t symbolHandle = 0;
   const long handleStatus = AdsSyncReadWriteReqEx2(adsClientPort,
@@ -3549,8 +3563,9 @@ asynStatus adsAsynPortDriver::adsAddSymbolsChangedCallback(long adsClientPort, a
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Ams-port %u.\n", driverName, __func__, port.amsPort);
 
-  AmsAddr amsServer;
-  amsServer = {remoteNetId_, port.amsPort};
+        AmsAddr amsServer;
+        amsServer.netId = remoteNetId_;
+        amsServer.port = port.amsPort;
 
   AdsNotificationAttrib attrib;
   attrib.cbLength = 1;
@@ -3591,8 +3606,9 @@ asynStatus adsAsynPortDriver::adsDelSymbolsChangedCallback(long adsClientPort, a
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  AmsAddr amsServer;
-  amsServer = {remoteNetId_, port.amsPort};
+        AmsAddr amsServer;
+        amsServer.netId = remoteNetId_;
+        amsServer.port = port.amsPort;
 
   const long delStatus = AdsSyncDelDeviceNotificationReqEx(adsClientPort, &amsServer, port.hCallbackNotify);
   port.bCallbackNotifyValid = false;
@@ -3624,8 +3640,9 @@ asynStatus adsAsynPortDriver::adsAddDataCallback(long adsClientPort, adsParamInf
 
   paramInfo.bCallbackNotifyValid = false;
 
-  AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo.amsPort};
+        AmsAddr amsServer;
+        amsServer.netId = remoteNetId_;
+        amsServer.port = paramInfo.amsPort;
 
   if (paramInfo.isAdrCommand)
   { // Abs access (ADR command)
@@ -3729,8 +3746,9 @@ asynStatus adsAsynPortDriver::adsDelDataCallback(long adsClientPort, adsParamInf
 
   paramInfo.bCallbackNotifyValid = false;
 
-  AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo.amsPort};
+        AmsAddr amsServer;
+        amsServer.netId = remoteNetId_;
+        amsServer.port = paramInfo.amsPort;
 
   const long delStatus = AdsSyncDelDeviceNotificationReqEx(adsClientPort, &amsServer, paramInfo.hCallbackNotify);
   paramInfo.hCallbackNotify = -1;
@@ -3754,7 +3772,7 @@ asynStatus adsAsynPortDriver::adsDelDataCallback(long adsClientPort, adsParamInf
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t amsPort, const char *varName, adsSymbolEntry &info)
+asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t amsPort, const char *varName, AdsSymbolEntryExpanded &info)
 {
   long errorCode = 0;
   return adsGetSymInfoByName(adsClientPort, amsPort, varName, info, &errorCode);
@@ -3769,7 +3787,7 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t amsPort, const char *varName, adsSymbolEntry &info, long *errorCode)
+asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t amsPort, const char *varName, AdsSymbolEntryExpanded &info, long *errorCode)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable name: %s, amsPort: %d.\n", driverName, __func__, varName, (int)amsPort);
 
@@ -3780,19 +3798,21 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
   }
 
   uint32_t bytesRead = 0;
-  AmsAddr amsServer;
+        AmsAddr amsServer;
+        amsServer.netId = remoteNetId_;
+        amsServer.port = amsPort;
 
-  amsServer = {remoteNetId_, amsPort};
   auto it = adsSymbolMap_.find(varName);
   if (it == adsSymbolMap_.end())
   {
+    AdsSymbolEntryAccess infoAccess;
     printf("%s:%s: did not find %s in the symbol map.\n", driverName, __func__, varName);
     const long infoStatus = AdsSyncReadWriteReqEx2(adsClientPort,
                                                    &amsServer,
                                                    ADSIGRP_SYM_INFOBYNAMEEX,
                                                    0,
-                                                   sizeof(adsSymbolEntry),
-                                                   &info,
+                                                   sizeof(AdsSymbolEntry),
+                                                   &infoAccess,
                                                    strlen(varName),
                                                    varName,
                                                    &bytesRead);
@@ -3803,6 +3823,20 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Get symbolic information failed for %s with: %s (0x%lx)\n", driverName, __func__, varName, adsErrorToString(infoStatus), infoStatus);
       return asynError;
     }
+
+    info.entryLength = infoAccess.entryLength;
+    info.iGroup = infoAccess.iGroup;
+    info.iOffs = infoAccess.iOffs;
+    info.size = infoAccess.size;
+    info.dataType = infoAccess.dataType;
+    info.flags = infoAccess.flags;
+    info.nameLength = infoAccess.nameLength;
+    info.typeLength = infoAccess.typeLength;
+    info.commentLength = infoAccess.commentLength;
+    
+    info.name = infoAccess.name();
+    info.type = infoAccess.type();
+    info.comment = infoAccess.comment();
   }
   else
   {
@@ -3811,7 +3845,7 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
     //                                                &amsServer,
     //                                                ADSIGRP_SYM_INFOBYNAMEEX,
     //                                                0,
-    //                                                sizeof(adsSymbolEntry),
+    //                                                sizeof(AdsSymbolEntry),
     //                                                &info,
     //                                                strlen(varName),
     //                                                varName,
@@ -3824,15 +3858,7 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
     //   return asynError;
     // }
 
-    info.entryLen = it->second->entryLength;
-    info.iGroup = it->second->iGroup;
-    info.iOffset = it->second->iOffs;
-    info.size = it->second->size;
-    info.dataType = it->second->dataType;
-    info.flags = it->second->flags;
-    info.nameLength = it->second->nameLength;
-    info.typeLength = it->second->typeLength;
-    info.commentLength = it->second->commentLength;
+    info = *it->second;
 
     // if (info.entryLen != it->second->entryLength)
     //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong entry length. should be: %u is: %u\n", driverName, __func__, varName, info.entryLen, it->second->entryLength);
@@ -3854,34 +3880,19 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
     //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong commentLength. should be: %u is: %u\n", driverName, __func__, varName, info.commentLength, it->second->commentLength);
   }
 
-  info.variableName = info.buffer;
-
-  if (info.nameLength >= sizeof(info.buffer) - 1)
-  {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Missalignment of type in AdsSyncReadWriteReqEx2 return struct for %s\n", driverName, __func__, varName);
-    return asynError;
-  }
-  info.symDataType = info.buffer + info.nameLength + 1;
-
-  if (info.nameLength + info.typeLength + 2 >= (uint16_t)(sizeof(info.buffer) - 1))
-  {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Missalignment of comment in AdsSyncReadWriteReqEx2 return struct for %s\n", driverName, __func__, varName);
-  }
-  info.symComment = info.symDataType + info.typeLength + 1;
-
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Symbolic information\n");
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "SymEntrylength: %d\n", info.entryLen);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "SymEntrylength: %d\n", info.entryLength);
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "idxGroup: 0x%x\n", info.iGroup);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "idxOffset: 0x%x\n", info.iOffset);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "idxOffset: 0x%x\n", info.iOffs);
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "ByteSize: %d\n", info.size);
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "adsDataType: %d\n", info.dataType);
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Flags: %d\n", info.flags);
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Name length: %d\n", info.nameLength);
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Type length: %d\n", info.typeLength);
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Type length: %d\n", info.commentLength);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Variable name: %s\n", info.variableName);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Data type: %s\n", info.symDataType);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Comment: %s\n", info.symComment);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Variable name: %s\n", info.name.c_str());
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Data type: %s\n", info.type.c_str());
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Comment: %s\n", info.comment.c_str());
 
   return asynSuccess;
 }
@@ -3898,8 +3909,7 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, adsParamIn
 
   std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
 
-  adsSymbolEntry infoStruct;
-  memset(&infoStruct, 0, sizeof(infoStruct));
+  AdsSymbolEntryExpanded infoStruct;
 
   asynStatus stat = adsGetSymInfoByName(adsClientPort, paramInfo.amsPort, paramInfo.plcAdrStr.c_str(), infoStruct);
   if (stat)
@@ -3909,7 +3919,7 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, adsParamIn
 
   // fill paramInfo data structure
   paramInfo.plcAbsAdrGroup = infoStruct.iGroup;
-  paramInfo.plcAbsAdrOffset = infoStruct.iOffset;
+  paramInfo.plcAbsAdrOffset = infoStruct.iOffs;
   paramInfo.plcSize = infoStruct.size;
   paramInfo.plcDataType = infoStruct.dataType;
   paramInfo.plcAbsAdrValid = true;
@@ -3974,7 +3984,8 @@ asynStatus adsAsynPortDriver::adsReadVersion(long adsClientPort, amsPortInfo &po
   AmsAddr amsServer;
   AdsVersion version;
   char devName[255];
-  amsServer = {remoteNetId_, port.amsPort};
+  amsServer.netId = remoteNetId_;
+  amsServer.port = port.amsPort;
 
   long status = AdsSyncReadDeviceInfoReqEx(adsClientPort, &amsServer, devName, &version);
   if (status)
@@ -4016,7 +4027,8 @@ asynStatus adsAsynPortDriver::adsReleaseSymbolicHandle(long adsClientPort, adsPa
   paramInfo.bSymbolicHandleValid = false;
 
   AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo.amsPort};
+  amsServer.netId = remoteNetId_;
+  amsServer.port = paramInfo.amsPort;
 
   const long releaseStatus = AdsSyncWriteReqEx(adsClientPort, &amsServer, ADSIGRP_SYM_RELEASEHND, 0, sizeof(paramInfo.hSymbolicHandle), &paramInfo.hSymbolicHandle);
   paramInfo.hSymbolicHandle = -1;
@@ -4054,7 +4066,8 @@ asynStatus adsAsynPortDriver::adsWriteParam(long adsClientPort, adsParamInfo &pa
   uint32_t offset = 0;
 
   AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo.amsPort};
+  amsServer.netId = remoteNetId_;
+  amsServer.port = paramInfo.amsPort;
 
   if (paramInfo.isAdrCommand)
   { // Abs access (ADR command)
@@ -4145,7 +4158,8 @@ asynStatus adsAsynPortDriver::adsReadParam(long adsClientPort, adsParamInfo &par
   error = 0;
 
   AmsAddr amsServer;
-  amsServer = {remoteNetId_, paramInfo.amsPort};
+  amsServer.netId = remoteNetId_;
+  amsServer.port = paramInfo.amsPort;
 
   if (paramInfo.isAdrCommand)
   { // Abs access (ADR command)
@@ -4219,7 +4233,7 @@ asynStatus adsAsynPortDriver::adsReadParam(long adsClientPort, adsParamInfo &par
   asynStatus stat = asynSuccess;
   if (updateAsynPar)
   {
-    stat = adsUpdateParameterLock(paramInfo, (const void *)data, bytesRead, true);
+    stat = adsUpdateParameterLock(paramInfo, (const void *)data, bytesRead);
   }
 
   return stat;
@@ -4293,7 +4307,9 @@ asynStatus adsAsynPortDriver::adsReadState(long adsClientPort, uint16_t amsport,
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-  AmsAddr amsServer = {remoteNetId_, amsport};
+  AmsAddr amsServer;
+  amsServer.netId = remoteNetId_;
+  amsServer.port = amsport;
 
   uint16_t devState;
   error = AdsSyncReadStateReqEx(adsClientPort, &amsServer, &adsState, &devState);
@@ -4320,7 +4336,9 @@ asynStatus adsAsynPortDriver::adsWriteState(long adsClientPort, uint16_t amsport
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: adsState = %s (%u)\n", driverName, __func__, adsStateToString(adsState), adsState);
 
   void *pData = NULL;
-  AmsAddr amsServer = {remoteNetId_, amsport};
+  AmsAddr amsServer;
+  amsServer.netId = remoteNetId_;
+  amsServer.port = amsport;
   const long status = AdsSyncWriteControlReqEx(adsClientPort, &amsServer, adsState, 0, 0, pData);
   if (status)
   {
@@ -4428,10 +4446,10 @@ asynStatus adsAsynPortDriver::refreshParamTime(adsParamInfo &paramInfo)
  *
  * Thread safe.
  */
-asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data, bool callCallbacks)
+asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data)
 {
   lock();
-  asynStatus stat = adsUpdateParameter(paramInfo, data, callCallbacks);
+  asynStatus stat = adsUpdateParameter(paramInfo, data);
   unlock();
   return stat;
 }
@@ -4446,10 +4464,10 @@ asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, co
  *
  * Thread safe.
  */
-asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data, size_t dataSize, bool callCallbacks)
+asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, const void *data, size_t dataSize)
 {
   lock();
-  asynStatus stat = adsUpdateParameter(paramInfo, data, dataSize, callCallbacks);
+  asynStatus stat = adsUpdateParameter(paramInfo, data, dataSize);
   unlock();
   return stat;
 }
@@ -4462,9 +4480,9 @@ asynStatus adsAsynPortDriver::adsUpdateParameterLock(adsParamInfo &paramInfo, co
  * \return asynSuccess or asynError.
  *
  */
-asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data, bool callCallbacks)
+asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data)
 {
-  return adsUpdateParameter(paramInfo, data, paramInfo.lastCallbackSize, callCallbacks);
+  return adsUpdateParameter(paramInfo, data, paramInfo.lastCallbackSize);
 }
 
 /** Update asyn parameter or callback (for arrays).
@@ -4476,11 +4494,13 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const 
  * \return asynSuccess or asynError.
  *
  */
-asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data, size_t dataSize, bool callCallbacks)
+asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const void *data, size_t dataSize)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
+
+  paramInfo.callbackPending = true;
 
   if (!data)
   {
@@ -4799,15 +4819,10 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo &paramInfo, const 
     return ret;
   }
 
-  ret = setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+  ret = setAlarmParamLock(paramInfo, NO_ALARM, NO_ALARM);
   if (ret != asynSuccess)
   {
     return ret;
-  }
-
-  if (allowCallbackEpicsState && callCallbacks)
-  {
-    return fireCallbacks(paramInfo);
   }
 
   return asynSuccess;
@@ -4824,6 +4839,8 @@ asynStatus adsAsynPortDriver::fireAllCallbacksLock()
   lock();
   for (auto &paramInfo : adsParamArray_)
   {
+    if (!paramInfo.callbackPending)
+      continue;
     fireCallbacks(paramInfo);
   }
   unlock();
@@ -4841,6 +4858,8 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo &paramInfo)
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
   std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
+
+  paramInfo.callbackPending = false;
 
   if (paramInfo.lastCallbackSize <= 0)
   {
@@ -4862,7 +4881,7 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo &paramInfo)
     switch (paramInfo.asynType)
     {
     case asynParamInt8Array:
-      ret = doCallbacksInt8Array((epicsInt8 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
+      ret = doCallbacksInt8Array((epicsInt8 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize / sizeof(epicsInt8), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
@@ -4877,7 +4896,7 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo &paramInfo)
     switch (paramInfo.asynType)
     {
     case asynParamInt16Array:
-      ret = doCallbacksInt16Array((epicsInt16 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
+      ret = doCallbacksInt16Array((epicsInt16 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize / sizeof(epicsInt16), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
@@ -4891,7 +4910,7 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo &paramInfo)
     switch (paramInfo.asynType)
     {
     case asynParamInt32Array:
-      ret = doCallbacksInt32Array((epicsInt32 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
+      ret = doCallbacksInt32Array((epicsInt32 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize / sizeof(epicsInt32), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
@@ -4920,7 +4939,7 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo &paramInfo)
     switch (paramInfo.asynType)
     {
     case asynParamInt64Array:
-      ret = doCallbacksInt64Array((epicsInt64 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize / sizeof(epicsInt64), paramInfo.paramIndex, paramInfo.asynAddr);
+      ret = doCallbacksInt64Array((epicsInt64 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize / sizeof(epicsUInt64), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
@@ -4934,7 +4953,7 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo &paramInfo)
     switch (paramInfo.asynType)
     {
     case asynParamFloat32Array:
-      ret = doCallbacksFloat32Array((epicsFloat32 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
+      ret = doCallbacksFloat32Array((epicsFloat32 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize / sizeof(epicsFloat32), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
@@ -4949,7 +4968,7 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo &paramInfo)
     switch (paramInfo.asynType)
     {
     case asynParamFloat64Array:
-      ret = doCallbacksFloat64Array((epicsFloat64 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
+      ret = doCallbacksFloat64Array((epicsFloat64 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize / sizeof(epicsFloat64), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
@@ -4964,7 +4983,7 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo &paramInfo)
     switch (paramInfo.asynType)
     {
     case asynParamInt8Array:
-      ret = doCallbacksInt8Array((epicsInt8 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize, paramInfo.paramIndex, paramInfo.asynAddr);
+      ret = doCallbacksInt8Array((epicsInt8 *)paramInfo.arrayDataBuffer.data(), paramInfo.lastCallbackSize / sizeof(epicsInt8), paramInfo.paramIndex, paramInfo.asynAddr);
       break;
     default:
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
@@ -4999,6 +5018,13 @@ asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo &paramInfo)
   return ret;
 }
 
+asynStatus adsAsynPortDriver::setAlarmParamLock(adsParamInfo &paramInfo, int alarm, int severity)
+{
+  lock();
+  return setAlarmParam(paramInfo, alarm, severity);
+  unlock();
+}
+
 /** Set parameter alarm state.
  *
  * \param[in] paramInfo Parameter information.
@@ -5024,8 +5050,6 @@ asynStatus adsAsynPortDriver::setAlarmParam(adsParamInfo &paramInfo, int alarm, 
     return asynError;
   }
 
-  bool doCallbacks = false;
-
   if (oldAlarmStatus != alarm)
   {
     stat = setParamAlarmStatus(paramInfo.paramIndex, alarm);
@@ -5037,7 +5061,6 @@ asynStatus adsAsynPortDriver::setAlarmParam(adsParamInfo &paramInfo, int alarm, 
       return asynError;
     }
     paramInfo.alarmStatus = alarm;
-    doCallbacks = true;
   }
 
   int oldAlarmSeverity = 0;
@@ -5061,53 +5084,6 @@ asynStatus adsAsynPortDriver::setAlarmParam(adsParamInfo &paramInfo, int alarm, 
       return asynError;
     }
     paramInfo.alarmSeverity = severity;
-    doCallbacks = true;
-  }
-
-  if (!doCallbacks || !allowCallbackEpicsState)
-  {
-    return asynSuccess;
-  }
-  // Write size used for arrays
-  size_t writeSize = paramInfo.arrayDataBuffer.size();
-  if (paramInfo.plcSize < writeSize)
-  {
-    writeSize = paramInfo.plcSize;
-  }
-
-  // Alarm status or severity changed=>Do callbacks with old buffered data (if nElemnts==0 then no data in record...)
-  if (paramInfo.plcDataIsArray && writeSize > 0 && allowCallbackEpicsState)
-  {
-    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
-    switch (paramInfo.asynType)
-    {
-    case asynParamInt8Array:
-      stat = doCallbacksInt8Array((epicsInt8 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsInt8), paramInfo.paramIndex, paramInfo.asynAddr);
-      break;
-    case asynParamInt16Array:
-      stat = doCallbacksInt16Array((epicsInt16 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsInt16), paramInfo.paramIndex, paramInfo.asynAddr);
-      break;
-    case asynParamInt32Array:
-      stat = doCallbacksInt32Array((epicsInt32 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsInt32), paramInfo.paramIndex, paramInfo.asynAddr);
-      break;
-    case asynParamInt64Array:
-      stat = doCallbacksInt64Array((epicsInt64 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsInt64), paramInfo.paramIndex, paramInfo.asynAddr);
-      break;
-    case asynParamFloat32Array:
-      stat = doCallbacksFloat32Array((epicsFloat32 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsFloat32), paramInfo.paramIndex, paramInfo.asynAddr);
-      break;
-    case asynParamFloat64Array:
-      stat = doCallbacksFloat64Array((epicsFloat64 *)paramInfo.arrayDataBuffer.data(), writeSize / sizeof(epicsFloat64), paramInfo.paramIndex, paramInfo.asynAddr);
-      break;
-    default:
-      stat = callParamCallbacks();
-      break;
-    }
-  }
-  else
-  {
-    std::lock_guard<std::mutex> lockGuardCallbacks(callbacksMutex_);
-    stat = callParamCallbacks();
   }
 
   return stat;
@@ -5148,7 +5124,7 @@ asynStatus adsAsynPortDriver::setAlarmPort(uint16_t amsPort, int alarm, int seve
   {
     if (paramInfo.amsPort == amsPort)
     {
-      if (setAlarmParam(paramInfo, alarm, severity) != asynSuccess)
+      if (setAlarmParamLock(paramInfo, alarm, severity) != asynSuccess)
       {
         return asynError;
       }

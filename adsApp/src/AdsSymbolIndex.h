@@ -2,16 +2,19 @@
 #define ADSSYMBOLINDEX_H_
 
 #include "AdsDef.h"
+#include "AdsDatatypeIndex.h"
 
 #include <list>
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
+std::string adsSymbolFlagsToString(uint32_t flags);
+
+#pragma pack(push, 1)
+
 struct AdsSymbolEntryAccess : public AdsSymbolEntry
 {
-  static std::string adsSymbolFlagsToString(uint32_t flags);
-
-public:
   const char *name() const { return reinterpret_cast<const char *>(this + 1); }
   const char *type() const { return name() + nameLength + 1; }
   const char *comment() const { return type() + typeLength + 1; }
@@ -21,25 +24,38 @@ public:
   }
 };
 
+struct AdsSymbolEntryExpanded : public AdsSymbolEntry
+{
+  std::string name;
+  std::string type;
+  std::string comment;
+  std::string flagStr;
+  std::list<std::shared_ptr<AdsSymbolEntryExpanded>> children;
+
+  AdsSymbolEntryExpanded() = default;
+  AdsSymbolEntryExpanded(const AdsSymbolEntryAccess &adsSymbolEntryRoot,
+                         const std::unordered_map<std::string, std::shared_ptr<AdsDatatypeEntryExpanded>> &datatypeEntryIndex,
+                         const std::string &prefix);
+  AdsSymbolEntryExpanded(const AdsSymbolEntryExpanded &adsSymbolEntryRoot,
+                         const AdsDatatypeEntryExpanded &adsDatatypeEntry);
+};
+
+#pragma pack(pop)
+
 class AdsSymbolIndex
 {
-public: // methods
-  AdsSymbolIndex(const std::vector<char> &symbolUpload)
-      : mSymbolUpload(symbolUpload)
-  {
-    build();
-  }
-  AdsSymbolIndex(AdsSymbolIndex &&) = default;
+public:
+  AdsSymbolIndex(const std::vector<char> &symbolUpload,
+                 const AdsDatatypeIndex &adsDatatypeIndex);
 
-  const std::list<const AdsSymbolEntryAccess *> &entries() const { return mEntries; }
+  const std::unordered_map<std::string, const std::shared_ptr<AdsSymbolEntryExpanded>> &getSymbolEntryIndex() const;
+  void print(std::shared_ptr<AdsSymbolEntryExpanded> startingNode, size_t numLevels = 1);
 
-private: // methods
-  void build();
-
-private: // attributes
-  const std::vector<char>& mSymbolUpload;
-  std::list<const AdsSymbolEntryAccess *> mEntries;
-  std::unordered_map<std::string, const AdsSymbolEntryAccess *> mNameIndex;
+private:
+  const std::vector<char> &mSymbolUpload;
+  std::unordered_map<std::string, const AdsSymbolEntryAccess *> mSymbolEntryRawIndex;
+  const AdsDatatypeIndex &mAdsDatatypeIndex;
+  std::unordered_map<std::string, const std::shared_ptr<AdsSymbolEntryExpanded>> mSymbolEntryIndex;
 };
 
 #endif // ADSSYMBOLINDEX_H_
