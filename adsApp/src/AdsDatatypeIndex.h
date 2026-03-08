@@ -21,7 +21,7 @@ struct AdsDatatypeEntryExpanded : public AdsDatatypeEntry
 
   AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDatatypeEntry,
                            const std::unordered_map<std::string, const AdsDatatypeEntry *> &datatypeEntryRawIndex,
-                           uint32_t startingOffset = 0, const std::string &prefix = "");
+                           uint32_t startingOffset, const std::string &itemName);
 };
 
 class AdsDatatypeIndex

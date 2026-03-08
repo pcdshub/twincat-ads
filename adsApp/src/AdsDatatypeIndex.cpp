@@ -10,8 +10,6 @@
 AdsDatatypeIndex::AdsDatatypeIndex(const std::vector<char> &datatypeUpload)
     : mDatatypeUpload(datatypeUpload)
 {
-  std::cout << "Building datatype index..." << std::endl;
-
   auto end = mDatatypeUpload.data() + mDatatypeUpload.size();
   auto current = reinterpret_cast<const AdsDatatypeEntry *>(mDatatypeUpload.data());
 
@@ -23,12 +21,19 @@ AdsDatatypeIndex::AdsDatatypeIndex(const std::vector<char> &datatypeUpload)
       std::cerr << "The datatype record retrieved extends past the end of the buffer. Some datatypes may be lost." << std::endl;
       break;
     }
-    std::string currentTypeName = current->name();
-    mDatatypeEntryRawIndex[currentTypeName] = current;
+    std::string currentName = current->name();
+    std::string currentType = current->type();
+    std::cout << "Found unique datatype: Name: " << currentName << " Type: " << currentType << std::endl;
+    mDatatypeEntryRawIndex[currentName] = current;
     current = next;
   }
-  for (auto pair : mDatatypeEntryRawIndex)
+  for (auto &pair : mDatatypeEntryRawIndex)
   {
+    std::cout << "Expanding datatype: Name: " << pair.first << " Type: " << pair.second->type() << std::endl;
+    // The root datatype item has no name. This is because the name of the root datatype is only
+    // assigned at the instantiation of a symbol.
+    // So the root datatype name is blank and once it gets matched up to a symbol then
+    // it will take the name of the symbol.
     mDatatypeEntryIndex.insert(std::make_pair(
         pair.first,
         std::make_shared<AdsDatatypeEntryExpanded>(*pair.second,
@@ -44,19 +49,54 @@ const std::unordered_map<std::string, std::shared_ptr<AdsDatatypeEntryExpanded>>
 
 AdsDatatypeEntryExpanded::AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDatatypeEntry,
                                                    const std::unordered_map<std::string, const AdsDatatypeEntry *> &datatypeEntryRawIndex,
-                                                   uint32_t startingOffset, const std::string &prefix) : AdsDatatypeEntry(adsDatatypeEntry)
+                                                   uint32_t startingOffset, const std::string &itemName) : AdsDatatypeEntry(adsDatatypeEntry)
 {
   flagStr = adsDatatypeFlagsToString(flags);
-  this->name = adsDatatypeEntry.name();
-  if (!prefix.empty())
-  {
-    this->name = prefix + "." + this->name;
-  }
+  this->name = itemName;
   this->type = adsDatatypeEntry.type();
-  std::cout << "Name: " << name << "Type: " << type << std::endl;
   this->comment = adsDatatypeEntry.comment();
 
   this->indexOffsetFromRoot = startingOffset + adsDatatypeEntry.offs;
+
+  // Let's handle the case of this datatype having structured data members.
+  // Grab the pointer to the first item in the sub items buffer.
+  // It might be null, but the sub item count should be 0 in that case so we won't
+  // use it.
+  auto subItem = adsDatatypeEntry.subItems();
+  for (int subItemIndex = 0; subItemIndex < adsDatatypeEntry.subItemCount; ++subItemIndex)
+  {
+    if (!subItem)
+    {
+      std::cerr << string_format("Name: [%s] Type: [%s] has a malformed subitem.\n",
+                                 name, type)
+                << std::endl;
+      break;
+    }
+    // We only know the name of the sub item if we grab it now.
+    // So we pass it down to the expanded child structure below so
+    // it knows what its name is. Otherwise, it would be like a root
+    // datatype and not know its name until instantiation.
+    std::string subItemName = subItem->name();
+    std::string subItemType = subItem->type();
+    auto it = datatypeEntryRawIndex.find(subItemType);
+    if (it != datatypeEntryRawIndex.end())
+    {
+      auto type = datatypeEntryRawIndex.at(subItemType);
+      auto child = std::make_shared<AdsDatatypeEntryExpanded>(*type,
+                                                              datatypeEntryRawIndex,
+                                                              this->indexOffsetFromRoot + subItem->offs,
+                                                              "." + subItemName);
+      this->children.push_back(child);
+      std::cout << "Found sub item: Name: " << child->name << " Type: " << child->type << " Offset: " << child->indexOffsetFromRoot << std::endl;
+    }
+    else
+    {
+      std::cerr << string_format("Could not find type: [%s] in [%s] within the raw index of datatypes.\n",
+                                 subItemType, subItemName)
+                << std::endl;
+    }
+    subItem = reinterpret_cast<const AdsDatatypeEntry *>(reinterpret_cast<const char *>(subItem) + subItem->entryLength);
+  }
 
   // Let's handle the case of this datatype being an array.
   this->numArrayElements = AdsDatatypeIndex::getNumberOfElementsInArray(adsDatatypeEntry, datatypeEntryRawIndex);
@@ -66,6 +106,7 @@ AdsDatatypeEntryExpanded::AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDa
     std::cerr << string_format("Number of array indices and number of elements did not match for %s of type %s.",
                                this->name, this->type)
               << std::endl;
+    return;
   }
   if (!arrayIndices.empty())
   {
@@ -74,6 +115,7 @@ AdsDatatypeEntryExpanded::AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDa
       std::cerr << string_format("Size of %s is not divisible by the number of array indices: %lu",
                                  this->name, arrayIndices.size())
                 << std::endl;
+      return;
     }
     else
     {
@@ -99,9 +141,8 @@ AdsDatatypeEntryExpanded::AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDa
                                                                   "[" + arrayIndex + "]");
           this->children.push_back(child);
           offset += elementSize;
+          std::cout << "Found array: Name: " << child->name << " Type: " << child->type << "Offset: " << child->indexOffsetFromRoot << std::endl;
         }
-        // Exit for now, still have to handle struct case but let's see what these array indices look like so far.
-        exit(0);
       }
       else
       {
@@ -112,89 +153,3 @@ AdsDatatypeEntryExpanded::AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDa
     }
   }
 }
-
-// int AdsDatatypeIndex::Entry::childCount(const AdsDatatypeIndex &index) const
-// {
-//   if (mChildrenLoaded)
-//     return mChildren.size();
-
-//   std::string typeName = mAdsType->type();
-//   auto declaration = mAdsType;
-//   if (!typeName.empty())
-//   {
-//     auto it = index.mDatatypeEntryRawIndex.find(typeName);
-//     if (it == index.mDatatypeEntryRawIndex.end())
-//     {
-//       printf("Unresolved type [%s] in [%s]\n", typeName.c_str(), mAdsType->name());
-//       return 0;
-//     }
-//     declaration = index.mDatatypeEntryRawIndex.at(typeName);
-//     if (!declaration)
-//     {
-//       printf("Unresolved type [%s] in [%s]\n", typeName.c_str(), mAdsType->name());
-//       return 0;
-//     }
-//   }
-
-//   return declaration->subItemCount + arrayCount(declaration, index);
-// }
-
-// std::list<AdsDatatypeIndex::Entry *> AdsDatatypeIndex::Entry::children(const AdsDatatypeIndex &index)
-// {
-//   if (mChildrenLoaded)
-//     return mChildren;
-
-//   mChildrenLoaded = true;
-
-//   std::string typeName = mAdsType->type();
-
-//   auto declaration = mAdsType;
-//   if (!typeName.empty())
-//   {
-//     auto it = index.mDatatypeEntryRawIndex.find(typeName);
-//     if (it == index.mDatatypeEntryRawIndex.end())
-//     {
-//       printf("Unresolved type [%s] in [%s]\n", typeName.c_str(), mAdsType->name());
-//       return mChildren;
-//     }
-//     declaration = index.mDatatypeEntryRawIndex.at(typeName);
-//     if (!declaration)
-//     {
-//       printf("Unresolved type [%s] in [%s]\n", typeName.c_str(), mAdsType->name());
-//       return mChildren;
-//     }
-//   }
-//   auto currentChild = declaration->subItems();
-//   for (int iChild = 0; iChild < declaration->subItemCount; ++iChild)
-//   {
-//     mChildren.push_back(new Entry(currentChild->name(), currentChild->offs, currentChild, this));
-//     currentChild = reinterpret_cast<const AdsDatatypeEntry *>(
-//         reinterpret_cast<const char *>(currentChild) + currentChild->entryLength);
-//   }
-
-//   auto arrayIndices = expandArrayIndices(declaration);
-//   if (arrayIndices.empty())
-//     return mChildren;
-
-//   if (declaration->size % arrayIndices.size() != 0)
-//   {
-//     printf("Size of %s is not divisible by the number of array indices: %lu", declaration->name(), arrayIndices.size());
-//     return mChildren;
-//   }
-//   auto itemSize = declaration->size / arrayIndices.size();
-//   auto offset = declaration->offs;
-//   if (declaration->offs)
-//   {
-//     printf("Offset of %s is not zero, but %u", declaration->name(), declaration->offs);
-//     assert(false);
-//   }
-//   for (const auto &arrayIndex : expandArrayIndices(declaration))
-//   {
-//     mChildren.push_back(new Entry("[" + arrayIndex + "]", offset, declaration, this));
-//     offset += itemSize;
-//   }
-
-//   assert(offset == declaration->size);
-
-//   return mChildren;
-// }
