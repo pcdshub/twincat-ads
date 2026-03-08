@@ -23,22 +23,24 @@ AdsDatatypeIndex::AdsDatatypeIndex(const std::vector<char> &datatypeUpload)
     }
     std::string currentName = current->name();
     std::string currentType = current->type();
-    std::cout << "Found unique datatype: Name: " << currentName << " Type: " << currentType << std::endl;
+    // std::cout << "Found unique datatype: Name: " << currentName << " Type: " << currentType << std::endl;
     mDatatypeEntryRawIndex[currentName] = current;
     current = next;
   }
   for (auto &pair : mDatatypeEntryRawIndex)
   {
-    std::cout << "Expanding datatype: Name: " << pair.first << " Type: " << pair.second->type() << std::endl;
-    // The root datatype item has no name. This is because the name of the root datatype is only
-    // assigned at the instantiation of a symbol.
-    // So the root datatype name is blank and once it gets matched up to a symbol then
-    // it will take the name of the symbol.
+    // Pre-allocate a pointer to each unique expanded datatype entry.
+    // These pointers will serve as placeholders so we don't have to recursively
+    // traverse through each datatype.
     mDatatypeEntryIndex.insert(std::make_pair(
         pair.first,
-        std::make_shared<AdsDatatypeEntryExpanded>(*pair.second,
-                                                   mDatatypeEntryRawIndex,
-                                                   0, "")));
+        std::make_shared<AdsDatatypeEntryExpanded>(*pair.second)));
+  }
+  for (auto &pair : mDatatypeEntryIndex)
+  {
+    // std::cout << "Expanding datatype: Name: " << pair.first << " Type: " << pair.second->type() << std::endl;
+    // For each pre-allocated entry, now expand it.
+    pair.second->expand(mDatatypeEntryRawIndex, mDatatypeEntryIndex);
   }
 }
 
@@ -47,28 +49,26 @@ const std::unordered_map<std::string, std::shared_ptr<AdsDatatypeEntryExpanded>>
   return mDatatypeEntryIndex;
 }
 
-AdsDatatypeEntryExpanded::AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDatatypeEntry,
-                                                   const std::unordered_map<std::string, const AdsDatatypeEntry *> &datatypeEntryRawIndex,
-                                                   uint32_t startingOffset, const std::string &itemName) : AdsDatatypeEntry(adsDatatypeEntry)
-{
-  flagStr = adsDatatypeFlagsToString(flags);
-  this->name = itemName;
-  this->type = adsDatatypeEntry.type();
-  this->comment = adsDatatypeEntry.comment();
+AdsDatatypeEntryExpanded::AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDatatypeEntry) : rawDatatypeEntry(adsDatatypeEntry) {}
 
-  this->indexOffsetFromRoot = startingOffset + adsDatatypeEntry.offs;
+void AdsDatatypeEntryExpanded::expand(const std::unordered_map<std::string, const AdsDatatypeEntry *> &datatypeEntryRawIndex,
+                                      const std::unordered_map<std::string, std::shared_ptr<AdsDatatypeEntryExpanded>> &datatypeEntryIndex)
+{
+  flagStr = adsDatatypeFlagsToString(rawDatatypeEntry.flags);
+  this->typeName = rawDatatypeEntry.name();
+  this->comment = rawDatatypeEntry.comment();
 
   // Let's handle the case of this datatype having structured data members.
   // Grab the pointer to the first item in the sub items buffer.
   // It might be null, but the sub item count should be 0 in that case so we won't
   // use it.
-  auto subItem = adsDatatypeEntry.subItems();
-  for (int subItemIndex = 0; subItemIndex < adsDatatypeEntry.subItemCount; ++subItemIndex)
+  auto subItem = rawDatatypeEntry.subItems();
+  for (int subItemIndex = 0; subItemIndex < rawDatatypeEntry.subItemCount; ++subItemIndex)
   {
     if (!subItem)
     {
-      std::cerr << string_format("Name: [%s] Type: [%s] has a malformed subitem.\n",
-                                 name, type)
+      std::cout << string_format("Type: [%s] has a malformed subitem.\n",
+                                 this->typeName)
                 << std::endl;
       break;
     }
@@ -78,76 +78,73 @@ AdsDatatypeEntryExpanded::AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDa
     // datatype and not know its name until instantiation.
     std::string subItemName = subItem->name();
     std::string subItemType = subItem->type();
-    auto it = datatypeEntryRawIndex.find(subItemType);
-    if (it != datatypeEntryRawIndex.end())
+
+    auto datatypeEntryIndexIt = datatypeEntryIndex.find(subItemType);
+    if (datatypeEntryIndexIt != datatypeEntryIndex.end())
     {
-      auto type = datatypeEntryRawIndex.at(subItemType);
-      auto child = std::make_shared<AdsDatatypeEntryExpanded>(*type,
-                                                              datatypeEntryRawIndex,
-                                                              this->indexOffsetFromRoot + subItem->offs,
-                                                              "." + subItemName);
+      // If we have already expanded an entry of this type we can just copy the
+      // pointer to it. No need to redo the work of expanding it.
+      auto child = std::make_shared<Child>(datatypeEntryIndexIt->second,
+                                           subItemName,
+                                           subItem->offs);
       this->children.push_back(child);
-      std::cout << "Found sub item: Name: " << child->name << " Type: " << child->type << " Offset: " << child->indexOffsetFromRoot << std::endl;
     }
     else
     {
-      std::cerr << string_format("Could not find type: [%s] in [%s] within the raw index of datatypes.\n",
-                                 subItemType, subItemName)
+      std::cout << string_format("Could not find type: [%s] in [%s] within the index of datatypes.\n",
+                                 subItemType, this->typeName)
                 << std::endl;
     }
     subItem = reinterpret_cast<const AdsDatatypeEntry *>(reinterpret_cast<const char *>(subItem) + subItem->entryLength);
   }
 
   // Let's handle the case of this datatype being an array.
-  this->numArrayElements = AdsDatatypeIndex::getNumberOfElementsInArray(adsDatatypeEntry, datatypeEntryRawIndex);
-  auto arrayIndices = AdsDatatypeIndex::expandArrayIndices(adsDatatypeEntry);
-  if (this->numArrayElements != arrayIndices.size())
+  auto numArrayElements = AdsDatatypeIndex::getNumberOfElementsInArray(rawDatatypeEntry, datatypeEntryRawIndex);
+  auto arrayIndices = AdsDatatypeIndex::expandArrayIndices(rawDatatypeEntry);
+  if (numArrayElements != arrayIndices.size())
   {
-    std::cerr << string_format("Number of array indices and number of elements did not match for %s of type %s.",
-                               this->name, this->type)
+    std::cout << string_format("Number of array indices and number of elements did not match for [%s] of type [%s].",
+                               rawDatatypeEntry.name(), rawDatatypeEntry.type())
               << std::endl;
     return;
   }
   if (!arrayIndices.empty())
   {
-    if (adsDatatypeEntry.size % arrayIndices.size() != 0)
+    if (rawDatatypeEntry.size % arrayIndices.size() != 0)
     {
-      std::cerr << string_format("Size of %s is not divisible by the number of array indices: %lu",
-                                 this->name, arrayIndices.size())
+      std::cout << string_format("Size of [%s] is not divisible by the number of array indices: [%lu]",
+                                 rawDatatypeEntry.name(), arrayIndices.size())
                 << std::endl;
       return;
     }
     else
     {
       // We know the current entry we are building is an array type, so its name is something like:
-      // ARRAY [0..99] OF INT, for example.
-      // The type for this would be INT.
+      // ARRAY [0..99] OF INT <-- this->rawDatatypeEntry.name(), for example.
+      // The type for this would be INT <-- this->rawDatatypeEntry.type().
       // So in this case, we would need to look up INT in the raw index to get its entry.
-      std::string typeStr = adsDatatypeEntry.type();
-      auto it = datatypeEntryRawIndex.find(typeStr);
-      if (it != datatypeEntryRawIndex.end())
+      std::string arrayElementType = this->rawDatatypeEntry.type();
+      auto datatypeEntryIndexIt = datatypeEntryIndex.find(arrayElementType);
+      if (datatypeEntryIndexIt != datatypeEntryIndex.end())
       {
         uint32_t offset = 0;
-        auto type = datatypeEntryRawIndex.at(typeStr);
-        auto elementSize = type->size;
+        auto elementSize = datatypeEntryIndexIt->second->rawDatatypeEntry.size;
         for (const auto &arrayIndex : arrayIndices)
         {
           // We count the type at each array index of this entry as a child.
-          // We append the index in square brackets because this is how the
+          // We name is the index in square brackets because this is how the
           // name will be represented over ADS.
-          auto child = std::make_shared<AdsDatatypeEntryExpanded>(*type,
-                                                                  datatypeEntryRawIndex,
-                                                                  this->indexOffsetFromRoot + offset,
-                                                                  "[" + arrayIndex + "]");
+          auto child = std::make_shared<Child>(datatypeEntryIndexIt->second,
+                                               "[" + arrayIndex + "]",
+                                               offset);
           this->children.push_back(child);
           offset += elementSize;
-          std::cout << "Found array: Name: " << child->name << " Type: " << child->type << "Offset: " << child->indexOffsetFromRoot << std::endl;
         }
       }
       else
       {
-        std::cerr << string_format("Could not find type: [%s] in [%s] within the raw index of datatypes.\n",
-                                   typeStr, adsDatatypeEntry.name())
+        std::cout << string_format("Could not find type: [%s] in [%s] within the index of datatypes.\n",
+                                   arrayElementType, this->typeName)
                   << std::endl;
       }
     }

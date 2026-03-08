@@ -1,7 +1,6 @@
 #include "AdsSymbolIndex.h"
 #include "AdsDatatypeEntry.h"
 #include "AdsDatatypeIndex.h"
-#include <sstream>
 
 std::string adsSymbolFlagsToString(uint32_t flags)
 {
@@ -63,86 +62,107 @@ AdsSymbolEntryExpanded::AdsSymbolEntryExpanded(const AdsSymbolEntryAccess &adsSy
                                                const std::unordered_map<std::string, std::shared_ptr<AdsDatatypeEntryExpanded>> &datatypeEntryIndex,
                                                const std::string &prefix)
 {
-  entryLength = adsSymbolEntryRoot.entryLength;
-  iGroup = adsSymbolEntryRoot.iGroup;
-  iOffs = adsSymbolEntryRoot.iOffs;
-  size = adsSymbolEntryRoot.size;
-  dataType = adsSymbolEntryRoot.dataType;
-  flags = adsSymbolEntryRoot.flags;
-  nameLength = adsSymbolEntryRoot.nameLength;
-  typeLength = adsSymbolEntryRoot.typeLength;
-  commentLength = adsSymbolEntryRoot.commentLength;
+  this->entryLength = adsSymbolEntryRoot.entryLength;
+  this->iGroup = adsSymbolEntryRoot.iGroup;
+  this->iOffs = adsSymbolEntryRoot.iOffs;
+  this->size = adsSymbolEntryRoot.size;
+  this->dataType = adsSymbolEntryRoot.dataType;
+  this->flags = adsSymbolEntryRoot.flags;
+  this->nameLength = adsSymbolEntryRoot.nameLength;
+  this->typeLength = adsSymbolEntryRoot.typeLength;
+  this->commentLength = adsSymbolEntryRoot.commentLength;
 
-  name = adsSymbolEntryRoot.name();
-  type = adsSymbolEntryRoot.type();
-  comment = adsSymbolEntryRoot.comment();
-  flagStr = adsSymbolFlagsToString(flags);
-  if (!prefix.empty())
+  this->name = adsSymbolEntryRoot.name();
+  this->type = adsSymbolEntryRoot.type();
+  this->comment = adsSymbolEntryRoot.comment();
+  this->flagStr = adsSymbolFlagsToString(flags);
+
+  if (!this->name.empty() && this->name[0] == '[')
   {
-    name = prefix + "." + name;
+    this->name = prefix + this->name;
+  }
+  else if (!prefix.empty())
+  {
+    this->name = prefix + "." + this->name;
   }
 
   auto it = datatypeEntryIndex.find(type);
   if (it == datatypeEntryIndex.end())
   {
-    std::cerr << "Failed to find " << type << " in the datatype entry index for " << name << std::endl;
+    std::cout << "Failed to find " << type << " in the datatype entry index for " << name << std::endl;
     return;
   }
   auto datatypeEntry = datatypeEntryIndex.at(type);
-  for (auto child : datatypeEntry->children)
+  for (auto datatypeEntryChild : datatypeEntry->children)
   {
     auto newSymbolEntry = std::make_shared<AdsSymbolEntryExpanded>(*this,
-                                                                   *child);
+                                                                   *datatypeEntryChild);
     children.push_back(newSymbolEntry);
   }
 }
 
-AdsSymbolEntryExpanded::AdsSymbolEntryExpanded(const AdsSymbolEntryExpanded &adsSymbolEntryRoot,
-                                               const AdsDatatypeEntryExpanded &adsDatatypeEntry)
+AdsSymbolEntryExpanded::AdsSymbolEntryExpanded(const AdsSymbolEntryExpanded &adsSymbolEntryExpandedParent,
+                                               const AdsDatatypeEntryExpanded::Child &adsDatatypeEntryChild)
 {
-  entryLength = adsDatatypeEntry.entryLength;
-  iGroup = adsSymbolEntryRoot.iGroup;
-  iOffs = adsSymbolEntryRoot.iOffs + adsDatatypeEntry.indexOffsetFromRoot;
-  size = adsDatatypeEntry.size;
-  dataType = adsDatatypeEntry.dataType;
-  flags = adsDatatypeEntry.flags;
-  nameLength = adsDatatypeEntry.nameLength;
-  typeLength = adsDatatypeEntry.typeLength;
-  commentLength = adsDatatypeEntry.commentLength;
+  this->entryLength = adsDatatypeEntryChild.entry->rawDatatypeEntry.entryLength;
+  this->iGroup = adsSymbolEntryExpandedParent.iGroup;
+  this->iOffs = adsSymbolEntryExpandedParent.iOffs + adsDatatypeEntryChild.iOffs;
+  this->size = adsDatatypeEntryChild.entry->rawDatatypeEntry.size;
+  this->dataType = adsDatatypeEntryChild.entry->rawDatatypeEntry.dataType;
+  this->flags = adsDatatypeEntryChild.entry->rawDatatypeEntry.flags;
+  this->nameLength = adsDatatypeEntryChild.entry->rawDatatypeEntry.nameLength;
+  this->typeLength = adsDatatypeEntryChild.entry->rawDatatypeEntry.typeLength;
+  this->commentLength = adsDatatypeEntryChild.entry->rawDatatypeEntry.commentLength;
 
-  name = adsDatatypeEntry.name;
-  type = adsDatatypeEntry.type;
-  comment = adsDatatypeEntry.comment;
-  flagStr = adsSymbolFlagsToString(flags);
-  if (!adsSymbolEntryRoot.name.empty())
+  if (!adsDatatypeEntryChild.name.empty() && adsDatatypeEntryChild.name[0] == '[')
   {
-    name = adsSymbolEntryRoot.name + "." + name;
+    this->name = adsSymbolEntryExpandedParent.name + adsDatatypeEntryChild.name;
   }
-  for (auto datatypeEntry : adsDatatypeEntry.children)
+  else
   {
-    auto newSymbolEntry = std::make_shared<AdsSymbolEntryExpanded>(adsSymbolEntryRoot,
-                                                                   *datatypeEntry);
+    this->name = adsSymbolEntryExpandedParent.name + "." + adsDatatypeEntryChild.name;
+  }
+
+  this->type = adsDatatypeEntryChild.entry->typeName;
+  this->comment = adsDatatypeEntryChild.entry->comment;
+  this->flagStr = adsSymbolFlagsToString(flags);
+  for (auto childDatatypeEntryExpanded : adsDatatypeEntryChild.entry->children)
+  {
+    auto newSymbolEntry = std::make_shared<AdsSymbolEntryExpanded>(*this,
+                                                                   *childDatatypeEntryExpanded);
     children.push_back(newSymbolEntry);
   }
 }
 
-void AdsSymbolIndex::print(std::shared_ptr<AdsSymbolEntryExpanded> startingNode, size_t numLevels)
+void AdsSymbolIndex::writeTree(std::ostream &buffer,
+                               std::shared_ptr<AdsSymbolEntryExpanded> startingNode,
+                               size_t numLevels,
+                               size_t numTabs)
 {
   if (!startingNode || numLevels < 1)
-    std::cout << "----------" << std::endl;
-  return;
+  {
+    return;
+  }
 
-  std::cout << "Name:   [" << startingNode->name << "]" << std::endl
-            << "Type:   [" << startingNode->type << "]" << std::endl
-            << "Group:  [" << startingNode->iGroup << "]" << std::endl
-            << "Offset: [" << startingNode->iOffs << "]" << std::endl;
+  std::string tabs;
+  for (size_t tabNum = 0; tabNum < numTabs; tabNum++)
+  {
+    tabs += "\t";
+  }
+
+  buffer << tabs << "Name:   [" << startingNode->name << "]" << std::endl
+         << tabs << "Type:   [" << startingNode->type << "]" << std::endl
+         << tabs << "Group:  [" << startingNode->iGroup << "]" << std::endl
+         << tabs << "Offset: [" << startingNode->iOffs << "]" << std::endl;
+
+  if (startingNode->children.size() <= 0)
+  {
+    buffer << "--------------------" << std::endl;
+    return;
+  }
 
   for (auto child : startingNode->children)
   {
-    for (size_t numTabs = 0; numTabs < numLevels - 1; numTabs++)
-    {
-      std::cout << "\t";
-    }
-    print(child, numLevels - 1);
+    writeTree(buffer, child, numLevels - 1, numTabs + 1);
   }
 }

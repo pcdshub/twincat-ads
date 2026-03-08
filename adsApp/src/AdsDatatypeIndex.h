@@ -4,24 +4,39 @@
 #include "AdsDatatypeEntry.h"
 #include <list>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <sstream>
 
-struct AdsDatatypeEntryExpanded : public AdsDatatypeEntry
+struct AdsDatatypeEntryExpanded
 {
-  std::string name;
-  std::string type;
+  const AdsDatatypeEntry &rawDatatypeEntry;
+
+  struct Child
+  {
+    Child(std::shared_ptr<AdsDatatypeEntryExpanded> entry,
+          const std::string &name,
+          uint32_t iOffs)
+    {
+      this->entry = entry;
+      this->name = name;
+      this->iOffs = iOffs;
+    }
+    std::shared_ptr<AdsDatatypeEntryExpanded> entry;
+    std::string name;
+    uint32_t iOffs;
+  };
+
+  std::string typeName;
   std::string comment;
   std::string flagStr;
-  std::list<std::shared_ptr<AdsDatatypeEntryExpanded>> children;
-  uint32_t indexOffsetFromRoot = 0;
-  uint32_t numArrayElements = 0;
+  std::list<std::shared_ptr<Child>> children;
 
-  AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDatatypeEntry,
-                           const std::unordered_map<std::string, const AdsDatatypeEntry *> &datatypeEntryRawIndex,
-                           uint32_t startingOffset, const std::string &itemName);
+  AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDatatypeEntry);
+
+  void expand(const std::unordered_map<std::string, const AdsDatatypeEntry *> &datatypeEntryRawIndex,
+              const std::unordered_map<std::string, std::shared_ptr<AdsDatatypeEntryExpanded>> &datatypeEntryIndex);
 };
 
 class AdsDatatypeIndex

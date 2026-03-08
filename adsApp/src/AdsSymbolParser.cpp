@@ -44,14 +44,13 @@ long AdsSymbolParser::load(long adsClientPort,
   std::cout << "Datatype index created with " << mDatatypeIndex->getDatatypeEntryIndex().size() << " unique types." << std::endl;
   std::cout << "Read " << mSymbols.size() << " Bytes of symbol information. Creating symbol index..." << std::endl;
   mSymbolIndex = std::make_shared<AdsSymbolIndex>(mSymbols, *mDatatypeIndex);
-  std::cout << "Symbol index created with " << mSymbolIndex->getSymbolEntryIndex().size() << " root symbol nodes: " << std::endl;
+  std::cout << "Symbol index created with " << mSymbolIndex->getSymbolEntryIndex().size() << " root symbol nodes." << std::endl;
   std::cout << "Beginning to fill the symbol map..." << std::endl;
   for (auto pair : mSymbolIndex->getSymbolEntryIndex())
   {
     fillAdsSymbolMapFromStartingNode(pair.second, adsSymbolMap);
   }
   std::cout << "Symbol map filled. Total size reached: " << adsSymbolMap.size() << std::endl;
-
   return errorCode;
 }
 
@@ -60,11 +59,6 @@ void AdsSymbolParser::fillAdsSymbolMapFromStartingNode(const std::shared_ptr<Ads
 {
   if (!startingNode)
     return;
-
-  if (adsSymbolMap.size() % 1000 == 0)
-  {
-    std::cout << "Map size at: " << adsSymbolMap.size() << std::endl;
-  }
 
   adsSymbolMap.insert(std::make_pair(startingNode->name, startingNode));
 

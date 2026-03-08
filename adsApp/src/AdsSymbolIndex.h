@@ -1,9 +1,10 @@
 #ifndef ADSSYMBOLINDEX_H_
 #define ADSSYMBOLINDEX_H_
 
-#include "AdsDef.h"
 #include "AdsDatatypeIndex.h"
+#include "AdsDef.h"
 
+#include <iostream>
 #include <list>
 #include <memory>
 #include <unordered_map>
@@ -36,8 +37,8 @@ struct AdsSymbolEntryExpanded : public AdsSymbolEntry
   AdsSymbolEntryExpanded(const AdsSymbolEntryAccess &adsSymbolEntryRoot,
                          const std::unordered_map<std::string, std::shared_ptr<AdsDatatypeEntryExpanded>> &datatypeEntryIndex,
                          const std::string &prefix);
-  AdsSymbolEntryExpanded(const AdsSymbolEntryExpanded &adsSymbolEntryRoot,
-                         const AdsDatatypeEntryExpanded &adsDatatypeEntry);
+  AdsSymbolEntryExpanded(const AdsSymbolEntryExpanded &adsSymbolEntryExpandedParent,
+                         const AdsDatatypeEntryExpanded::Child &adsDatatypeEntryChild);
 };
 
 #pragma pack(pop)
@@ -49,7 +50,10 @@ public:
                  const AdsDatatypeIndex &adsDatatypeIndex);
 
   const std::unordered_map<std::string, const std::shared_ptr<AdsSymbolEntryExpanded>> &getSymbolEntryIndex() const;
-  void print(std::shared_ptr<AdsSymbolEntryExpanded> startingNode, size_t numLevels = 1);
+  void writeTree(std::ostream &buffer,
+                 std::shared_ptr<AdsSymbolEntryExpanded> startingNode,
+                 size_t numLevels = 1,
+                 size_t numTabs = 0);
 
 private:
   const std::vector<char> &mSymbolUpload;
