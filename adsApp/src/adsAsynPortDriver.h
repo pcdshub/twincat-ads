@@ -11,6 +11,7 @@
 #include "adsAsynPortDriverUtils.h"
 #include <mutex>
 #include <queue>
+#include "AdsSymbolParser.h"
 
 /** Class derived of asynPortDriver for ads communication with TwinCAT plc:s */
 
@@ -264,6 +265,7 @@ private:
   std::vector<amsPortInfo*>      amsPortList_;
   ADSTIMESOURCE                  defaultTimeSource_;
   std::mutex                     adsMutex;
+  std::unordered_map<uint16_t, AdsSymbolParser>   adsSymbolParserMap_;
 
   //octet
   adsOctetOutputBufferType       octetAsciiBuffer_;

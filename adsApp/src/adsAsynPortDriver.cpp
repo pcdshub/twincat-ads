@@ -421,6 +421,18 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
 	  asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
 		    "%s:%s: connection established for port %s.\n", 
 		    driverName, functionName, portName);
+        auto it = adsSymbolParserMap_.find((uint16_t)amsport);
+        if (it != adsSymbolParserMap_.end())
+        {
+          adsLock();
+          if (adsSymbolParserMap_.at((uint16_t)amsport).load(adsPort_, {remoteNetId_, (uint16_t)amsport}))
+          {
+            asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
+                "%s:%s: failed to load ads symbol map for %u.\n", 
+                driverName, functionName, amsport);
+          }
+          adsUnlock();
+        }
 	  return;
       }
   }
@@ -1717,6 +1729,7 @@ asynStatus adsAsynPortDriver::addNewAmsPortToList(uint16_t amsPort)
     newPort->adsStateOld=newPort->adsState;
     newPort->refreshNeeded=false;     // This is actually all initialized!!
     amsPortList_.push_back(newPort);
+    adsSymbolParserMap_.insert(std::make_pair(amsPort, AdsSymbolParser()));
   }
   catch(std::exception &e)
   {
@@ -3366,42 +3379,76 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(uint16_t amsPort,const char *v
   AmsAddr amsServer;
 
   amsServer={remoteNetId_,amsPort};
-  adsLock();
-  const long infoStatus = AdsSyncReadWriteReqEx2(adsPort_,
-                                                 &amsServer,
-                                                 ADSIGRP_SYM_INFOBYNAMEEX,
-                                                 0,
-                                                 sizeof(adsSymbolEntry),
-                                                 info,
-                                                 strlen(varName),
-                                                 varName,
-                                                 &bytesRead);
-  adsUnlock();
-  *errorCode=infoStatus;
+  
+  bool foundInSymbolMap = false;
+  auto adsSymbolParserMapIt = adsSymbolParserMap_.find(amsPort);
+  if (adsSymbolParserMapIt != adsSymbolParserMap_.end())
+  {
+    auto adsSymbolParser = adsSymbolParserMapIt->second;
+    std::string variableName = varName;
+    auto adsSymbolEntryExpanded = adsSymbolParser.lookup(variableName);
+    if (adsSymbolEntryExpanded)
+    {
+      info->commentLength = adsSymbolEntryExpanded->commentLength;
+      info->dataType = adsSymbolEntryExpanded->dataType;
+      info->entryLen = adsSymbolEntryExpanded->entryLength;
+      info->flags = adsSymbolEntryExpanded->flags;
+      info->iGroup = adsSymbolEntryExpanded->iGroup;
+      info->iOffset = adsSymbolEntryExpanded->iOffs;
+      info->nameLength = adsSymbolEntryExpanded->nameLength;
+      info->size = adsSymbolEntryExpanded->size;
+      info->typeLength = adsSymbolEntryExpanded->typeLength;
 
-  if (infoStatus) {
-    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Get symbolic information failed for %s with: %s (0x%lx)\n", driverName, functionName,varName,adsErrorToString(infoStatus),infoStatus);
-    if (infoStatus == GLOBALERR_TARGET_PORT) {
-	/* Sigh.  It was up, now it's down.  Let's go home. */
-	asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Port error, giving up!\n", 
-		  driverName, functionName);
-	exit(1);
+      info->variableName = info->buffer;
+      info->symDataType = info->buffer+info->nameLength+1;
+      info->symComment = info->symDataType+info->typeLength+1;
+
+      strcpy(info->variableName, adsSymbolEntryExpanded->name.c_str());
+      strcpy(info->symDataType, adsSymbolEntryExpanded->type.c_str());
+      strcpy(info->symComment, adsSymbolEntryExpanded->comment.c_str());
+
+      foundInSymbolMap = true;
     }
-    return asynError;
   }
+  if (!foundInSymbolMap)
+  {
+    adsLock();
+    const long infoStatus = AdsSyncReadWriteReqEx2(adsPort_,
+                                                  &amsServer,
+                                                  ADSIGRP_SYM_INFOBYNAMEEX,
+                                                  0,
+                                                  sizeof(adsSymbolEntry),
+                                                  info,
+                                                  strlen(varName),
+                                                  varName,
+                                                  &bytesRead);
+    adsUnlock();
+    *errorCode=infoStatus;
 
-  info->variableName = info->buffer;
+    if (infoStatus) {
+      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Get symbolic information failed for %s with: %s (0x%lx)\n", driverName, functionName,varName,adsErrorToString(infoStatus),infoStatus);
+      if (infoStatus == GLOBALERR_TARGET_PORT) {
+    /* Sigh.  It was up, now it's down.  Let's go home. */
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Port error, giving up!\n", 
+        driverName, functionName);
+    exit(1);
+      }
+      return asynError;
+    }
+
+    info->variableName = info->buffer;
+    info->symDataType = info->buffer+info->nameLength+1;
+    info->symComment = info->symDataType+info->typeLength+1;
+  }
 
   if(info->nameLength>=sizeof(info->buffer)-1){
     asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Missalignment of type in AdsSyncReadWriteReqEx2 return struct for %s\n", driverName, functionName,varName);
     return asynError;
   }
-  info->symDataType = info->buffer+info->nameLength+1;
 
   if(info->nameLength + info->typeLength+2>=(uint16_t)(sizeof(info->buffer)-1)){
     asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Missalignment of comment in AdsSyncReadWriteReqEx2 return struct for %s\n", driverName, functionName,varName);
   }
-  info->symComment= info->symDataType+info->typeLength+1;
 
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER ,"Symbolic information\n");
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER ,"SymEntrylength: %d\n",info->entryLen);
