@@ -11,15 +11,15 @@
 #ifndef ADSASYNPORTDRIVERUTILS_H_
 #define ADSASYNPORTDRIVERUTILS_H_
 
-#include "AdsLib.h"         //error codes
-#include "asynPortDriver.h" //data types
+#include "AdsLib.h" //error codes
 #include "AdsSymbolIndex.h"
+#include "asynPortDriver.h" //data types
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <string>
-#include <mutex>
 
 // Error codes
 #define ADS_COM_ERROR_INVALID_DATA_TYPE 1004
@@ -191,7 +191,7 @@ int octetCreateArgvSepv(const char *line,
 int octetBinary2ascii(bool returnVarName,
                       void *binaryBuffer,
                       uint32_t binaryBufferSize,
-                      AdsSymbolEntryExpanded& info,
+                      std::shared_ptr<AdsSymbolEntryExpanded> info,
                       adsOctetOutputBufferType *asciiBuffer);
 int octetAscii2binary(const char *asciiBuffer,
                       uint16_t dataType,
@@ -240,5 +240,23 @@ struct AmsClientPortEntry
   long port;
   int liveCount;
 };
+
+#pragma pack(push, 1)
+typedef struct {
+  uint32_t entryLen;
+  uint32_t iGroup;
+  uint32_t iOffset;
+  uint32_t size;
+  uint32_t dataType;
+  uint32_t flags;
+  uint16_t nameLength;
+  uint16_t typeLength;
+  uint16_t commentLength;
+  char  buffer[768]; //256*3, 256 is string size in TwinCAT then 768 is max
+  char* variableName;
+  char* symDataType;
+  char* symComment;
+} adsSymbolEntry;
+#pragma pack(pop)
 
 #endif /* ADSASYNPORTDRIVERUTILS_H_ */

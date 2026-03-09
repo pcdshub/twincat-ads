@@ -48,6 +48,7 @@ long AdsSymbolParser::load(long adsClientPort,
   std::cout << "Beginning to fill the symbol map..." << std::endl;
   for (auto pair : mSymbolIndex->getSymbolEntryIndex())
   {
+    // mSymbolIndex->writeTree(std::cout, pair.second, 2);
     fillAdsSymbolMapFromStartingNode(pair.second, adsSymbolMap);
   }
   std::cout << "Symbol map filled. Total size reached: " << adsSymbolMap.size() << std::endl;

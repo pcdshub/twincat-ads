@@ -24,6 +24,10 @@ std::string adsSymbolFlagsToString(uint32_t flags)
   return flagString;
 }
 
+const char *name(const AdsSymbolEntry *adsSymbolEntry) { return reinterpret_cast<const char *>(adsSymbolEntry + 1); }
+const char *type(const AdsSymbolEntry *adsSymbolEntry) { return name(adsSymbolEntry) + adsSymbolEntry->nameLength + 1; }
+const char *comment(const AdsSymbolEntry *adsSymbolEntry) { return type(adsSymbolEntry) + adsSymbolEntry->typeLength + 1; }
+
 AdsSymbolIndex::AdsSymbolIndex(const std::vector<char> &symbolUpload,
                                const AdsDatatypeIndex &adsDatatypeIndex)
     : mSymbolUpload(symbolUpload), mAdsDatatypeIndex(adsDatatypeIndex)
@@ -104,15 +108,16 @@ AdsSymbolEntryExpanded::AdsSymbolEntryExpanded(const AdsSymbolEntryAccess &adsSy
 AdsSymbolEntryExpanded::AdsSymbolEntryExpanded(const AdsSymbolEntryExpanded &adsSymbolEntryExpandedParent,
                                                const AdsDatatypeEntryExpanded::Child &adsDatatypeEntryChild)
 {
+  // I think technically the entry length of an instance of a symbol won't
+  // match the datatype entry length because the comment might be different and
+  // the name will probably be longer. However, once a symbol is expanded
+  // the entry length doesn't matter because we already know all the information we need.
   this->entryLength = adsDatatypeEntryChild.entry->rawDatatypeEntry.entryLength;
   this->iGroup = adsSymbolEntryExpandedParent.iGroup;
   this->iOffs = adsSymbolEntryExpandedParent.iOffs + adsDatatypeEntryChild.iOffs;
   this->size = adsDatatypeEntryChild.entry->rawDatatypeEntry.size;
   this->dataType = adsDatatypeEntryChild.entry->rawDatatypeEntry.dataType;
   this->flags = adsDatatypeEntryChild.entry->rawDatatypeEntry.flags;
-  this->nameLength = adsDatatypeEntryChild.entry->rawDatatypeEntry.nameLength;
-  this->typeLength = adsDatatypeEntryChild.entry->rawDatatypeEntry.typeLength;
-  this->commentLength = adsDatatypeEntryChild.entry->rawDatatypeEntry.commentLength;
 
   if (!adsDatatypeEntryChild.name.empty() && adsDatatypeEntryChild.name[0] == '[')
   {
@@ -122,9 +127,14 @@ AdsSymbolEntryExpanded::AdsSymbolEntryExpanded(const AdsSymbolEntryExpanded &ads
   {
     this->name = adsSymbolEntryExpandedParent.name + "." + adsDatatypeEntryChild.name;
   }
+  this->nameLength = this->name.length();
 
   this->type = adsDatatypeEntryChild.entry->typeName;
+  this->typeLength = this->type.length();
+
   this->comment = adsDatatypeEntryChild.entry->comment;
+  this->commentLength = this->comment.length();
+
   this->flagStr = adsSymbolFlagsToString(flags);
   for (auto childDatatypeEntryExpanded : adsDatatypeEntryChild.entry->children)
   {
@@ -139,8 +149,14 @@ void AdsSymbolIndex::writeTree(std::ostream &buffer,
                                size_t numLevels,
                                size_t numTabs)
 {
-  if (!startingNode || numLevels < 1)
+  if (!startingNode)
   {
+    return;
+  }
+
+  if (numLevels < 1)
+  {
+    buffer << "--------------------" << std::endl;
     return;
   }
 
@@ -150,10 +166,13 @@ void AdsSymbolIndex::writeTree(std::ostream &buffer,
     tabs += "\t";
   }
 
-  buffer << tabs << "Name:   [" << startingNode->name << "]" << std::endl
-         << tabs << "Type:   [" << startingNode->type << "]" << std::endl
-         << tabs << "Group:  [" << startingNode->iGroup << "]" << std::endl
-         << tabs << "Offset: [" << startingNode->iOffs << "]" << std::endl;
+  buffer << tabs << "Name:          [" << startingNode->name << "] [" << startingNode->nameLength << "]" << std::endl
+         << tabs << "Type:          [" << startingNode->type << "] [" << startingNode->typeLength << "]" << std::endl
+         << tabs << "Size:          [" << startingNode->size << "]" << std::endl
+         << tabs << "Group:         [" << startingNode->iGroup << "] Offset: [" << startingNode->iOffs << "]" << std::endl
+         << tabs << "TypeId:        [" << startingNode->dataType << "]" << std::endl
+         << tabs << "Flags:         [" << startingNode->flags << "] [" << startingNode->flagStr << "]" << std::endl
+         << tabs << "Comment:       [" << startingNode->comment << "] [" << startingNode->commentLength << "]" << std::endl;
 
   if (startingNode->children.size() <= 0)
   {

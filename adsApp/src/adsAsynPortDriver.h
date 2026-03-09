@@ -161,10 +161,10 @@ private:
   asynStatus adsGetSymInfoByName(long adsClientPort, adsParamInfo &paramInfo);
   asynStatus adsGetSymInfoByName(long adsClientPort, uint16_t amsPort,
                                  const char *varName,
-                                 AdsSymbolEntryExpanded &info);
+                                 std::shared_ptr<AdsSymbolEntryExpanded> info);
   asynStatus adsGetSymInfoByName(long adsClientPort, uint16_t amsPort,
                                  const char *varName,
-                                 AdsSymbolEntryExpanded &info,
+                                 std::shared_ptr<AdsSymbolEntryExpanded> info,
                                  long *errorCode);
   asynStatus adsGetSymHandleByName(long adsClientPort, adsParamInfo &paramInfo);
   asynStatus adsGetSymHandleByName(long adsClientPort, adsParamInfo &paramInfo,
@@ -239,7 +239,7 @@ private:
                           const char *asciiValueToWrite,
                           adsOctetOutputBufferType *outBuffer);
   int octetAdsReadByGroupOffset(long adsClientPort, uint16_t amsPort,
-                                AdsSymbolEntryExpanded& info,
+                                std::shared_ptr<AdsSymbolEntryExpanded> info,
                                 adsOctetOutputBufferType *outBuffer);
   int octetAdsWriteByGroupOffset(long adsClientPort, uint16_t amsPort,
                                  uint32_t group,

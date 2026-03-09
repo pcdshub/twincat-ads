@@ -46,7 +46,7 @@ typedef struct
   {                                                               \
     if (returnVarName)                                            \
     {                                                             \
-      octetCmdBuf_printf(asciiBuffer, "%s=", info.name); \
+      octetCmdBuf_printf(asciiBuffer, "%s=", info->name); \
     }                                                             \
   } while (0)
 
@@ -826,7 +826,7 @@ int octetCreateArgvSepv(const char *line,
 int octetBinary2ascii(bool returnVarName,
                       void *binaryBuffer,
                       uint32_t binaryBufferSize,
-                      AdsSymbolEntryExpanded &info,
+                      std::shared_ptr<AdsSymbolEntryExpanded> info,
                       adsOctetOutputBufferType *asciiBuffer)
 {
   uint32_t bytesProcessed = 0;
@@ -834,14 +834,14 @@ int octetBinary2ascii(bool returnVarName,
   int error = 0;
   int bytesPerDataPoint = 0;
 
-  while (bytesProcessed < info.size && !error)
+  while (bytesProcessed < info->size && !error)
   {
     // write comma for arrays
     if (bytesProcessed != 0)
     {
       octetCmdBuf_printf(asciiBuffer, ",");
     }
-    switch (info.dataType)
+    switch (info->dataType)
     {
     case ADST_INT8:
       RETURN_VAR_NAME_IF_NEEDED;
@@ -955,13 +955,13 @@ int octetBinary2ascii(bool returnVarName,
       ADST_STRINGVar = (char *)binaryBuffer;
       octetCmdBuf_printf(asciiBuffer, "%s", ADST_STRINGVar);
       // printf("Binary 2 ASCII ADST_STRING, value: %s\n", ADST_STRINGVar);
-      bytesProcessed = info.size;
+      bytesProcessed = info->size;
       break;
     case ADST_BIGTYPE:
-      if (info.type == DUT_AXIS_STATUS)
+      if (info->type == DUT_AXIS_STATUS)
       {
         // RETURN_VAR_NAME_IF_NEEDED;
-        octetCmdBuf_printf(asciiBuffer, "%s=", info.name); // Always output variable name for stAxisStatus
+        octetCmdBuf_printf(asciiBuffer, "%s=", info->name); // Always output variable name for stAxisStatus
         adsOctetSTAXISSTATUSSTRUCT *stAxisData;
         stAxisData = (adsOctetSTAXISSTATUSSTRUCT *)binaryBuffer;
 
@@ -1073,7 +1073,7 @@ int octetBinary2ascii(bool returnVarName,
           octetCmdBuf_printf(asciiBuffer, "0;");
         }
         // printf("Binary 2 ASCII ADST_BIGTYPE, type: %s\n", info->symDataType);
-        bytesProcessed = info.size;
+        bytesProcessed = info->size;
         break; // end DUT_AXIS_STATUS
       }
       break;

@@ -1572,9 +1572,9 @@ int adsAsynPortDriver::adsGetBulkTimeStamp(uint16_t amsPort)
     }
 
     long statL, statH;
-        AmsAddr amsServer;
-        amsServer.netId = remoteNetId_;
-        amsServer.port = amsPort;
+    AmsAddr amsServer;
+    amsServer.netId = remoteNetId_;
+    amsServer.port = amsPort;
     statH = AdsSyncReadWriteReqEx2(adsClientPort,
                                    &amsServer,
                                    ADSIGRP_SYM_HNDBYNAME,
@@ -2507,11 +2507,11 @@ int adsAsynPortDriver::octetMotorHandleADRCmd(long adsClientPort, const char *ar
   if (myarg_1)
   {
     myarg_1++; /* Jump over '?' */
-    AdsSymbolEntryExpanded info;
-    info.dataType = type_in_PLC;
-    info.size = len_in_PLC;
-    info.iGroup = group_no;
-    info.iOffs = offset_in_group;
+    auto info = std::make_shared<AdsSymbolEntryExpanded>();
+    info->dataType = type_in_PLC;
+    info->size = len_in_PLC;
+    info->iGroup = group_no;
+    info->iOffs = offset_in_group;
 
     int error = octetAdsReadByGroupOffset(adsClientPort, amsport, info, buffer);
     if (error)
@@ -2536,7 +2536,7 @@ int adsAsynPortDriver::octetAdsReadByName(long adsClientPort, uint16_t amsPort, 
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable:%s, amsPort %u\n", driverName, __func__, variableAddr, amsPort);
 
-  AdsSymbolEntryExpanded infoStruct;
+  auto infoStruct = std::make_shared<AdsSymbolEntryExpanded>();
 
   long errorCode = 0;
   asynStatus stat = adsGetSymInfoByName(adsClientPort, amsPort, variableAddr, infoStruct, &errorCode);
@@ -2562,7 +2562,7 @@ int adsAsynPortDriver::octetAdsWriteByName(long adsClientPort, uint16_t amsPort,
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable: %s, value: %s.\n", driverName, __func__, variableAddr, asciiValueToWrite);
 
-  AdsSymbolEntryExpanded infoStruct;
+  auto infoStruct = std::make_shared<AdsSymbolEntryExpanded>();
 
   long errorCode = 0;
   asynStatus stat = adsGetSymInfoByName(adsClientPort, amsPort, variableAddr, infoStruct, &errorCode);
@@ -2571,7 +2571,13 @@ int adsAsynPortDriver::octetAdsWriteByName(long adsClientPort, uint16_t amsPort,
     return errorCode;
   }
 
-  return octetAdsWriteByGroupOffset(adsClientPort, amsPort, infoStruct.iGroup, infoStruct.iOffs, infoStruct.dataType, infoStruct.size, asciiValueToWrite, outBuffer);
+  return octetAdsWriteByGroupOffset(adsClientPort,
+                                    amsPort, infoStruct->iGroup,
+                                    infoStruct->iOffs,
+                                    infoStruct->dataType,
+                                    infoStruct->size,
+                                    asciiValueToWrite,
+                                    outBuffer);
 }
 
 /**Read a variable from PLC by absolute addressing.\
@@ -2583,20 +2589,20 @@ int adsAsynPortDriver::octetAdsWriteByName(long adsClientPort, uint16_t amsPort,
  *
  * \return 0 for success or error code.
  */
-int adsAsynPortDriver::octetAdsReadByGroupOffset(long adsClientPort, uint16_t amsPort, AdsSymbolEntryExpanded &info, adsOctetOutputBufferType *outBuffer)
+int adsAsynPortDriver::octetAdsReadByGroupOffset(long adsClientPort, uint16_t amsPort, std::shared_ptr<AdsSymbolEntryExpanded> info, adsOctetOutputBufferType *outBuffer)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
             "%s:%s: amsPort: %d, group: %d, offset: %d, dataType: %s (%d), dataSize: %d.\n",
-            driverName, __func__, (int)amsPort, (int)info.iGroup, (int)info.iOffs,
-            adsTypeToString(info.dataType), (int)info.dataType, (int)info.size);
+            driverName, __func__, amsPort, info->iGroup, info->iOffs,
+            adsTypeToString(info->dataType), info->dataType, info->size);
 
   uint32_t bytesRead = 0;
-        AmsAddr amsServer;
-        amsServer.netId = remoteNetId_;
-        amsServer.port = amsPort;
+  AmsAddr amsServer;
+  amsServer.netId = remoteNetId_;
+  amsServer.port = amsPort;
 
-  int dataSize = info.size;
-  if (info.size > ADS_CMD_BUFFER_SIZE)
+  int dataSize = info->size;
+  if (info->size > ADS_CMD_BUFFER_SIZE)
   {
     dataSize = ADS_CMD_BUFFER_SIZE;
     asynPrint(pasynUserSelf, ASYN_TRACE_WARNING, "%s:%s: Read buffer size smaller than size in plc.\n", driverName, __func__);
@@ -2604,7 +2610,7 @@ int adsAsynPortDriver::octetAdsReadByGroupOffset(long adsClientPort, uint16_t am
 
   memset(&octetBinaryBuffer_, 0, ADS_CMD_BUFFER_SIZE);
 
-  int error = AdsSyncReadReqEx2(adsClientPort, &amsServer, info.iGroup, info.iOffs, dataSize, &octetBinaryBuffer_, &bytesRead);
+  int error = AdsSyncReadReqEx2(adsClientPort, &amsServer, info->iGroup, info->iOffs, dataSize, &octetBinaryBuffer_, &bytesRead);
 
   if (error)
   {
@@ -2660,9 +2666,9 @@ int adsAsynPortDriver::octetAdsWriteByGroupOffset(long adsClientPort, uint16_t a
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: amsPort: %d, group: %d, offset: %d, dataType: %s (%d), dataSize: %d.\n", driverName, __func__, (int)amsPort, (int)group, (int)offset, adsTypeToString(dataType), (int)dataType, (int)dataSize);
 
   uint32_t bytesToWrite = 0;
-        AmsAddr amsServer;
-        amsServer.netId = remoteNetId_;
-        amsServer.port = amsPort;
+  AmsAddr amsServer;
+  amsServer.netId = remoteNetId_;
+  amsServer.port = amsPort;
 
   memset(&octetBinaryBuffer_, 0, ADS_CMD_BUFFER_SIZE);
 
@@ -3521,9 +3527,9 @@ asynStatus adsAsynPortDriver::adsGetSymHandleByName(long adsClientPort, adsParam
 
   std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
 
-        AmsAddr amsServer;
-        amsServer.netId = remoteNetId_;
-        amsServer.port = paramInfo.amsPort;
+  AmsAddr amsServer;
+  amsServer.netId = remoteNetId_;
+  amsServer.port = paramInfo.amsPort;
 
   uint32_t symbolHandle = 0;
   const long handleStatus = AdsSyncReadWriteReqEx2(adsClientPort,
@@ -3563,9 +3569,9 @@ asynStatus adsAsynPortDriver::adsAddSymbolsChangedCallback(long adsClientPort, a
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Ams-port %u.\n", driverName, __func__, port.amsPort);
 
-        AmsAddr amsServer;
-        amsServer.netId = remoteNetId_;
-        amsServer.port = port.amsPort;
+  AmsAddr amsServer;
+  amsServer.netId = remoteNetId_;
+  amsServer.port = port.amsPort;
 
   AdsNotificationAttrib attrib;
   attrib.cbLength = 1;
@@ -3606,9 +3612,9 @@ asynStatus adsAsynPortDriver::adsDelSymbolsChangedCallback(long adsClientPort, a
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
 
-        AmsAddr amsServer;
-        amsServer.netId = remoteNetId_;
-        amsServer.port = port.amsPort;
+  AmsAddr amsServer;
+  amsServer.netId = remoteNetId_;
+  amsServer.port = port.amsPort;
 
   const long delStatus = AdsSyncDelDeviceNotificationReqEx(adsClientPort, &amsServer, port.hCallbackNotify);
   port.bCallbackNotifyValid = false;
@@ -3640,9 +3646,9 @@ asynStatus adsAsynPortDriver::adsAddDataCallback(long adsClientPort, adsParamInf
 
   paramInfo.bCallbackNotifyValid = false;
 
-        AmsAddr amsServer;
-        amsServer.netId = remoteNetId_;
-        amsServer.port = paramInfo.amsPort;
+  AmsAddr amsServer;
+  amsServer.netId = remoteNetId_;
+  amsServer.port = paramInfo.amsPort;
 
   if (paramInfo.isAdrCommand)
   { // Abs access (ADR command)
@@ -3746,9 +3752,9 @@ asynStatus adsAsynPortDriver::adsDelDataCallback(long adsClientPort, adsParamInf
 
   paramInfo.bCallbackNotifyValid = false;
 
-        AmsAddr amsServer;
-        amsServer.netId = remoteNetId_;
-        amsServer.port = paramInfo.amsPort;
+  AmsAddr amsServer;
+  amsServer.netId = remoteNetId_;
+  amsServer.port = paramInfo.amsPort;
 
   const long delStatus = AdsSyncDelDeviceNotificationReqEx(adsClientPort, &amsServer, paramInfo.hCallbackNotify);
   paramInfo.hCallbackNotify = -1;
@@ -3772,7 +3778,7 @@ asynStatus adsAsynPortDriver::adsDelDataCallback(long adsClientPort, adsParamInf
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t amsPort, const char *varName, AdsSymbolEntryExpanded &info)
+asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t amsPort, const char *varName, std::shared_ptr<AdsSymbolEntryExpanded> info)
 {
   long errorCode = 0;
   return adsGetSymInfoByName(adsClientPort, amsPort, varName, info, &errorCode);
@@ -3787,7 +3793,7 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t amsPort, const char *varName, AdsSymbolEntryExpanded &info, long *errorCode)
+asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t amsPort, const char *varName, std::shared_ptr<AdsSymbolEntryExpanded> info, long *errorCode)
 {
   asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: Variable name: %s, amsPort: %d.\n", driverName, __func__, varName, (int)amsPort);
 
@@ -3798,20 +3804,21 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
   }
 
   uint32_t bytesRead = 0;
-        AmsAddr amsServer;
-        amsServer.netId = remoteNetId_;
-        amsServer.port = amsPort;
+  AmsAddr amsServer;
+  amsServer.netId = remoteNetId_;
+  amsServer.port = amsPort;
 
+  adsSymbolEntry infoAccess;
   auto it = adsSymbolMap_.find(varName);
   if (it == adsSymbolMap_.end())
   {
-    AdsSymbolEntryAccess infoAccess;
-    printf("%s:%s: did not find %s in the symbol map.\n", driverName, __func__, varName);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: did not find %s in the symbol map.\n", driverName, __func__, varName);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: falling back to direct info read by name.\n", driverName, __func__);
     const long infoStatus = AdsSyncReadWriteReqEx2(adsClientPort,
                                                    &amsServer,
                                                    ADSIGRP_SYM_INFOBYNAMEEX,
                                                    0,
-                                                   sizeof(AdsSymbolEntry),
+                                                   sizeof(adsSymbolEntry),
                                                    &infoAccess,
                                                    strlen(varName),
                                                    varName,
@@ -3824,75 +3831,86 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, uint16_t a
       return asynError;
     }
 
-    info.entryLength = infoAccess.entryLength;
-    info.iGroup = infoAccess.iGroup;
-    info.iOffs = infoAccess.iOffs;
-    info.size = infoAccess.size;
-    info.dataType = infoAccess.dataType;
-    info.flags = infoAccess.flags;
-    info.nameLength = infoAccess.nameLength;
-    info.typeLength = infoAccess.typeLength;
-    info.commentLength = infoAccess.commentLength;
-    
-    info.name = infoAccess.name();
-    info.type = infoAccess.type();
-    info.comment = infoAccess.comment();
+    info->entryLength = infoAccess.entryLen;
+    info->iGroup = infoAccess.iGroup;
+    info->iOffs = infoAccess.iOffset;
+    info->size = infoAccess.size;
+    info->dataType = infoAccess.dataType;
+    info->flags = infoAccess.flags;
+    info->nameLength = infoAccess.nameLength;
+    info->typeLength = infoAccess.typeLength;
+    info->commentLength = infoAccess.commentLength;
+
+    infoAccess.variableName = infoAccess.buffer;
+    infoAccess.symDataType = infoAccess.buffer + infoAccess.nameLength + 1;
+    infoAccess.symComment = infoAccess.buffer + infoAccess.nameLength + infoAccess.typeLength + 1;
+
+    info->name = infoAccess.variableName;
+    info->type = infoAccess.symDataType;
+    info->comment = infoAccess.symComment;
   }
   else
   {
-    printf("%s:%s: found %s in the symbol map.\n", driverName, __func__, varName);
-    const long infoStatus = AdsSyncReadWriteReqEx2(adsClientPort,
-                                                   &amsServer,
-                                                   ADSIGRP_SYM_INFOBYNAMEEX,
-                                                   0,
-                                                   sizeof(AdsSymbolEntry),
-                                                   &info,
-                                                   strlen(varName),
-                                                   varName,
-                                                   &bytesRead);
-    *errorCode = infoStatus;
+    asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: found %s in the symbol map.\n", driverName, __func__, varName);
+    // const long infoStatus = AdsSyncReadWriteReqEx2(adsClientPort,
+    //                                                &amsServer,
+    //                                                ADSIGRP_SYM_INFOBYNAMEEX,
+    //                                                0,
+    //                                                sizeof(adsSymbolEntry),
+    //                                                &infoAccess,
+    //                                                strlen(varName),
+    //                                                varName,
+    //                                                &bytesRead);
+    // *errorCode = infoStatus;
 
-    if (infoStatus)
-    {
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Get symbolic information failed for %s with: %s (0x%lx)\n", driverName, __func__, varName, adsErrorToString(infoStatus), infoStatus);
-      return asynError;
-    }
+    // if (infoStatus)
+    // {
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: Get symbolic information failed for %s with: %s (0x%lx)\n", driverName, __func__, varName, adsErrorToString(infoStatus), infoStatus);
+    //   return asynError;
+    // }
 
-    info = *it->second;
+    // Entry length, flags, comment, and comment length might not match up with direct info by name read.
+    // I think this is because instances of types can have different flags/comments than their base definitions
+    // in the datatype table. Therefore, can't rely on these but the symbol table read is really just to get
+    // the index group, offset, size, and datatype so I think it doesn't matter?
+    *info = *it->second;
+    *errorCode = 0;
 
-    if (info.entryLength != it->second->entryLength)
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong entry length. should be: %u is: %u\n", driverName, __func__, varName, info.entryLength, it->second->entryLength);
-    if (info.iGroup != it->second->iGroup)
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong group. should be: %u is: %u\n", driverName, __func__, varName, info.iGroup, it->second->iGroup);
-    if (info.iOffs != it->second->iOffs)
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong offset. should be: %u is: %u\n", driverName, __func__, varName, info.iOffs, it->second->iOffs);
-    if (info.size != it->second->size)
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong size. should be: %u is: %u\n", driverName, __func__, varName, info.size, it->second->size);
-    if (info.dataType != it->second->dataType)
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong datatype. should be: %u is: %u\n", driverName, __func__, varName, info.dataType, it->second->dataType);
-    if (info.flags != it->second->flags)
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong flags. should be: %u is: %u\n", driverName, __func__, varName, info.flags, it->second->flags);
-    if (info.nameLength != it->second->nameLength)
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong nameLength. should be: %u is: %u\n", driverName, __func__, varName, info.nameLength, it->second->nameLength);
-    if (info.typeLength != it->second->typeLength)
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong typeLength. should be: %u is: %u\n", driverName, __func__, varName, info.typeLength, it->second->typeLength);
-    if (info.commentLength != it->second->commentLength)
-      asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong commentLength. should be: %u is: %u\n", driverName, __func__, varName, info.commentLength, it->second->commentLength);
+    // infoAccess.variableName = infoAccess.buffer;
+    // infoAccess.symDataType = infoAccess.buffer + infoAccess.nameLength + 1;
+    // infoAccess.symComment = infoAccess.buffer + infoAccess.nameLength + infoAccess.typeLength + 1;
+
+    // if (infoAccess.iGroup != info->iGroup)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong group. should be: %u is: %u\n", driverName, __func__, varName, infoAccess.iGroup, info->iGroup);
+    // if (infoAccess.iOffset != info->iOffs)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong offset. should be: %u is: %u\n", driverName, __func__, varName, infoAccess.iOffset, info->iOffs);
+    // if (infoAccess.size != info->size)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong size. should be: %u is: %u\n", driverName, __func__, varName, infoAccess.size, info->size);
+    // if (infoAccess.dataType != info->dataType)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong datatype. should be: %u is: %u\n", driverName, __func__, varName, infoAccess.dataType, info->dataType);
+    // if (infoAccess.nameLength != info->nameLength)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong nameLength. should be: %u is: %u\n", driverName, __func__, varName, infoAccess.nameLength, info->nameLength);
+    // if (infoAccess.typeLength != info->typeLength)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong typeLength. should be: %u is: %u\n", driverName, __func__, varName, infoAccess.typeLength, info->typeLength);
+    // if (infoAccess.variableName != info->name)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong name. should be: %s is: %s\n", driverName, __func__, varName, infoAccess.variableName, info->name.c_str());
+    // if (infoAccess.symDataType != info->type)
+    //   asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: %s: detected wrong type. should be: %s is: %s\n", driverName, __func__, varName, infoAccess.symDataType, info->type.c_str());
   }
 
   asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Symbolic information\n");
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "SymEntrylength: %d\n", info.entryLength);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "idxGroup: 0x%x\n", info.iGroup);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "idxOffset: 0x%x\n", info.iOffs);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "ByteSize: %d\n", info.size);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "adsDataType: %d\n", info.dataType);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Flags: %d\n", info.flags);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Name length: %d\n", info.nameLength);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Type length: %d\n", info.typeLength);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Type length: %d\n", info.commentLength);
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Variable name: %s\n", info.name.c_str());
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Data type: %s\n", info.type.c_str());
-  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Comment: %s\n", info.comment.c_str());
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "SymEntrylength: %d\n", info->entryLength);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "idxGroup: %u\n", info->iGroup);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "idxOffset: %u\n", info->iOffs);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "ByteSize: %d\n", info->size);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "adsDataType: %d\n", info->dataType);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Flags: %d\n", info->flags);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Name length: %d\n", info->nameLength);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Type length: %d\n", info->typeLength);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Comment length: %d\n", info->commentLength);
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Variable name: %s\n", info->name.c_str());
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Data type: %s\n", info->type.c_str());
+  asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER, "Comment: %s\n", info->comment.c_str());
 
   return asynSuccess;
 }
@@ -3909,19 +3927,22 @@ asynStatus adsAsynPortDriver::adsGetSymInfoByName(long adsClientPort, adsParamIn
 
   std::lock_guard<std::recursive_mutex> lg(*paramInfo.mutex);
 
-  AdsSymbolEntryExpanded infoStruct;
+  auto infoStruct = std::make_shared<AdsSymbolEntryExpanded>();
 
   asynStatus stat = adsGetSymInfoByName(adsClientPort, paramInfo.amsPort, paramInfo.plcAdrStr.c_str(), infoStruct);
   if (stat)
   {
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+              "%s:%s: failed to get ads symbol info by name for %s\n",
+              driverName, __func__, paramInfo.plcAdrStr.c_str());
     return asynError;
   }
 
   // fill paramInfo data structure
-  paramInfo.plcAbsAdrGroup = infoStruct.iGroup;
-  paramInfo.plcAbsAdrOffset = infoStruct.iOffs;
-  paramInfo.plcSize = infoStruct.size;
-  paramInfo.plcDataType = infoStruct.dataType;
+  paramInfo.plcAbsAdrGroup = infoStruct->iGroup;
+  paramInfo.plcAbsAdrOffset = infoStruct->iOffs;
+  paramInfo.plcSize = infoStruct->size;
+  paramInfo.plcDataType = infoStruct->dataType;
   paramInfo.plcAbsAdrValid = true;
 
   return asynSuccess;

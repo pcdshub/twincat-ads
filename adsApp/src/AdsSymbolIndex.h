@@ -25,6 +25,10 @@ struct AdsSymbolEntryAccess : public AdsSymbolEntry
   }
 };
 
+const char *name(const AdsSymbolEntry *adsSymbolEntry);
+const char *type(const AdsSymbolEntry *adsSymbolEntry);
+const char *comment(const AdsSymbolEntry *adsSymbolEntry);
+
 struct AdsSymbolEntryExpanded : public AdsSymbolEntry
 {
   std::string name;
