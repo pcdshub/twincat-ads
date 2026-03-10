@@ -208,7 +208,7 @@ private:
   asynStatus setAlarmPortLock(uint16_t amsPort,int alarm,int severity);
   asynStatus setAlarmPort(uint16_t amsPort,int alarm,int severity);
   asynStatus setAlarmParam(adsParamInfo *paramInfo,int alarm,int severity);
-  asynStatus fireCallbacks(adsParamInfo* paramInfo);
+  asynStatus fireCallbacksForArrayParam(adsParamInfo* paramInfo);
   asynStatus addNewAmsPortToList(uint16_t amsPort);
   amsPortInfo* getAmsPortObject(uint16_t amsPort);
   asynStatus adsAddToBulkRead(uint16_t amsClientPort, adsParamInfo* paramInfo);
@@ -270,6 +270,7 @@ private:
   std::unordered_map<AdsDatatypeId, asynParamType> paramTypeMap_;
   std::unordered_map<std::string, int> createdParamsMap_;
   std::mutex bulkReadInfoMutex_;
+  std::queue<adsParamInfo*> arrayParamsToCallCallbacksFor_;
 
   //octet
   adsOctetOutputBufferType       octetAsciiBuffer_;

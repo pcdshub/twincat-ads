@@ -457,7 +457,7 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
 	  asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
 		    "%s:%s: connect failed for port %s.\n", 
 		    driverName, functionName, portName);
-	  epicsThreadSleep(1.0);
+	  epicsThreadSleep(0.1);
 	  continue;
       }
       long error = 0;
@@ -466,7 +466,6 @@ adsAsynPortDriver::adsAsynPortDriver(const char *portName,
 	  asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, 
 		    "%s:%s: adsReadState failed for port %s.\n", 
 		    driverName, functionName, portName);
-	  disconnect(pasynUserSelf);
 	  continue;
       }
       if (adsState == ADSSTATE_RUN) {
@@ -1108,6 +1107,10 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
   if(createdParamsMapIt != createdParamsMap_.end()){
     index = createdParamsMapIt->second;
     asynPrint(pasynUser, ASYN_TRACE_INFO, "%s:%s: Parameter index found at: %d for %s. \n", driverName, functionName,index,drvInfo);
+    if (adsParamArray_[index].dataSource == ADSDATASOURCE::ADS_DATASOURCE_AMS_STATE)
+    {
+      adsReadParam(amsClientPort, &adsParamArray_[index]);
+    }
     return asynPortDriver::drvUserCreate(pasynUser,drvInfo,pptypeName,psize);
   }
 
@@ -4123,7 +4126,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo* paramInfo,const v
           ret=setDoubleParam(paramInfo->paramIndex,(double)(*ADST_INT8Var));
           break;
         case asynParamInt8Array:
-          // handled in fireCallbacks()
+          arrayParamsToCallCallbacksFor_.push(paramInfo);
           ret=asynSuccess;
           break;
         default:
@@ -4145,7 +4148,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo* paramInfo,const v
           ret=setDoubleParam(paramInfo->paramIndex,(double)(*ADST_INT16Var));
           break;
         case asynParamInt16Array:
-          // handled in fireCallbacks()
+          arrayParamsToCallCallbacksFor_.push(paramInfo);
           ret=asynSuccess;
           break;
         default:
@@ -4166,7 +4169,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo* paramInfo,const v
           ret=setDoubleParam(paramInfo->paramIndex,(double)(*ADST_INT32Var));
           break;
         case asynParamInt32Array:
-          // handled in fireCallbacks()
+          arrayParamsToCallCallbacksFor_.push(paramInfo);
           ret=asynSuccess;
           break;
         default:
@@ -4191,7 +4194,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo* paramInfo,const v
           break;
         // No 64 bit uint array callback type (also no 64bit uint in EPICS)
         case asynParamInt64Array:
-          // handled in fireCallbacks()
+          arrayParamsToCallCallbacksFor_.push(paramInfo);
           ret=asynSuccess;
           break;
         default:
@@ -4269,7 +4272,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo* paramInfo,const v
           break;
         // No 64 bit uint array callback type (also no 64bit uint in EPICS)
         case asynParamInt64Array:
-          // handled in fireCallbacks()
+          arrayParamsToCallCallbacksFor_.push(paramInfo);
           ret=asynSuccess;
           break;
         default:
@@ -4289,7 +4292,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo* paramInfo,const v
           ret=setDoubleParam(paramInfo->paramIndex,(double)(*ADST_REAL32Var));
           break;
         case asynParamFloat32Array:
-          // handled in fireCallbacks()
+          arrayParamsToCallCallbacksFor_.push(paramInfo);
           ret=asynSuccess;
           break;
         default:
@@ -4309,7 +4312,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo* paramInfo,const v
           ret=setDoubleParam(paramInfo->paramIndex,(double)(*ADST_REAL64Var));
           break;
         case asynParamFloat64Array:
-          // handled in fireCallbacks()
+          arrayParamsToCallCallbacksFor_.push(paramInfo);
           ret=asynSuccess;
           break;
         default:
@@ -4330,7 +4333,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo* paramInfo,const v
           ret=setDoubleParam(paramInfo->paramIndex,(double)(*ADST_BitVar));
           break;
         case asynParamInt8Array:
-          // handled in fireCallbacks()
+          arrayParamsToCallCallbacksFor_.push(paramInfo);
           ret=asynSuccess;
           break;
         default:
@@ -4342,7 +4345,7 @@ asynStatus adsAsynPortDriver::adsUpdateParameter(adsParamInfo* paramInfo,const v
      case ADST_STRING:
       switch(paramInfo->asynType){
         case asynParamInt8Array:
-          // handled in fireCallbacks()
+          arrayParamsToCallCallbacksFor_.push(paramInfo);
           ret=asynSuccess;
           break;
         default:
@@ -4381,10 +4384,11 @@ asynStatus adsAsynPortDriver::fireAllCallbacksLock()
   asynPrint(pasynUserSelf,ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
 
   lock();
-  for(int i=0;i<adsParamArrayCount_;i++){
-    if(adsParamArray_[i].callbackRequested){
-      fireCallbacks(&adsParamArray_[i]);
-    }
+  callParamCallbacks();
+  while (!arrayParamsToCallCallbacksFor_.empty())
+  {
+    fireCallbacksForArrayParam(arrayParamsToCallCallbacksFor_.front());
+    arrayParamsToCallCallbacksFor_.pop();
   }
   unlock();
   return asynSuccess;
@@ -4396,14 +4400,13 @@ asynStatus adsAsynPortDriver::fireAllCallbacksLock()
  *
  * \return asynSuccess or asynError.
  */
-asynStatus adsAsynPortDriver::fireCallbacks(adsParamInfo* paramInfo)
+asynStatus adsAsynPortDriver::fireCallbacksForArrayParam(adsParamInfo* paramInfo)
 {
-  const char* functionName = "fireCallbacks";
+  const char* functionName = "fireCallbacksForArrayParam";
   asynPrint(pasynUserSelf,ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
 
   if(!paramInfo->plcDataIsArray){
-    paramInfo->callbackRequested = false;
-    return callParamCallbacks();
+    return asynSuccess;
   }
 
   if(paramInfo->lastCallbackSize<=0){
