@@ -36,6 +36,7 @@ struct AdsSymbolEntryExpanded : public AdsSymbolEntry
   std::string comment;
   std::string flagStr;
   std::list<std::shared_ptr<AdsSymbolEntryExpanded>> children;
+  bool isArray = false;
 
   AdsSymbolEntryExpanded() = default;
   AdsSymbolEntryExpanded(const AdsSymbolEntryAccess &adsSymbolEntryRoot,

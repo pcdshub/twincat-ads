@@ -112,6 +112,7 @@ void AdsDatatypeEntryExpanded::expand(const std::unordered_map<std::string, cons
   }
   if (!arrayIndices.empty())
   {
+    this->isArray = true;
     if (rawDatatypeEntry.size % arrayIndices.size() != 0)
     {
       std::cout << "Size of ["

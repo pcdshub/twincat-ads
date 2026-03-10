@@ -71,7 +71,7 @@ AdsSymbolEntryExpanded::AdsSymbolEntryExpanded(const AdsSymbolEntryAccess &adsSy
   this->iOffs = adsSymbolEntryRoot.iOffs;
   this->size = adsSymbolEntryRoot.size;
   this->dataType = adsSymbolEntryRoot.dataType;
-  this->flags = adsSymbolEntryRoot.flags;
+  this->flags = adsSymbolEntryRoot.flags | adsSymbolEntryRoot.flags; // Inherit flags of the parent
   this->nameLength = adsSymbolEntryRoot.nameLength;
   this->typeLength = adsSymbolEntryRoot.typeLength;
   this->commentLength = adsSymbolEntryRoot.commentLength;
@@ -97,10 +97,11 @@ AdsSymbolEntryExpanded::AdsSymbolEntryExpanded(const AdsSymbolEntryAccess &adsSy
     return;
   }
   auto datatypeEntry = datatypeEntryIndex.at(type);
+  this->isArray = datatypeEntry->isArray;
   for (auto datatypeEntryChild : datatypeEntry->children)
   {
     auto newSymbolEntry = std::make_shared<AdsSymbolEntryExpanded>(*this,
-                                                                   *datatypeEntryChild);
+                                                                   *datatypeEntryChild);                                                              
     children.push_back(newSymbolEntry);
   }
 }
@@ -117,7 +118,7 @@ AdsSymbolEntryExpanded::AdsSymbolEntryExpanded(const AdsSymbolEntryExpanded &ads
   this->iOffs = adsSymbolEntryExpandedParent.iOffs + adsDatatypeEntryChild.iOffs;
   this->size = adsDatatypeEntryChild.entry->rawDatatypeEntry.size;
   this->dataType = adsDatatypeEntryChild.entry->rawDatatypeEntry.dataType;
-  this->flags = adsDatatypeEntryChild.entry->rawDatatypeEntry.flags;
+  this->flags = adsDatatypeEntryChild.entry->rawDatatypeEntry.flags | adsSymbolEntryExpandedParent.flags; // Inherit flags of the parent.
 
   if (!adsDatatypeEntryChild.name.empty() && adsDatatypeEntryChild.name[0] == '[')
   {
@@ -136,6 +137,7 @@ AdsSymbolEntryExpanded::AdsSymbolEntryExpanded(const AdsSymbolEntryExpanded &ads
   this->commentLength = this->comment.length();
 
   this->flagStr = adsSymbolFlagsToString(flags);
+  this->isArray = adsDatatypeEntryChild.entry->isArray;
   for (auto childDatatypeEntryExpanded : adsDatatypeEntryChild.entry->children)
   {
     auto newSymbolEntry = std::make_shared<AdsSymbolEntryExpanded>(*this,
@@ -154,10 +156,9 @@ void AdsSymbolIndex::writeTree(std::ostream &buffer,
     return;
   }
 
-  if (numLevels < 1)
+  if (numTabs == 0)
   {
     buffer << "--------------------" << std::endl;
-    return;
   }
 
   std::string tabs;
@@ -168,7 +169,7 @@ void AdsSymbolIndex::writeTree(std::ostream &buffer,
 
   buffer << tabs << "Name:          [" << startingNode->name << "] [" << startingNode->nameLength << "]" << std::endl
          << tabs << "Type:          [" << startingNode->type << "] [" << startingNode->typeLength << "]" << std::endl
-         << tabs << "Size:          [" << startingNode->size << "]" << std::endl
+         << tabs << "Size:          [" << startingNode->size << "] IsArray: [" << startingNode->isArray << "]" << std::endl
          << tabs << "Group:         [" << startingNode->iGroup << "] Offset: [" << startingNode->iOffs << "]" << std::endl
          << tabs << "TypeId:        [" << startingNode->dataType << "]" << std::endl
          << tabs << "Flags:         [" << startingNode->flags << "] [" << startingNode->flagStr << "]" << std::endl
@@ -177,6 +178,12 @@ void AdsSymbolIndex::writeTree(std::ostream &buffer,
   if (startingNode->children.size() <= 0)
   {
     buffer << "--------------------" << std::endl;
+    return;
+  }
+
+  if (numLevels <= 1)
+  {
+    buffer << "----------[" << startingNode->children.size() << "] children hidden----------" << std::endl;
     return;
   }
 

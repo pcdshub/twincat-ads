@@ -32,6 +32,7 @@ struct AdsDatatypeEntryExpanded
   std::string comment;
   std::string flagStr;
   std::list<std::shared_ptr<Child>> children;
+  bool isArray = false;
 
   AdsDatatypeEntryExpanded(const AdsDatatypeEntry &adsDatatypeEntry);
 
