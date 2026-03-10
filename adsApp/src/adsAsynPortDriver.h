@@ -11,6 +11,7 @@
 #include "adsAsynPortDriverUtils.h"
 #include <mutex>
 #include <queue>
+#include "AdsSymbolParser.h"
 
 /** Class derived of asynPortDriver for ads communication with TwinCAT plc:s */
 
@@ -98,9 +99,9 @@ public:
   asynStatus adsUpdateParameterLock(adsParamInfo* paramInfo,
                                     const void *data);
   asynStatus invalidateParamsLock(uint16_t amsPort);
-  asynStatus refreshParamsLock(uint16_t amsPort);
+  asynStatus refreshParamsLock(uint16_t amsClientPort, uint16_t amsPort);
   asynStatus adsDelRouteLock(int force);
-  asynStatus adsAddRouteLock();
+  asynStatus adsAddRoute();
   asynStatus fireAllCallbacksLock();
   asynUser *getTraceAsynUser();
   int getParamTableSize();
@@ -112,6 +113,7 @@ public:
   void cyclicThread();
   void bulkReadThread();
   void dataCallbackThread();
+  void triggerEpicsIoIntrCallbacksThread();
   void poll_info(char *name);
   // data callback thread
 #define MAXCBQSIZE 10000
@@ -121,6 +123,10 @@ public:
     const AdsNotificationHeader  pNotification;
   };
   std::queue<datacbinfo>         datacbqueue;
+  
+  long getAdsClientPortNumberForThreadId(epicsThreadId threadId);
+  long addAdsClientPortNumberForThreadId(epicsThreadId threadId);
+  asynStatus delAdsClientPortNumberForThreadId(epicsThreadId threadId);
 protected:
 
 private:
@@ -133,8 +139,8 @@ private:
                                       adsParamInfo *paramInfo);
   asynStatus parsePlcInfofromDrvInfo(const char* drvInfo,
                                      adsParamInfo *paramInfo);
-  asynStatus refreshParams();
-  asynStatus refreshParams(uint16_t amsPort);
+  asynStatus refreshParams(uint16_t amsClientPort);
+  asynStatus refreshParams(uint16_t amsClientPort, uint16_t amsPort);
   asynStatus invalidateParams(uint16_t amsPort);
   asynStatus adsUpdateParameter(adsParamInfo* paramInfo,
                                  const void *data);
@@ -145,49 +151,45 @@ private:
                                     size_t dataSize);
 
   // ADS methods
-  asynStatus adsAddDataCallback(adsParamInfo *paramInfo);
+  asynStatus adsAddDataCallback(uint16_t amsClientPort, adsParamInfo *paramInfo);
 
-  asynStatus adsDelDataCallback(adsParamInfo *paramInfo);
-  asynStatus adsDelDataCallback(adsParamInfo *paramInfo,
+  asynStatus adsDelDataCallback(uint16_t amsClientPort, adsParamInfo *paramInfo);
+  asynStatus adsDelDataCallback(uint16_t amsClientPort, adsParamInfo *paramInfo,
                                         bool blockErrorMsg);
-  asynStatus adsAddSymbolsChangedCallback(amsPortInfo *port);
-  asynStatus adsDelSymbolsChangedCallback(amsPortInfo *port);
-  asynStatus adsGetSymInfoByName(adsParamInfo *paramInfo);
-  asynStatus adsGetSymInfoByName(uint16_t amsPort,
+  asynStatus adsAddSymbolsChangedCallback(uint16_t amsClientPort, amsPortInfo *port);
+  asynStatus adsDelSymbolsChangedCallback(uint16_t amsClientPort, amsPortInfo *port);
+  asynStatus adsGetSymInfoByName(uint16_t amsClientPort, adsParamInfo *paramInfo);
+  asynStatus adsGetSymInfoByName(uint16_t amsClientPort, uint16_t amsPort,
                                  const char * varName,
                                  adsSymbolEntry * info);
-  asynStatus adsGetSymInfoByName(uint16_t amsPort,
+  asynStatus adsGetSymInfoByName(uint16_t amsClientPort, uint16_t amsPort,
                                  const char *varName,
                                  adsSymbolEntry *info,
                                  long *errorCode);
-  asynStatus adsGetSymHandleByName(adsParamInfo *paramInfo);
-  asynStatus adsGetSymHandleByName(adsParamInfo *paramInfo,
+  asynStatus adsGetSymHandleByName(uint16_t amsClientPort, adsParamInfo *paramInfo);
+  asynStatus adsGetSymHandleByName(uint16_t amsClientPort, adsParamInfo *paramInfo,
                                    bool blockErrorMsg);
-  asynStatus adsReleaseSymbolicHandle(adsParamInfo *paramInfo);
-  asynStatus adsReleaseSymbolicHandle(adsParamInfo *paramInfo,
+  asynStatus adsReleaseSymbolicHandle(uint16_t amsClientPort, adsParamInfo *paramInfo);
+  asynStatus adsReleaseSymbolicHandle(uint16_t amsClientPort, adsParamInfo *paramInfo,
                                       bool blockErrorMsg);
   asynStatus adsConnect();
   asynStatus adsDisconnect();
-  asynStatus adsWriteParam(adsParamInfo *paramInfo,
+  asynStatus adsWriteParam(uint16_t amsClientPort, adsParamInfo *paramInfo,
                       const void *binaryBuffer,
                       uint32_t bytesToWrite);
-  asynStatus adsReadParam(adsParamInfo *paramInfo);
-  asynStatus adsReadParam(adsParamInfo *paramInfo,
+  asynStatus adsReadParam(uint16_t amsClientPort, adsParamInfo *paramInfo);
+  asynStatus adsReadParam(uint16_t amsClientPort, adsParamInfo *paramInfo,
                           long *error,
                           int updateAsynPar);
-  asynStatus adsReadState(uint16_t *adsState);
-  asynStatus adsReadStateLock(uint16_t amsport,
-                              uint16_t *adsState,
-                              bool blockErrorMsg);
-  asynStatus adsReadStateLock(uint16_t amsport,
-                              uint16_t *adsState,
-                              bool blockErrorMsg,
-                              long *error);
-  asynStatus adsReadState(uint16_t amsport,
+  asynStatus adsReadState(uint16_t amsClientPort, uint16_t *adsState);
+  asynStatus adsReadState(uint16_t amsClientPort, uint16_t amsport,
+                          uint16_t *adsState,
+                          bool blockErrorMsg);
+  asynStatus adsReadState(uint16_t amsClientPort, uint16_t amsport,
                           uint16_t *adsState,
                           bool blockErrorMsg,
                           long *error);
-  asynStatus adsWriteState(uint16_t amsport,
+  asynStatus adsWriteState(uint16_t amsClientPort, uint16_t amsport,
                           uint16_t adsState);
 
   asynStatus adsDelRoute(int force);
@@ -200,19 +202,17 @@ private:
                                  void *epicsDataBuffer,
                                  size_t nEpicsBufferBytes,
                                  size_t *nBytesRead);
-  asynStatus adsReadVersion(amsPortInfo *port);
-  asynStatus updateParamInfoWithPLCInfo(adsParamInfo *paramInfo);
+  asynStatus adsReadVersion(uint16_t amsClientPort,amsPortInfo *port);
+  asynStatus updateParamInfoWithPLCInfo(uint16_t amsClientPort, adsParamInfo *paramInfo);
   asynStatus refreshParamTime(adsParamInfo *paramInfo);
   asynStatus setAlarmPortLock(uint16_t amsPort,int alarm,int severity);
   asynStatus setAlarmPort(uint16_t amsPort,int alarm,int severity);
   asynStatus setAlarmParam(adsParamInfo *paramInfo,int alarm,int severity);
-  asynStatus fireCallbacks(adsParamInfo* paramInfo);
+  asynStatus fireCallbacksForArrayParam(adsParamInfo* paramInfo);
   asynStatus addNewAmsPortToList(uint16_t amsPort);
   amsPortInfo* getAmsPortObject(uint16_t amsPort);
-  void       adsLock();
-  void       adsUnlock();
-  asynStatus adsAddToBulkRead(adsParamInfo* paramInfo);
-  int        adsFindBulkTimeStamp(uint16_t amsPort);
+  asynStatus adsAddToBulkRead(uint16_t amsClientPort, adsParamInfo* paramInfo);
+  int        adsFindBulkTimeStamp(uint16_t amsClientPort, uint16_t amsPort);
 
   //Octet interface methods (ascii command parser through readoctet() and writeoctet())
   int        octetCMDreadIt(char *outbuf,
@@ -226,17 +226,17 @@ private:
   int        octetMotorHandleADRCmd(const char *arg,
                                     uint16_t adsport,
                                     adsOctetOutputBufferType *buffer);
-  int        octetAdsReadByName(uint16_t amsPort,
+  int        octetAdsReadByName(uint16_t amsClientPort, uint16_t amsPort,
                                 const char *variableAddr,
                                 adsOctetOutputBufferType* outBuffer);
-  int        octetAdsWriteByName(uint16_t amsPort,
+  int        octetAdsWriteByName(uint16_t amsClientPort, uint16_t amsPort,
                                  const char *variableAddr,
                                  const char *asciiValueToWrite,
                                  adsOctetOutputBufferType *outBuffer);
-  int        octetAdsReadByGroupOffset(uint16_t amsPort,
+  int        octetAdsReadByGroupOffset(uint16_t amsClientPort, uint16_t amsPort,
                                        adsSymbolEntry *info,
                                        adsOctetOutputBufferType *outBuffer);
-  int        octetAdsWriteByGroupOffset(uint16_t amsPort,
+  int        octetAdsWriteByGroupOffset(uint16_t amsClientPort, uint16_t amsPort,
                                         uint32_t group,
                                         uint32_t offset,
                                         uint16_t dataType,
@@ -260,10 +260,17 @@ private:
   uint16_t                       amsportDefault_;
   unsigned int                   priority_;
   AmsNetId                       remoteNetId_;
-  adsParamInfo                   **pAdsParamArray_;
+  std::vector<adsParamInfo>      adsParamArray_;
   std::vector<amsPortInfo*>      amsPortList_;
   ADSTIMESOURCE                  defaultTimeSource_;
   std::mutex                     adsMutex;
+  std::unordered_map<uint16_t, AdsSymbolParser> adsSymbolParserMap_;
+  std::unordered_map<epicsThreadId, AmsClientPortEntry> threadIdToAmsClientPortMap_;
+  std::recursive_mutex threadIdToAmsClientPortMapMutex_;
+  std::unordered_map<AdsDatatypeId, asynParamType> paramTypeMap_;
+  std::unordered_map<std::string, int> createdParamsMap_;
+  std::mutex bulkReadInfoMutex_;
+  std::queue<adsParamInfo*> arrayParamsToCallCallbacksFor_;
 
   //octet
   adsOctetOutputBufferType       octetAsciiBuffer_;
@@ -281,7 +288,7 @@ private:
   int bulkTScnt;
 #define MAXBULK 2000
 #define BULKSIZ 500
-  struct {
+  struct BulkReadInfo {
       int cnt;               // Number of variables in this read
       uint16_t amsPort;      // The port this goes to!
       struct {
@@ -299,6 +306,21 @@ private:
  public:
   int bulkOK;                // OK to process bulk reads!
   int bulk_elapsed_us;       // Time of last bulk read loop.
+
+  std::unordered_map<uint16_t, int> amsPortToNotFullBulkReadInfoMap_;
+};
+
+class AdsClientPortGuard
+{
+public:
+  AdsClientPortGuard(adsAsynPortDriver &adsAsynPortDriver, long &adsClientPort);
+  ~AdsClientPortGuard();
+  long getAdsClientPort() const;
+
+private:
+  adsAsynPortDriver &adsAsynPortDriver_;
+  long adsClientPort_;
+  epicsThreadId threadId_;
 };
 
 #endif /* ADSASYNPORTDRIVER_H_ */
