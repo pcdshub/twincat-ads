@@ -531,7 +531,7 @@ asynStatus adsAsynPortDriver::resolveSymbolHandles()
             &bytesRead);
         adsUnlock();
 
-        asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+        asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
                   "%s::%s: chunk %zu/%zu rc=0x%lx "
                   "bytesRead=%u expected=%zu\n",
                   driverName, functionName,
@@ -559,7 +559,7 @@ asynStatus adsAsynPortDriver::resolveSymbolHandles()
             memcpy(&retLen, statusBlock + i * 8 + 4, 4);
             uint32_t handle = handleBlock[i];
 
-            asynPrint(pasynUserSelf, ASYN_TRACE_ERROR,
+            asynPrint(pasynUserSelf, ASYN_TRACE_FLOW,
                       "%s::%s: sub-req[%zu] '%s' "
                       "result=0x%x retLen=%u handle=0x%x\n",
                       driverName, functionName,
@@ -1462,7 +1462,7 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
     asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: createParam() failed.",driverName, functionName);
     return asynError;
   }
-  asynPrint(pasynUser, ASYN_TRACE_INFO, "%s:%s: Parameter created: \"%s\" (index %d).\n", driverName, functionName,drvInfo,index);
+  /* BENCH: Parameter created print moved to after updateParamInfoWithPLCInfo */
 
   //Set default value for basic types...
   switch(paramInfo->asynType){
@@ -1533,7 +1533,7 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
     auto dictIt = symbolDict_.find(dictKey);
     if(dictIt != symbolDict_.end()) {
       const AdsSymbolDictEntry &e = dictIt->second;
-      asynPrint(pasynUser, ASYN_TRACE_ERROR,
+      asynPrint(pasynUser, ASYN_TRACE_WARNING,
                 "%s:%s: [%4ld us] drvInfo='%s' plcAdrStr='%s'\n"
                 "  [DICT]     symbol='%s' handle=0x%08x size=%-5u adst=%-2u resolved=%d\n"
                 "  [RESOLVED] handle=0x%08x size=%-5u adst=%-2u plcDataIsArray=%d\n",
@@ -1543,7 +1543,7 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
                 paramInfo->hSymbolicHandle, paramInfo->plcSize,
                 paramInfo->plcDataType, (int)paramInfo->plcDataIsArray);
     } else {
-      asynPrint(pasynUser, ASYN_TRACE_ERROR,
+      asynPrint(pasynUser, ASYN_TRACE_WARNING,
                 "%s:%s: [%4ld us] drvInfo='%s' plcAdrStr='%s'\n"
                 "  [DICT]     MISS (not in dict — used ADS fallback)\n"
                 "  [RESOLVED] handle=0x%08x size=%-5u adst=%-2u plcDataIsArray=%d\n",
@@ -1553,10 +1553,13 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
                 paramInfo->plcDataType, (int)paramInfo->plcDataIsArray);
     }
   } else {
-    asynPrint(pasynUser, ASYN_TRACE_ERROR,
+    asynPrint(pasynUser, ASYN_TRACE_FLOW,
               "%s:%s: [%4ld us] drvInfo='%s' (non-PLC or ADR param)\n",
               driverName, functionName, elapsed_us, drvInfo);
   }
+  asynPrint(pasynUser, ASYN_TRACE_INFO,
+            "%s:%s: Parameter created: \"%s\" (index %d) [%4ld us].\n",
+            driverName, functionName, drvInfo, index, elapsed_us); /* BENCH */
 
   return asynPortDriver::drvUserCreate(pasynUser,drvInfo,pptypeName,psize); //Assigns pasynUser->reason;
 }
@@ -1620,7 +1623,7 @@ asynStatus adsAsynPortDriver::updateParamInfoWithPLCInfo(adsParamInfo *paramInfo
        * path.  adsReadParam() / adsWriteParam() / adsAddDataCallback() all
        * check bSymbolicHandleValid before plcAbsAdrValid, so this is safe. */
       fromDict = true;
-      asynPrint(pasynUserSelf, ASYN_TRACE_INFO,
+      asynPrint(pasynUserSelf, ASYN_TRACE_WARNING,
                 "%s:%s: dict hit '%s' handle=0x%x size=%u adst=%u\n",
                 driverName, functionName,
                 paramInfo->plcAdrStr,
@@ -2887,6 +2890,72 @@ int adsAsynPortDriver::octetAdsWriteByGroupOffset(uint16_t amsPort,uint32_t grou
   return 0;
 }
 
+/** Overrides asynPortDriver::readInt32.
+ * Reads int32 directly from PLC via AdsSyncReadReqEx2, bypassing bulk thread.
+ * \param[in]  pasynUser Pointer to asyn user structure.
+ * \param[out] value     Value read from PLC.
+ *
+ * \return asynSuccess or asynError.
+ */
+asynStatus adsAsynPortDriver::readInt32(asynUser *pasynUser, epicsInt32 *value)
+{
+  const char* functionName = "readInt32";
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+
+  int paramIndex = pasynUser->reason;
+  if (!pAdsParamArray_[paramIndex]) {
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL\n", driverName, functionName);
+    return asynError;
+  }
+  adsParamInfo *paramInfo = pAdsParamArray_[paramIndex];
+
+  // adsReadParam(..., 1) issues AdsSyncReadReqEx2, then calls
+  // adsUpdateParameterLock -> setIntegerParam/setDoubleParam under the asyn
+  // port lock.  The base-class readInt32 then retrieves the value from the
+  // parameter table.  This completely bypasses the bulk poll thread.
+  long errorCode = 0;
+  if (adsReadParam(paramInfo, &errorCode, 1) != asynSuccess) {
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: adsReadParam failed for %s (0x%lx)\n",
+              driverName, functionName, paramInfo->drvInfo, errorCode);
+    return setAlarmParam(paramInfo, READ_ALARM, INVALID_ALARM);
+  }
+  if (paramInfo->alarmStatus == READ_ALARM)
+    setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+
+  return asynPortDriver::readInt32(pasynUser, value);
+}
+
+/** Overrides asynPortDriver::readFloat64.
+ * Reads float64 directly from PLC via AdsSyncReadReqEx2, bypassing bulk thread.
+ * \param[in]  pasynUser Pointer to asyn user structure.
+ * \param[out] value     Value read from PLC.
+ *
+ * \return asynSuccess or asynError.
+ */
+asynStatus adsAsynPortDriver::readFloat64(asynUser *pasynUser, epicsFloat64 *value)
+{
+  const char* functionName = "readFloat64";
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+
+  int paramIndex = pasynUser->reason;
+  if (!pAdsParamArray_[paramIndex]) {
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL\n", driverName, functionName);
+    return asynError;
+  }
+  adsParamInfo *paramInfo = pAdsParamArray_[paramIndex];
+
+  long errorCode = 0;
+  if (adsReadParam(paramInfo, &errorCode, 1) != asynSuccess) {
+    asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: adsReadParam failed for %s (0x%lx)\n",
+              driverName, functionName, paramInfo->drvInfo, errorCode);
+    return setAlarmParam(paramInfo, READ_ALARM, INVALID_ALARM);
+  }
+  if (paramInfo->alarmStatus == READ_ALARM)
+    setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+
+  return asynPortDriver::readFloat64(pasynUser, value);
+}
+
 /** Overrides asynPortDriver::writeInt32.
  * Writes int32 to PLC
  * \param[in] pasynUser Pointer to asyn user structure
@@ -3011,6 +3080,38 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
 
   return asynPortDriver::writeInt32(pasynUser, value);
 }
+
+/** Overrides asynPortDriver::readInt64.
+ * Reads int64 directly from PLC via AdsSyncReadReqEx2, bypassing bulk thread.
+ * \param[in]  pasynUser Pointer to asyn user structure.
+ * \param[out] value     Value read from PLC.
+ *
+ * \return asynSuccess or asynError.
+ */
+asynStatus adsAsynPortDriver::readInt64(asynUser *pasynUser, epicsInt64 *value)
+{
+    const char* functionName = "readInt64";
+    asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
+
+    int paramIndex = pasynUser->reason;
+    if (!pAdsParamArray_[paramIndex]) {
+        asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: pAdsParamArray NULL\n", driverName, functionName);
+        return asynError;
+    }
+    adsParamInfo *paramInfo = pAdsParamArray_[paramIndex];
+
+    long errorCode = 0;
+    if (adsReadParam(paramInfo, &errorCode, 1) != asynSuccess) {
+        asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s: adsReadParam failed for %s (0x%lx)\n",
+                  driverName, functionName, paramInfo->drvInfo, errorCode);
+        return setAlarmParam(paramInfo, READ_ALARM, INVALID_ALARM);
+    }
+    if (paramInfo->alarmStatus == READ_ALARM)
+        setAlarmParam(paramInfo, NO_ALARM, NO_ALARM);
+
+    return asynPortDriver::readInt64(pasynUser, value);
+}
+
 
 asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
 {
@@ -5450,6 +5551,3 @@ extern "C" {
 
   epicsExportRegistrar(adsAsynPortDriverRegister);
 }
-
-
-
