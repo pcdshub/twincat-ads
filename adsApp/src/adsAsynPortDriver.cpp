@@ -1661,9 +1661,12 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
     return asynError;
   }
 
+   std::string drvInfoStr = drvInfo;
+
   int index=0;
-  asynStatus status=findParam(drvInfo,&index);
-  if(status==asynSuccess){
+  auto createdParamsMapIt = createdParamsMap_.find(drvInfoStr);
+  if(createdParamsMapIt != createdParamsMap_.end()){
+    index = createdParamsMapIt->second;
     asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s: Parameter index found at: %d for %s. \n", driverName, functionName,index,drvInfo);
     return asynPortDriver::drvUserCreate(pasynUser,drvInfo,pptypeName,psize);
   }
@@ -1690,7 +1693,7 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
   paramInfo->bulkIndex = -1;
   paramInfo->bulkOffset = -1;
 
-  status=parsePlcInfofromDrvInfo(drvInfo,paramInfo);
+  auto status=parsePlcInfofromDrvInfo(drvInfo,paramInfo);
   if(status!=asynSuccess){
     return asynError;
   }
@@ -1736,6 +1739,7 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
 
   pasynUser->timeout=(paramInfo->maxDelayTimeMS*2)/1000;
   adsParamArrayCount_++;
+  createdParamsMap_.insert(std::make_pair(drvInfoStr, index));
 
   if(!connectedAds_){
     //try to connect without error handling
