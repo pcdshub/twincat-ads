@@ -1,1 +1,1 @@
-../../ADS/AdsLib/AdsLib.cpp
+../../ADS/AdsLib/standalone/AdsLib.cpp

@@ -9,6 +9,7 @@
 #include "AdsLib.h"
 #include <vector>
 #include "adsAsynPortDriverUtils.h"
+#include "adsSymbolTable.h"
 #include <mutex>
 #include <queue>
 
@@ -45,8 +46,13 @@ public:
                                size_t maxChars,
                                size_t *nActual,
                                int *eomReason);
+  virtual asynStatus readInt32(asynUser *pasynUser,
+                               epicsInt32 *value);
+
   virtual asynStatus writeInt32(asynUser *pasynUser,
                                 epicsInt32 value);
+  virtual asynStatus readFloat64(asynUser *pasynUser,
+                                 epicsFloat64 *value);
   virtual asynStatus writeFloat64(asynUser *pasynUser,
                                   epicsFloat64 value);
   virtual asynStatus readInt8Array(asynUser *pasynUser,
@@ -84,6 +90,10 @@ public:
   virtual asynStatus writeFloat64Array(asynUser *pasynUser,
                                        epicsFloat64 *value,
                                        size_t nElements);
+  // 64-bit integer interface support (asynInt64 and asynInt64Array)
+  virtual asynStatus readInt64(asynUser *pasynUser,
+                                       epicsInt64 *value);
+									   
   // 64-bit integer interface support (asynInt64 and asynInt64Array)
   virtual asynStatus writeInt64(asynUser *pasynUser,
                                         epicsInt64 value);
@@ -299,9 +309,20 @@ private:
  public:
   int bulkOK;                // OK to process bulk reads!
   int bulk_elapsed_us;       // Time of last bulk read loop.
+
+/** Symbol-table cache, one SymbolMap per AMS port.
+    *  Key:   AMS port number (e.g. 851).
+       *  Value: unordered_map<lowercase_symbol_name, AdsSymbolInfo>.
+       *  Populated by adsLoadSymbolTable(), read by adsGetSymInfoByName().
+       *  Cleared by adsInvalidateSymbolCache() in invalidateParams().   */
+//     SymbolCache symbolCache_;
+
+
+// member declarations
+std::unordered_map<std::string, AdsSymbolDictEntry> symbolDict_;
+asynStatus resolveSymbolInfo();
+asynStatus resolveSymbolHandles();
+bool symInfoResolved_ = false;
 };
 
 #endif /* ADSASYNPORTDRIVER_H_ */
-
-
-

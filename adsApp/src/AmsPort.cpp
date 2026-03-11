@@ -1,1 +1,1 @@
-../../ADS/AdsLib/AmsPort.cpp
+../../ADS/AdsLib/standalone/AmsPort.cpp
