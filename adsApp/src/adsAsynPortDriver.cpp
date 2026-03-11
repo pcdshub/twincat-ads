@@ -278,9 +278,6 @@ static void adsSymbolsChangedCallback(const AmsAddr* pAddr, const AdsNotificatio
 static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* pNotification, uint32_t hUser)
 {
   const char* functionName = "adsDataCallback";
-
-  printf("%s:%s: got notification callback for hUser %u\n", driverName, functionName, hUser);
-
   if(!adsAsynPortObj){
     printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, functionName);
     return;
@@ -311,8 +308,6 @@ static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* p
     asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: getAdsParamInfo() for hUser %u failed\n", driverName, functionName,hUser);
     return;
   }
-
-  printf("%s:%s: got notification callback for variable %s\n", driverName, functionName, paramInfo->plcAdrStr);
 
   if(adsAsynPortObj->datacbqueue.size() > MAXCBQSIZE){
     asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: datacbqueue at max size, skip %s (%d)\n", driverName, functionName, paramInfo->drvInfo, paramInfo->paramIndex);
@@ -1285,7 +1280,6 @@ void adsAsynPortDriver::dataCallbackThread()
         asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER,"%s:%s: Run callback for parameter %s (%d).\n", driverName, functionName, info->paramInfo->drvInfo, info->paramInfo->paramIndex);
         info->paramInfo->plcTimeStampRaw = info->pNotification.nTimeStamp;
         info->paramInfo->lastCallbackSize = info->pNotification.cbSampleSize;
-        printf("%s:%s: data callback for %s updating parameter now.\n", driverName, functionName, info->paramInfo->plcAdrStr);
         adsUpdateParameterLock(info->paramInfo, info->data);
         // This free is for the malloc in adsDataCallback
         free(info->data);
@@ -4102,7 +4096,7 @@ asynStatus adsAsynPortDriver::adsAddDataCallback(uint16_t amsClientPort, adsPara
 
   uint32_t hNotify=0;
   
-  long addStatus = AdsSyncAddDeviceNotificationReqEx(amsClientPort,
+  long addStatus = AdsSyncAddDeviceNotificationReqEx(adsPort_,
                                                      &amsServer,
                                                      group,
                                                      offset,
