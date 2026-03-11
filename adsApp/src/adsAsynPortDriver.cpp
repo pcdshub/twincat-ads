@@ -279,6 +279,8 @@ static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* p
 {
   const char* functionName = "adsDataCallback";
 
+  printf("%s:%s: got notification callback for hUser %u\n", driverName, functionName, hUser);
+
   if(!adsAsynPortObj){
     printf("%s:%s: ERROR: adsAsynPortObj==NULL\n", driverName, functionName);
     return;
@@ -309,6 +311,9 @@ static void adsDataCallback(const AmsAddr* pAddr, const AdsNotificationHeader* p
     asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: getAdsParamInfo() for hUser %u failed\n", driverName, functionName,hUser);
     return;
   }
+
+  printf("%s:%s: got notification callback for variable %s\n", driverName, functionName, paramInfo->plcAdrStr);
+
   if(adsAsynPortObj->datacbqueue.size() > MAXCBQSIZE){
     asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: datacbqueue at max size, skip %s (%d)\n", driverName, functionName, paramInfo->drvInfo, paramInfo->paramIndex);
     return;
@@ -1122,7 +1127,7 @@ void adsAsynPortDriver::cyclicThread()
     if(oneAmsConnectionOK){
       notConnectedCounter_=0;
     }
-    if (notConnectedCounter_ > 5)
+    if (notConnectedCounter_ > 1)
     {
       asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "cyclicThread: failed to re-establish connection to ams server... exiting ioc. will retry if on auto restart.\n");
       exit(-1);
@@ -1280,6 +1285,7 @@ void adsAsynPortDriver::dataCallbackThread()
         asynPrint(pasynUserSelf, ASYN_TRACEIO_DRIVER,"%s:%s: Run callback for parameter %s (%d).\n", driverName, functionName, info->paramInfo->drvInfo, info->paramInfo->paramIndex);
         info->paramInfo->plcTimeStampRaw = info->pNotification.nTimeStamp;
         info->paramInfo->lastCallbackSize = info->pNotification.cbSampleSize;
+        printf("%s:%s: data callback for %s updating parameter now.\n", driverName, functionName, info->paramInfo->plcAdrStr);
         adsUpdateParameterLock(info->paramInfo, info->data);
         // This free is for the malloc in adsDataCallback
         free(info->data);
@@ -1755,7 +1761,7 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
 
   gettimeofday(&t1, NULL);
   long elapsed_us = (t1.tv_sec - t0.tv_sec) * 1000000L + (t1.tv_usec - t0.tv_usec);
-  asynPrint(pasynUser, ASYN_TRACE_INFO,
+  asynPrint(pasynUser, ASYN_TRACE_FLOW,
             "%s:%s: Parameter created: \"%s\" (index %d) [%4ld us].\n",
             driverName, functionName, drvInfo, index, elapsed_us);
 
@@ -5517,7 +5523,7 @@ extern "C" {
                                          amsport,
                                          asynParamTableSize,
                                          priority,
-                                         false, // we don't want asynPortDriver to manage connecting/disconnecting. We do that in constructor/cyclic thread
+                                         noAutoConnect==0,
                                          defaultSampleTimeMS,
                                          maxDelayTimeMS,
                                          adsTimeoutMS,
