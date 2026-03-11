@@ -319,13 +319,10 @@ private:
 
 
 // member declarations
-char 	*symbolDictPath_;
 std::unordered_map<std::string, AdsSymbolDictEntry> symbolDict_;
-asynStatus loadSymbolDict(const char *jsonPath);
+asynStatus resolveSymbolInfo();
 asynStatus resolveSymbolHandles();
+bool symInfoResolved_ = false;
 };
 
 #endif /* ADSASYNPORTDRIVER_H_ */
-
-
-

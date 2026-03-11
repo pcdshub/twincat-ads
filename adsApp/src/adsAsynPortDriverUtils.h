@@ -12,8 +12,7 @@
 #define ADSASYNPORTDRIVERUTILS_H_
 
 #include "asynPortDriver.h"  //data types
-//#include "AdsLib.h"          //error codes
-#include "TcAdsDef.h"
+#include "AdsLib.h"          //error codes
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 
