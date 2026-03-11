@@ -252,16 +252,17 @@ static void adsSymbolsChangedCallback(const AmsAddr* pAddr, const AdsNotificatio
     return;
   }
 
+  asynUser *asynTraceUser=adsAsynPortObj->getTraceAsynUser();
+
   long amsClientPort = 0;
   AdsClientPortGuard adsClientPortGuard(*adsAsynPortObj, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = adsAsynPortObj->getAdsClientPortNumberForThreadId(0);
+    asynPrint(asynTraceUser, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
-  asynUser *asynTraceUser=adsAsynPortObj->getTraceAsynUser();
   asynPrint(asynTraceUser, ASYN_TRACE_INFO , "%s:%s: Symbols changed for Ams-port %u.\n", driverName, functionName,pAddr->port);
 
   adsAsynPortObj->invalidateParamsLock(pAddr->port);
@@ -1043,9 +1044,9 @@ void adsAsynPortDriver::cyclicThread()
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   const char* functionName = "cyclicThread";
@@ -1150,9 +1151,9 @@ void adsAsynPortDriver::bulkReadThread()
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
     const char* functionName = "bulkReadThread";
@@ -1408,14 +1409,7 @@ asynStatus adsAsynPortDriver::disconnectLock(asynUser *pasynUser)
 asynStatus adsAsynPortDriver::disconnect(asynUser *pasynUser)
 {
   const char* functionName = "disconnect";
-  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
-
-  asynStatus disconnectStatus=adsDisconnect();
-  if (disconnectStatus){
-    return asynError;
-  }
-  
-  connectedAds_ = 0;
+  asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s:\n", driverName, functionName);
 
   if(asynPortDriver::disconnect(pasynUser)!=asynSuccess){
     return asynError;
@@ -1550,9 +1544,9 @@ asynStatus adsAsynPortDriver::connect(asynUser *pasynUser)
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   bool err=false;
@@ -1624,9 +1618,9 @@ asynStatus adsAsynPortDriver::drvUserCreate(asynUser *pasynUser,const char *drvI
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   /* One-off: resolve all symbol info from TwinCAT on first call
@@ -2374,9 +2368,9 @@ asynStatus adsAsynPortDriver::readOctet(asynUser *pasynUser, char *value, size_t
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   size_t thisRead = 0;
@@ -2488,9 +2482,9 @@ asynStatus adsAsynPortDriver::writeOctet(asynUser *pasynUser, const char *value,
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   size_t thisWrite = 0;
@@ -2940,9 +2934,9 @@ asynStatus adsAsynPortDriver::readInt32(asynUser *pasynUser, epicsInt32 *value)
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   int paramIndex = pasynUser->reason;
@@ -2980,9 +2974,9 @@ asynStatus adsAsynPortDriver::readFloat64(asynUser *pasynUser, epicsFloat64 *val
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   int paramIndex = pasynUser->reason;
@@ -3016,9 +3010,9 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser *pasynUser, epicsInt32 value)
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   int paramIndex = pasynUser->reason;
@@ -3147,9 +3141,9 @@ asynStatus adsAsynPortDriver::readInt64(asynUser *pasynUser, epicsInt64 *value)
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
     int paramIndex = pasynUser->reason;
@@ -3180,9 +3174,9 @@ asynStatus adsAsynPortDriver::writeInt64(asynUser *pasynUser, epicsInt64 value)
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
     int paramIndex = pasynUser->reason;
@@ -3270,9 +3264,9 @@ asynStatus adsAsynPortDriver::writeFloat64(asynUser *pasynUser, epicsFloat64 val
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   int paramIndex = pasynUser->reason;
@@ -3528,9 +3522,9 @@ asynStatus adsAsynPortDriver::readInt8Array(asynUser *pasynUser,epicsInt8 *value
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   int paramIndex = pasynUser->reason;
@@ -3576,9 +3570,9 @@ asynStatus adsAsynPortDriver::writeInt8Array(asynUser *pasynUser, epicsInt8 *val
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   int paramIndex = pasynUser->reason;
@@ -3619,9 +3613,9 @@ asynStatus adsAsynPortDriver::readInt16Array(asynUser *pasynUser,epicsInt16 *val
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   long allowedType=ADST_INT16;
@@ -3652,9 +3646,9 @@ asynStatus adsAsynPortDriver::writeInt16Array(asynUser *pasynUser, epicsInt16 *v
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   long allowedType=ADST_INT16;
@@ -3680,9 +3674,9 @@ asynStatus adsAsynPortDriver::readInt32Array(asynUser *pasynUser,epicsInt32 *val
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   long allowedType=ADST_INT32;
@@ -3714,9 +3708,9 @@ asynStatus adsAsynPortDriver::writeInt32Array(asynUser *pasynUser, epicsInt32 *v
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   long allowedType=ADST_INT32;
@@ -3742,9 +3736,9 @@ asynStatus adsAsynPortDriver::readFloat32Array(asynUser *pasynUser,epicsFloat32 
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   long allowedType=ADST_REAL32;
@@ -3775,9 +3769,9 @@ asynStatus adsAsynPortDriver::writeFloat32Array(asynUser *pasynUser,epicsFloat32
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   long allowedType=ADST_REAL32;
@@ -3794,9 +3788,9 @@ asynStatus adsAsynPortDriver::readInt64Array(asynUser *pasynUser, epicsInt64 *va
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
     long allowedType = ADST_INT64;
@@ -3819,9 +3813,9 @@ asynStatus adsAsynPortDriver::writeInt64Array(asynUser *pasynUser, epicsInt64 *v
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
     long allowedType = ADST_INT64;
@@ -3847,9 +3841,9 @@ asynStatus adsAsynPortDriver::readFloat64Array(asynUser *pasynUser,epicsFloat64 
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   long allowedType=ADST_REAL64;
@@ -3880,9 +3874,9 @@ asynStatus adsAsynPortDriver::writeFloat64Array(asynUser *pasynUser,epicsFloat64
   AdsClientPortGuard adsClientPortGuard(*this, amsClientPort);
   if (isInvalidPortNumber(amsClientPort))
   {
-    throw std::runtime_error(string_format(
-        "%s:%s: failed to open ads client port for this thread.\n", 
-        driverName, __func__));
+    amsClientPort = this->getAdsClientPortNumberForThreadId(0);
+    asynPrint(pasynUserSelf, ASYN_TRACE_ERROR, "%s:%s: failed to open ads client port for this thread. Using default.\n", 
+            driverName, __func__);
   }
 
   long allowedType=ADST_REAL64;
