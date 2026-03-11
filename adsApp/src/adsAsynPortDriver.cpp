@@ -1409,7 +1409,7 @@ asynStatus adsAsynPortDriver::disconnectLock(asynUser *pasynUser)
 asynStatus adsAsynPortDriver::disconnect(asynUser *pasynUser)
 {
   const char* functionName = "disconnect";
-  asynPrint(pasynUser, ASYN_TRACE_ERROR, "%s:%s:\n", driverName, functionName);
+  asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
 
   if(asynPortDriver::disconnect(pasynUser)!=asynSuccess){
     return asynError;
