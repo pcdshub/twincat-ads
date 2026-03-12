@@ -1411,6 +1411,12 @@ asynStatus adsAsynPortDriver::disconnect(asynUser *pasynUser)
   const char* functionName = "disconnect";
   asynPrint(pasynUser, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
 
+  // EtherCATMC appears to call disconnect sometimes.
+  // adsDisconnect deletes the route, so this would cause all communication
+  // in the ioc to fail.
+  // Removed adsConnect call from here because we shouldn't ever need
+  // to delete our route to achieve something.
+
   if(asynPortDriver::disconnect(pasynUser)!=asynSuccess){
     return asynError;
   }
