@@ -1154,3 +1154,35 @@ int octetAscii2binary(const char *asciiBuffer,uint16_t dataType,void *binaryBuff
 
   return error;
 }
+
+AmsClientPortEntry::AmsClientPortEntry(long port, int liveCount) : port(port), liveCount(liveCount) {}
+
+bool isInvalidPortNumber(long clientPortNumber)
+{
+  return (clientPortNumber) <= 0 || (clientPortNumber) > UINT16_MAX;
+}
+
+std::string string_format(const char *fmt, ...)
+{
+  va_list args;
+
+  // First, determine the size needed
+  va_start(args, fmt);
+  int size = std::vsnprintf(nullptr, 0, fmt, args);
+  va_end(args);
+
+  if (size < 0)
+  {
+    throw std::runtime_error("Formatting error");
+  }
+
+  // Allocate string of the required size
+  std::vector<char> buffer(size + 1);
+
+  // Format into the buffer
+  va_start(args, fmt);
+  std::vsnprintf(buffer.data(), buffer.size(), fmt, args);
+  va_end(args);
+
+  return std::string(buffer.data(), size);
+}

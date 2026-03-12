@@ -51,50 +51,50 @@ typedef enum{
 } ADSDATASOURCE;
 
 typedef struct adsParamInfo{
-  char           *recordName;
-  char           *recordType;
-  char           *scan;
-  char           *dtyp;
-  char           *inp;
-  char           *out;
-  char           *drvInfo;
-  asynParamType  asynType;
-  int            asynAddr;
-  bool           isIOIntr;
-  double         sampleTimeMS;  //milli seconds
-  double         maxDelayTimeMS;  //milli seconds
-  uint16_t       amsPort;
-  int            paramIndex;  //also used as hUser for ads callback
-  bool           plcAbsAdrValid;  //Symbolic address converted to abs address or .ADR. command parsed
-  bool           isAdrCommand;
-  bool           isBulkRead;
-  double         pollClass;
-  char           *plcAdrStr;
-  uint32_t       plcAbsAdrGroup;
-  uint32_t       plcAbsAdrOffset;
-  uint32_t       plcSize;
-  uint32_t       plcDataType;
-  bool           plcDataTypeWarn;
-  bool           plcDataIsArray;
-  uint32_t       hCallbackNotify;
-  bool           bCallbackNotifyValid;
-  uint32_t       hSymbolicHandle;
-  bool           bSymbolicHandleValid;
-  size_t         lastCallbackSize;
-  size_t         arrayDataBufferSize;
-  void*          arrayDataBuffer;
-  bool           refreshNeeded;  //Communication broken update handles and callbacks
-  ADSDATASOURCE  dataSource;          //Variable in PLC or in driver (not in PLC)
+  char           *recordName = nullptr;
+  char           *recordType = nullptr;
+  char           *scan = nullptr;
+  char           *dtyp = nullptr;
+  char           *inp = nullptr;
+  char           *out = nullptr;
+  char           *drvInfo = nullptr;
+  asynParamType  asynType = asynParamType::asynParamNotDefined;
+  int            asynAddr = 0;
+  bool           isIOIntr = false;
+  double         sampleTimeMS = 0;  //milli seconds
+  double         maxDelayTimeMS = 0;  //milli seconds
+  uint16_t       amsPort = 0;
+  int            paramIndex = 0;  //also used as hUser for ads callback
+  bool           plcAbsAdrValid = false;  //Symbolic address converted to abs address or .ADR. command parsed
+  bool           isAdrCommand = false;
+  bool           isBulkRead = false;
+  double         pollClass = 0;
+  char           *plcAdrStr = nullptr;
+  uint32_t       plcAbsAdrGroup = 0;
+  uint32_t       plcAbsAdrOffset = 0;
+  uint32_t       plcSize = 0;
+  uint32_t       plcDataType = 0;
+  bool           plcDataTypeWarn = false;
+  bool           plcDataIsArray = false;
+  uint32_t       hCallbackNotify = 0;
+  bool           bCallbackNotifyValid = false;
+  uint32_t       hSymbolicHandle = 0;
+  bool           bSymbolicHandleValid = false;
+  size_t         lastCallbackSize = 0;
+  size_t         arrayDataBufferSize = 0;
+  void*          arrayDataBuffer = nullptr;
+  bool           refreshNeeded = false;  //Communication broken update handles and callbacks
+  ADSDATASOURCE  dataSource = ADSDATASOURCE::ADS_DATASOURCE_PLC; //Variable in PLC or in driver (not in PLC)
   //timing
-  ADSTIMESOURCE  timeBase;
-  uint64_t       plcTimeStampRaw;
-  epicsTimeStamp plcTimeStamp;
-  epicsTimeStamp epicsTimestamp;
-  int            alarmStatus;
-  int            alarmSeverity;
-  bool           firstReadDone;
-  int            bulkIndex;
-  int            bulkOffset;
+  ADSTIMESOURCE  timeBase = ADSTIMESOURCE::ADS_TIME_BASE_PLC;
+  uint64_t       plcTimeStampRaw = 0;
+  epicsTimeStamp plcTimeStamp = {0, 0};
+  epicsTimeStamp epicsTimestamp = {0, 0};
+  int            alarmStatus = 0;
+  int            alarmSeverity = 0;
+  bool           firstReadDone = false;
+  int            bulkIndex = 0;
+  int            bulkOffset = 0;
 }adsParamInfo;
 
 typedef struct amsPortInfo{
@@ -197,8 +197,16 @@ int octetAscii2binary(const char *asciiBuffer,
                       void *binaryBuffer,
                       uint32_t binaryBufferSize,
                       uint32_t *bytesProcessed);
+                                            
+struct AmsClientPortEntry
+{
+  AmsClientPortEntry(long port, int liveCount);
+  long port;
+  int liveCount;
+};
+
+bool isInvalidPortNumber(long clientPortNumber);
+
+std::string string_format(const char *fmt, ...);
 
 #endif /* ADSASYNPORTDRIVERUTILS_H_ */
-
-
-
