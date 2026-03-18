@@ -1,4 +1,4 @@
-name: pre-commit check
+name: pre-commit check unit tests
 
 on:
   push:
@@ -83,8 +83,11 @@ jobs:
           --color=always \
           --all-files
 
-    - name: Install pyads
-      run: pip install pyads
-
-    - name: Run smoke test
-      run: python testIOC/tests/server/test_server_smoke.py
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Python dependencies
+        run: pip install pyads
+      - name: Run smoke test
+        run: python testIOC/tests/server/test_server_smoke.py
