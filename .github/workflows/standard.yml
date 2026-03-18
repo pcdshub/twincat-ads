@@ -82,15 +82,16 @@ jobs:
           --show-diff-on-failure \
           --color=always \
           --all-files
+
     - name: Install pyads
-          run: pip install pyads
+      run: pip install pyads
 
-        - name: Start ADS test server
-          run: |
-            python testIOC/tests/server/ads_test_server.py \
-              --json testIOC/ads_symbols.json &
-            sleep 2
+    - name: Start ADS test server
+      run: |
+        python testIOC/tests/server/ads_test_server.py \
+          --json testIOC/ads_symbols.json &
+        sleep 2
 
-        - name: Run smoke test
-          run: |
-            python testIOC/tests/server/test_server_smoke.py
+    - name: Run smoke test
+      run: |
+        python testIOC/tests/server/test_server_smoke.py
