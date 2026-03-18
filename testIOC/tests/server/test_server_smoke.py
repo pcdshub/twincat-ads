@@ -1,68 +1,93 @@
-# testIOC/tests/server/test_server_smoke.py
 """
 Smoke test for ads_test_server.py
-Starts the server, connects via pyads, reads a known symbol, then shuts down.
+
+Verifies:
+1. Server starts and loads all symbols
+2. Client can connect
+3. Zero-initialised read works
+4. Write + readback works
+5. Periodic updater changes values over time (bulk read / notification path)
 """
+
 import time
-import threading
-import sys
 import json
 import os
+import struct
+import sys
 
 import pyads
 from pyads.testserver import AdsTestServer, AdvancedHandler, PLCVariable
 from pyads import constants
 
-# Import our server loader
 sys.path.insert(0, os.path.dirname(__file__))
-from ads_test_server import load_symbols, resolve_ads_type
+from ads_test_server import load_symbols, start_variable_updater, TEST_SYMBOLS
 
-JSON_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "ads_symbols.json")
+JSON_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "..", "ads_symbols.json"
+)
 TEST_SERVER_AMS_NET_ID = "127.0.0.1.1.1"
-TEST_SERVER_IP          = "127.0.0.1"
-TEST_SERVER_AMS_PORT    = pyads.PORT_TC3PLC1  # 851
+TEST_SERVER_IP         = "127.0.0.1"
+TEST_SERVER_AMS_PORT   = pyads.PORT_TC3PLC1  # 851
 
 
 def test_server_starts_and_symbol_readable():
-    # ── Setup ────────────────────────────────────────────────────────────────
+    # ── Setup ─────────────────────────────────────────────────────────────────
     handler = AdvancedHandler()
-    variables = load_symbols(JSON_PATH)
-    for var in variables:
+    for var in load_symbols(JSON_PATH):
         handler.add_variable(var)
 
     server = AdsTestServer(handler=handler, logging=False)
     server.start()
-    time.sleep(1)  # let server settle
+    time.sleep(1)
 
-    # ── Add route (Linux requirement) ────────────────────────────────────────
     pyads.open_port()
-    pyads.add_route(pyads.AmsAddr(TEST_SERVER_AMS_NET_ID, TEST_SERVER_AMS_PORT), TEST_SERVER_IP)
+    pyads.add_route(
+        pyads.AmsAddr(TEST_SERVER_AMS_NET_ID, TEST_SERVER_AMS_PORT),
+        TEST_SERVER_IP
+    )
 
-    # ── Connect ──────────────────────────────────────────────────────────────
-    plc = pyads.Connection(TEST_SERVER_AMS_NET_ID, TEST_SERVER_AMS_PORT, TEST_SERVER_IP)
+    plc = pyads.Connection(
+        TEST_SERVER_AMS_NET_ID, TEST_SERVER_AMS_PORT, TEST_SERVER_IP
+    )
     plc.open()
 
     try:
-        # Pick the first BOOL symbol from the JSON
-        with open(JSON_PATH) as f:
-            data = json.load(f)
+        # ── Test 1: zero-initialised read ─────────────────────────────────────
+        bool_sym = TEST_SYMBOLS["BOOL"]
+        val = plc.read_by_name(bool_sym, pyads.PLCTYPE_BOOL)
+        assert val == False, f"Expected False (zero init), got {val}"
+        print(f"✓ Zero-init read:  {bool_sym} = {val}")
 
-        bool_symbol = next(
-            v["symbol"] for v in data.values() if v["datatype"] == "BOOL"
+        # ── Test 2: write + readback ──────────────────────────────────────────
+        plc.write_by_name(bool_sym, True, pyads.PLCTYPE_BOOL)
+        val = plc.read_by_name(bool_sym, pyads.PLCTYPE_BOOL)
+        assert val == True, f"Expected True after write, got {val}"
+        print(f"✓ Write+readback:  {bool_sym} = {val}")
+
+        # ── Test 3: updater changes values over time ──────────────────────────
+        updater = start_variable_updater(handler, interval=0.05)
+
+        lreal_sym = TEST_SYMBOLS["LREAL"]
+        val_before = plc.read_by_name(lreal_sym, pyads.PLCTYPE_LREAL)
+        time.sleep(0.3)  # wait for a few update cycles
+        val_after = plc.read_by_name(lreal_sym, pyads.PLCTYPE_LREAL)
+        assert val_after != val_before, (
+            f"Expected value to change after updater ran, "
+            f"before={val_before} after={val_after}"
         )
-        print(f"Reading symbol: {bool_symbol}")
+        print(f"✓ Updater working: {lreal_sym} "
+              f"{val_before:.1f} → {val_after:.1f}")
 
-        val = plc.read_by_name(bool_symbol, pyads.PLCTYPE_BOOL)
-        print(f"Value: {val}  (expected: False — zero initialised)")
-        assert val == False, f"Expected False, got {val}"
+        # ── Test 4: DINT updater ──────────────────────────────────────────────
+        dint_sym = TEST_SYMBOLS["DINT"]
+        v1 = plc.read_by_name(dint_sym, pyads.PLCTYPE_DINT)
+        time.sleep(0.2)
+        v2 = plc.read_by_name(dint_sym, pyads.PLCTYPE_DINT)
+        assert v2 != v1, f"DINT not updating: {v1} → {v2}"
+        print(f"✓ DINT updating:   {dint_sym} {v1} → {v2}")
 
-        # Write a value and read it back
-        plc.write_by_name(bool_symbol, True, pyads.PLCTYPE_BOOL)
-        val = plc.read_by_name(bool_symbol, pyads.PLCTYPE_BOOL)
-        print(f"After write: {val}  (expected: True)")
-        assert val == True, f"Expected True, got {val}"
-
-        print("✓ Smoke test passed")
+        updater.stop_event.set()
+        print("\n✓ All smoke tests passed")
 
     finally:
         plc.close()
