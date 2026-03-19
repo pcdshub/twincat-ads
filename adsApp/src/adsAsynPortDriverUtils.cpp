@@ -701,7 +701,11 @@ int octetCreateArgvSepv(const char* line, const char*** argv_p, char*** sepv_p)
 {
     char* input_line = strdup(line);
     if (!input_line)
+    {
+        fprintf(stderr, "%s: strdup failed\n", __func__);
         return 0;
+    }
+
     size_t calloc_len = 2 + strlen(input_line);
     char* separator = NULL;
     static const size_t MAX_SEPARATORS = 4;

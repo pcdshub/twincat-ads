@@ -86,9 +86,10 @@ typedef struct adsParamInfo
     size_t lastCallbackSize = 0;
     size_t arrayDataBufferSize = 0;
     void* arrayDataBuffer = nullptr;
-    bool refreshNeeded = false; //Communication broken update handles and callbacks
-    ADSDATASOURCE dataSource =
-        ADSDATASOURCE::ADS_DATASOURCE_PLC; //Variable in PLC or in driver (not in PLC)
+    //Communication broken update handles and callbacks
+    bool refreshNeeded = false;
+    //Variable in PLC or in driver (not in PLC)
+    ADSDATASOURCE dataSource = ADSDATASOURCE::ADS_DATASOURCE_PLC;
     //timing
     ADSTIMESOURCE timeBase = ADSTIMESOURCE::ADS_TIME_BASE_PLC;
     uint64_t plcTimeStampRaw = 0;
