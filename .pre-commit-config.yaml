@@ -1,3 +1,5 @@
+files: ^adsApp/src/
+
 repos:
   # Standard hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -5,20 +7,13 @@ repos:
     hooks:
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
-        files: ^adsApp/src/
       - id: end-of-file-fixer
-        files: ^adsApp/src/
       - id: mixed-line-ending
         args: [--fix=lf]
-        files: ^adsApp/src/
       - id: check-merge-conflict
-        files: ^adsApp/src/
       - id: check-case-conflict
-        files: ^adsApp/src/
       - id: check-added-large-files
         args: [--maxkb=500]
-        files: ^adsApp/src/
-
   # C++ formatting 
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: v17.0.6
@@ -26,8 +21,6 @@ repos:
       - id: clang-format
         types: [c++]
         args: [--style=file]
-        files: ^adsApp/src/
-
   # Static analysis 
   - repo: https://github.com/pocc/pre-commit-hooks
     rev: v1.3.5
@@ -50,4 +43,3 @@ repos:
           - --enable=performance
           - --enable=portability
         types: [c++]
-        files: ^adsApp/src/
