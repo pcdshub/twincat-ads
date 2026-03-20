@@ -348,12 +348,11 @@ class adsAsynPortDriver : public asynPortDriver
     }
 
     /** Access raw param info array for a given param index. */
-    adsParamInfo* getAdsParamInfo(int index) const
-    {
-        if (index < 0 || index >= adsParamArrayCount_)
-            return nullptr;
-        return pAdsParamArray_[index];
-    }
+	adsParamInfo *getAdsParamInfo(int index) const
+	{
+		if (index < 0 || index >= (int)adsParamArray_.size()) return nullptr;
+		return const_cast<adsParamInfo*>(&adsParamArray_[index]);
+	}
 #endif /* ADS_UNIT_TEST */
 };
 
