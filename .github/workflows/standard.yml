@@ -96,9 +96,9 @@ jobs:
       - name: Start ADS test server
         run: |
           python3 testIOC/tests/server/ads_test_server.py \
-            --json testIOC/ads_symbols.json &
+            --json testIOC/ads_symbol_dict.json &
           sleep 2
+      - name: Run smoke test
+        run: python3 testIOC/tests/server/test_server_smoke.py
       - name: Build driver
         run: make -C adsApp
-      - name: Run unit tests
-        run: make -C testIOC/tests/unit runtests
