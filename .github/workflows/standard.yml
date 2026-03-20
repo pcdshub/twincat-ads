@@ -93,6 +93,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Link RELEASE_SITE for CI workspace
+        run: |
+          ln -sf /cds/group/pcds/epics/${BASE_MODULE_VERSION}/modules/RELEASE_SITE \
+              $(dirname ${GITHUB_WORKSPACE})/RELEASE_SITE
+          ln -sf /cds/group/pcds/epics/${BASE_MODULE_VERSION}/modules/RELEASE_SITE.check \
+              $(dirname ${GITHUB_WORKSPACE})/RELEASE_SITE.check
       - name: Start ADS test server
         run: |
           python3 testIOC/tests/server/ads_test_server.py \
