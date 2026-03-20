@@ -106,3 +106,7 @@ jobs:
           sleep 2
       - name: Build driver
         run: make -C adsApp
+      - name: Build and run unit tests
+        run: |
+          make -C testIOC/tests/unit
+          make -C testIOC/tests/unit runtests
