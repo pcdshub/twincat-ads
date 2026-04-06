@@ -10,7 +10,6 @@ on:
 jobs:
   standard:
     #uses: pcdshub/pcds-ci-helpers/.github/workflows/cpp-standard.yml@master
-    uses:  yannS2016/pcds-ci-helpers/.github/workflows/cpp-standard.yml@cpp-standard
     with:
       # The workflow can be configured to look at a specific project directory, if
       # desirable.  This defaults to the root of the repository (".").
