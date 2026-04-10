@@ -144,10 +144,10 @@ struct AdsSymbolDictEntry
     std::string symbolLower; // lowercase key for case-insensitive lookup
     std::string datatype;    // "BOOL", "LREAL", "DINT" etc.
     std::string pvName;      // EPICS PV name
-    uint32_t size = 0;       // byte size
-    uint32_t adst = 0;       // ADST_* type code
+    uint32_t size   = 0;     // byte size
+    uint32_t adst   = 0;     // ADST_* type code
     uint32_t handle = 0;     // ADS variable handle — filled by SUMUP
-    bool resolved = false;   // true after handle obtained
+    bool resolved   = false; // true after handle obtained
 };
 
 /** key = lowercase symbol path */

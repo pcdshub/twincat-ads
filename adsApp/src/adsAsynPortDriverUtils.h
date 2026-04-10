@@ -40,66 +40,66 @@
 
 typedef enum
 {
-    ADS_TIME_BASE_PLC = 0,
+    ADS_TIME_BASE_PLC   = 0,
     ADS_TIME_BASE_EPICS = 1,
     ADS_TIME_BASE_MAX
 } ADSTIMESOURCE;
 
 typedef enum
 {
-    ADS_DATASOURCE_PLC = 0,       //Data in PLC (Normal/default)
+    ADS_DATASOURCE_PLC       = 0, //Data in PLC (Normal/default)
     ADS_DATASOURCE_AMS_STATE = 1, //Special case parameter linked to ads status (not plc "data")
-    ADS_DATASOURCE_MAX = 2,
+    ADS_DATASOURCE_MAX       = 2,
 } ADSDATASOURCE;
 
 typedef struct adsParamInfo
 {
-    char* recordName = nullptr;
-    char* recordType = nullptr;
-    char* scan = nullptr;
-    char* dtyp = nullptr;
-    char* inp = nullptr;
-    char* out = nullptr;
-    char* drvInfo = nullptr;
+    char* recordName       = nullptr;
+    char* recordType       = nullptr;
+    char* scan             = nullptr;
+    char* dtyp             = nullptr;
+    char* inp              = nullptr;
+    char* out              = nullptr;
+    char* drvInfo          = nullptr;
     asynParamType asynType = asynParamType::asynParamNotDefined;
-    int asynAddr = 0;
-    bool isIOIntr = false;
-    double sampleTimeMS = 0;   //milli seconds
-    double maxDelayTimeMS = 0; //milli seconds
-    uint16_t amsPort = 0;
-    int paramIndex = 0;          //also used as hUser for ads callback
+    int asynAddr           = 0;
+    bool isIOIntr          = false;
+    double sampleTimeMS    = 0; //milli seconds
+    double maxDelayTimeMS  = 0; //milli seconds
+    uint16_t amsPort       = 0;
+    int paramIndex         = 0;  //also used as hUser for ads callback
     bool plcAbsAdrValid = false; //Symbolic address converted to abs address or .ADR. command parsed
-    bool isAdrCommand = false;
-    bool isBulkRead = false;
-    double pollClass = 0;
-    char* plcAdrStr = nullptr;
-    uint32_t plcAbsAdrGroup = 0;
-    uint32_t plcAbsAdrOffset = 0;
-    uint32_t plcSize = 0;
-    uint32_t plcDataType = 0;
-    bool plcDataTypeWarn = false;
-    bool plcDataIsArray = false;
-    uint32_t hCallbackNotify = 0;
-    bool bCallbackNotifyValid = false;
-    uint32_t hSymbolicHandle = 0;
-    bool bSymbolicHandleValid = false;
-    size_t lastCallbackSize = 0;
+    bool isAdrCommand   = false;
+    bool isBulkRead     = false;
+    double pollClass    = 0;
+    char* plcAdrStr     = nullptr;
+    uint32_t plcAbsAdrGroup    = 0;
+    uint32_t plcAbsAdrOffset   = 0;
+    uint32_t plcSize           = 0;
+    uint32_t plcDataType       = 0;
+    bool plcDataTypeWarn       = false;
+    bool plcDataIsArray        = false;
+    uint32_t hCallbackNotify   = 0;
+    bool bCallbackNotifyValid  = false;
+    uint32_t hSymbolicHandle   = 0;
+    bool bSymbolicHandleValid  = false;
+    size_t lastCallbackSize    = 0;
     size_t arrayDataBufferSize = 0;
-    void* arrayDataBuffer = nullptr;
+    void* arrayDataBuffer      = nullptr;
     //Communication broken update handles and callbacks
     bool refreshNeeded = false;
     //Variable in PLC or in driver (not in PLC)
     ADSDATASOURCE dataSource = ADSDATASOURCE::ADS_DATASOURCE_PLC;
     //timing
-    ADSTIMESOURCE timeBase = ADSTIMESOURCE::ADS_TIME_BASE_PLC;
-    uint64_t plcTimeStampRaw = 0;
-    epicsTimeStamp plcTimeStamp = {0, 0};
+    ADSTIMESOURCE timeBase        = ADSTIMESOURCE::ADS_TIME_BASE_PLC;
+    uint64_t plcTimeStampRaw      = 0;
+    epicsTimeStamp plcTimeStamp   = {0, 0};
     epicsTimeStamp epicsTimestamp = {0, 0};
-    int alarmStatus = 0;
-    int alarmSeverity = 0;
-    bool firstReadDone = false;
-    int bulkIndex = 0;
-    int bulkOffset = 0;
+    int alarmStatus               = 0;
+    int alarmSeverity             = 0;
+    bool firstReadDone            = false;
+    int bulkIndex                 = 0;
+    int bulkOffset                = 0;
 } adsParamInfo;
 
 typedef struct amsPortInfo
@@ -138,22 +138,22 @@ typedef struct
 
 typedef enum
 {
-    ADST_VOID = 0,
-    ADST_INT8 = 16,
-    ADST_UINT8 = 17,
-    ADST_INT16 = 2,
-    ADST_UINT16 = 18,
-    ADST_INT32 = 3,
-    ADST_UINT32 = 19,
-    ADST_INT64 = 20,
-    ADST_UINT64 = 21,
-    ADST_REAL32 = 4,
-    ADST_REAL64 = 5,
+    ADST_VOID    = 0,
+    ADST_INT8    = 16,
+    ADST_UINT8   = 17,
+    ADST_INT16   = 2,
+    ADST_UINT16  = 18,
+    ADST_INT32   = 3,
+    ADST_UINT32  = 19,
+    ADST_INT64   = 20,
+    ADST_UINT64  = 21,
+    ADST_REAL32  = 4,
+    ADST_REAL64  = 5,
     ADST_BIGTYPE = 65,
-    ADST_STRING = 30,
+    ADST_STRING  = 30,
     ADST_WSTRING = 31,
-    ADST_REAL80 = 32,
-    ADST_BIT = 33,
+    ADST_REAL80  = 32,
+    ADST_BIT     = 33,
     ADST_MAXTYPES
 } ADSDATATYPEID;
 

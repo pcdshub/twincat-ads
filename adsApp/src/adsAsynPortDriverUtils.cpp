@@ -566,7 +566,7 @@ int windowsToEpicsTimeStamp(uint64_t plcTime, epicsTimeStamp* ts)
     plcTime = plcTime - (POSIX_TIME_AT_EPICS_EPOCH + SEC_TO_UNIX_EPOCH) * WINDOWS_TICK_PER_SEC;
 
     ts->secPastEpoch = (uint32_t)(plcTime / WINDOWS_TICK_PER_SEC);
-    ts->nsec = (uint32_t)((plcTime - (ts->secPastEpoch * WINDOWS_TICK_PER_SEC)) * 100);
+    ts->nsec         = (uint32_t)((plcTime - (ts->secPastEpoch * WINDOWS_TICK_PER_SEC)) * 100);
 
     return 0;
 }
@@ -610,7 +610,7 @@ static int cmd_buf_vprintf(adsOctetOutputBufferType* buffer, const char* format,
     const static size_t len = 4096;
 
     char* buf = (char*)calloc(len, 1);
-    int res = vsnprintf(buf, len - 1, format, arg);
+    int res   = vsnprintf(buf, len - 1, format, arg);
     if (res >= 0)
     {
         addToBuffer(buffer, buf, res);
@@ -661,7 +661,7 @@ int octetRemoveFromBuffer(adsOctetOutputBufferType* buffer, size_t len)
     }
 
     memmove(&buffer->buffer[0], &buffer->buffer[len], bytesToMove);
-    buffer->bytesUsed = bytesToMove;
+    buffer->bytesUsed                 = bytesToMove;
     buffer->buffer[buffer->bytesUsed] = '\0';
     return 0;
 }
@@ -706,23 +706,23 @@ int octetCreateArgvSepv(const char* line, const char*** argv_p, char*** sepv_p)
         return 0;
     }
 
-    size_t calloc_len = 2 + strlen(input_line);
-    char* separator = NULL;
+    size_t calloc_len                  = 2 + strlen(input_line);
+    char* separator                    = NULL;
     static const size_t MAX_SEPARATORS = 4;
-    int argc = 0;
+    int argc                           = 0;
     /* Allocate an array big enough, could be max strlen/2
      space <-> non-space transitions */
     const char** argv; /* May be more */
     char** sepv;
 
-    argv = (const char**)(void*)calloc(calloc_len, sizeof(char*));
+    argv    = (const char**)(void*)calloc(calloc_len, sizeof(char*));
     *argv_p = argv;
     if (argv == NULL)
     {
         free(input_line);
         return 0;
     }
-    sepv = (char**)(void*)calloc(calloc_len, sizeof(char*));
+    sepv    = (char**)(void*)calloc(calloc_len, sizeof(char*));
     *sepv_p = sepv;
     if (sepv == NULL)
     {
@@ -763,19 +763,19 @@ int octetCreateArgvSepv(const char* line, const char*** argv_p, char*** sepv_p)
         argc++;
         /* Start the loop */
         char* arg_begin = input_line;
-        char* next_sep = strchr(input_line, separator[0]);
-        char* arg_end = next_sep ? next_sep : input_line + strlen(input_line);
+        char* next_sep  = strchr(input_line, separator[0]);
+        char* arg_end   = next_sep ? next_sep : input_line + strlen(input_line);
 
         while (arg_begin)
         {
-            size_t sepi = 0;
-            char* sep = NULL;
+            size_t sepi    = 0;
+            char* sep      = NULL;
             size_t arg_len = arg_end - arg_begin;
 
             argv[argc] = (const char*)calloc(1, arg_len + 1);
             memcpy((char*)argv[argc], arg_begin, arg_len);
             sepv[argc] = (char*)calloc(1, MAX_SEPARATORS);
-            sep = sepv[argc];
+            sep        = sepv[argc];
             if (next_sep)
             {
                 /* There is another separator */
@@ -787,7 +787,7 @@ int octetCreateArgvSepv(const char* line, const char*** argv_p, char*** sepv_p)
                 arg_begin++; /* Jump over, if any */
             }
             next_sep = strchr(arg_begin, separator[0]);
-            arg_end = next_sep ? next_sep : input_line + strlen(input_line);
+            arg_end  = next_sep ? next_sep : input_line + strlen(input_line);
 
             if (!strlen(arg_begin))
             {
@@ -802,7 +802,7 @@ int octetCreateArgvSepv(const char* line, const char*** argv_p, char*** sepv_p)
     else
     {
         /* argv[1] is the whole line */
-        argc = 1;
+        argc       = 1;
         argv[argc] = strdup(input_line);
         sepv[argc] = (char*)calloc(1, MAX_SEPARATORS);
     }
@@ -841,9 +841,9 @@ int octetBinary2ascii(bool returnVarName,
                       adsOctetOutputBufferType* asciiBuffer)
 {
     uint32_t bytesProcessed = 0;
-    int cycles = 0;
-    int error = 0;
-    int bytesPerDataPoint = 0;
+    int cycles              = 0;
+    int error               = 0;
+    int bytesPerDataPoint   = 0;
 
     while (bytesProcessed < info->size && !error)
     {
@@ -1130,10 +1130,10 @@ int octetAscii2binary(const char* asciiBuffer,
                       uint32_t binaryBufferSize,
                       uint32_t* bytesProcessed)
 {
-    int cycles = 0;
-    int error = 0;
+    int cycles            = 0;
+    int error             = 0;
     int bytesPerDataPoint = 0;
-    int converted = 0;
+    int converted         = 0;
 
     do
     {
@@ -1141,77 +1141,77 @@ int octetAscii2binary(const char* asciiBuffer,
         {
         case ADST_INT8:
             int8_t* ADST_INT8Var;
-            ADST_INT8Var = ((int8_t*)binaryBuffer) + cycles;
-            converted = sscanf(asciiBuffer, "%" SCNd8, (ADST_INT8Var));
+            ADST_INT8Var      = ((int8_t*)binaryBuffer) + cycles;
+            converted         = sscanf(asciiBuffer, "%" SCNd8, (ADST_INT8Var));
             bytesPerDataPoint = 1;
             *bytesProcessed += bytesPerDataPoint;
             break;
         case ADST_INT16:
             int16_t* ADST_INT16Var;
-            ADST_INT16Var = ((int16_t*)binaryBuffer) + cycles;
-            converted = sscanf(asciiBuffer, "%" SCNd16, ADST_INT16Var);
+            ADST_INT16Var     = ((int16_t*)binaryBuffer) + cycles;
+            converted         = sscanf(asciiBuffer, "%" SCNd16, ADST_INT16Var);
             bytesPerDataPoint = 2;
             *bytesProcessed += bytesPerDataPoint;
             break;
         case ADST_INT32:
             int32_t* ADST_INT32Var;
-            ADST_INT32Var = ((int32_t*)binaryBuffer) + cycles;
-            converted = sscanf(asciiBuffer, "%" SCNd32, (ADST_INT32Var));
+            ADST_INT32Var     = ((int32_t*)binaryBuffer) + cycles;
+            converted         = sscanf(asciiBuffer, "%" SCNd32, (ADST_INT32Var));
             bytesPerDataPoint = 4;
             *bytesProcessed += bytesPerDataPoint;
             break;
         case ADST_INT64:
             int64_t* ADST_INT64Var;
-            ADST_INT64Var = ((int64_t*)binaryBuffer) + cycles;
-            converted = sscanf(asciiBuffer, "%" SCNd64, (ADST_INT64Var));
+            ADST_INT64Var     = ((int64_t*)binaryBuffer) + cycles;
+            converted         = sscanf(asciiBuffer, "%" SCNd64, (ADST_INT64Var));
             bytesPerDataPoint = 8;
             *bytesProcessed += bytesPerDataPoint;
             break;
         case ADST_UINT8:
             uint8_t* ADST_UINT8Var;
-            ADST_UINT8Var = ((uint8_t*)binaryBuffer) + cycles;
-            converted = sscanf(asciiBuffer, "%" SCNu8, (ADST_UINT8Var));
+            ADST_UINT8Var     = ((uint8_t*)binaryBuffer) + cycles;
+            converted         = sscanf(asciiBuffer, "%" SCNu8, (ADST_UINT8Var));
             bytesPerDataPoint = 1;
             *bytesProcessed += bytesPerDataPoint;
             break;
         case ADST_UINT16:
             uint16_t* ADST_UINT16Var;
-            ADST_UINT16Var = ((uint16_t*)binaryBuffer) + cycles;
-            converted = sscanf(asciiBuffer, "%" SCNu16, (ADST_UINT16Var));
+            ADST_UINT16Var    = ((uint16_t*)binaryBuffer) + cycles;
+            converted         = sscanf(asciiBuffer, "%" SCNu16, (ADST_UINT16Var));
             bytesPerDataPoint = 2;
             *bytesProcessed += bytesPerDataPoint;
             break;
         case ADST_UINT32:
             uint32_t* ADST_UINT32Var;
-            ADST_UINT32Var = ((uint32_t*)binaryBuffer) + cycles;
-            converted = sscanf(asciiBuffer, "%" SCNu32, (ADST_UINT32Var));
+            ADST_UINT32Var    = ((uint32_t*)binaryBuffer) + cycles;
+            converted         = sscanf(asciiBuffer, "%" SCNu32, (ADST_UINT32Var));
             bytesPerDataPoint = 4;
             *bytesProcessed += bytesPerDataPoint;
             break;
         case ADST_UINT64:
             uint64_t* ADST_UINT64Var;
-            ADST_UINT64Var = ((uint64_t*)binaryBuffer) + cycles;
-            converted = sscanf(asciiBuffer, "%" SCNu64, (ADST_UINT64Var));
+            ADST_UINT64Var    = ((uint64_t*)binaryBuffer) + cycles;
+            converted         = sscanf(asciiBuffer, "%" SCNu64, (ADST_UINT64Var));
             bytesPerDataPoint = 8;
             *bytesProcessed += bytesPerDataPoint;
             break;
         case ADST_REAL32:
             float* ADST_REAL32Var;
-            ADST_REAL32Var = ((float*)binaryBuffer) + cycles;
-            converted = sscanf(asciiBuffer, "%f", (ADST_REAL32Var));
+            ADST_REAL32Var    = ((float*)binaryBuffer) + cycles;
+            converted         = sscanf(asciiBuffer, "%f", (ADST_REAL32Var));
             bytesPerDataPoint = 4;
             *bytesProcessed += bytesPerDataPoint;
             break;
         case ADST_REAL64:
             double* ADST_REAL64Var;
-            ADST_REAL64Var = ((double*)binaryBuffer) + cycles;
-            converted = sscanf(asciiBuffer, "%lf", (ADST_REAL64Var));
+            ADST_REAL64Var    = ((double*)binaryBuffer) + cycles;
+            converted         = sscanf(asciiBuffer, "%lf", (ADST_REAL64Var));
             bytesPerDataPoint = 8;
             *bytesProcessed += bytesPerDataPoint;
             break;
         case ADST_BIT:
             char* charVar;
-            charVar = ((char*)binaryBuffer) + cycles;
+            charVar   = ((char*)binaryBuffer) + cycles;
             converted = sscanf(asciiBuffer, "%hhu", (unsigned char*)(charVar));
             bytesPerDataPoint =
                 1; //TODO: Check if each bit takes one byte or actually only one bit?!
@@ -1228,7 +1228,7 @@ int octetAscii2binary(const char* asciiBuffer,
             break;
         default:
             //printf("ERROR: Data type: %d not implemented.\n",dataType);
-            error = ADS_COM_ERROR_INVALID_DATA_TYPE;
+            error             = ADS_COM_ERROR_INVALID_DATA_TYPE;
             bytesPerDataPoint = 0;
             break;
         }
