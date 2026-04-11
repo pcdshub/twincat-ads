@@ -55,9 +55,10 @@
  * fields as AdsSymbolUploadInfo2 {nSymbols, nSymSize}.  Use 0xF00C if the
  * target may be a TC2 runtime; use 0xF00F for TC3-only deployments.
  */
-struct AdsSymbolUploadInfo2 {
-    uint32_t symbolCount;   /**< total number of symbols in the PLC        */
-    uint32_t uploadLength;  /**< byte-size of the full SYM_UPLOAD blob     */
+struct AdsSymbolUploadInfo2
+{
+    uint32_t symbolCount;  /**< total number of symbols in the PLC        */
+    uint32_t uploadLength; /**< byte-size of the full SYM_UPLOAD blob     */
     uint32_t dataTypeCount;
     uint32_t dataTypeLength;
     uint32_t extraCount;
@@ -72,7 +73,8 @@ struct AdsSymbolUploadInfo2 {
  * sizeof(AdsSymbolEntryWire) == 26 bytes on all platforms.
  */
 #pragma pack(push, 1)
-struct AdsSymbolEntryWire {
+struct AdsSymbolEntryWire
+{
     uint32_t entryLength;
     uint32_t iGroup;
     uint32_t iOffs;
@@ -102,12 +104,13 @@ struct AdsSymbolEntryWire {
  * are self-documenting.  Note the driver's own adsSymbolEntry typedef uses
  * iOffset (no 's') – that difference only matters in the ADS fallback path.
  */
-struct AdsSymbolInfo {
-    uint32_t iGroup;    /**< abs ADS index group  → paramInfo->plcAbsAdrGroup  */
-    uint32_t iOffs;     /**< abs ADS index offset → paramInfo->plcAbsAdrOffset */
-    uint32_t size;      /**< symbol byte-size     → paramInfo->plcSize         */
-    uint32_t dataType;  /**< ADST_* type code     → paramInfo->plcDataType     */
-    uint32_t flags;     /**< ADSSYMBOLFLAG_* bits                               */
+struct AdsSymbolInfo
+{
+    uint32_t iGroup;   /**< abs ADS index group  → paramInfo->plcAbsAdrGroup  */
+    uint32_t iOffs;    /**< abs ADS index offset → paramInfo->plcAbsAdrOffset */
+    uint32_t size;     /**< symbol byte-size     → paramInfo->plcSize         */
+    uint32_t dataType; /**< ADST_* type code     → paramInfo->plcDataType     */
+    uint32_t flags;    /**< ADSSYMBOLFLAG_* bits                               */
 };
 
 /**
@@ -135,15 +138,16 @@ using SymbolCache = std::unordered_map<uint16_t, SymbolMap>;
  * Populated at construction from ads_symbol_dict.json.
  * handle filled by resolveSymbolHandles() via SUMUP.
  */
-struct AdsSymbolDictEntry {
-    std::string symbol;       // PLC path as-is  e.g. "GVL_Logger.bTrickleTripped"
-    std::string symbolLower;  // lowercase key for case-insensitive lookup
-    std::string datatype;     // "BOOL", "LREAL", "DINT" etc.
-    std::string pvName;       // EPICS PV name
-    uint32_t    size     = 0; // byte size
-    uint32_t    adst     = 0; // ADST_* type code
-    uint32_t    handle   = 0; // ADS variable handle — filled by SUMUP
-    bool        resolved = false; // true after handle obtained
+struct AdsSymbolDictEntry
+{
+    std::string symbol;      // PLC path as-is  e.g. "GVL_Logger.bTrickleTripped"
+    std::string symbolLower; // lowercase key for case-insensitive lookup
+    std::string datatype;    // "BOOL", "LREAL", "DINT" etc.
+    std::string pvName;      // EPICS PV name
+    uint32_t size   = 0;     // byte size
+    uint32_t adst   = 0;     // ADST_* type code
+    uint32_t handle = 0;     // ADS variable handle — filled by SUMUP
+    bool resolved   = false; // true after handle obtained
 };
 
 /** key = lowercase symbol path */
