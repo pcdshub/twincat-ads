@@ -9,6 +9,9 @@
 * Edited to add bulk reads: Michael Browne
 * Edited to add bulk symbol resolution: Yann Stephen Mandza
 * Edited to resolve de-sync I/O Intr issues: Nicholas Lentz
+* Edited to add static code analysis and CI pre-commit workflows: Yann Stephen Mandza
+* Edited to Upgades ADS to release 113.0.32-1: Yann Stephen Mandza
+* Edited to Stop trusting absent PLC timestamp in bulk reads: Yann Stephen Mandza
 *
 * Created January 25, 2018
 * Edited  December 6, 2019
@@ -967,7 +970,7 @@ asynStatus adsAsynPortDriver::resolveSymbolInfo(uint16_t amsClientPort)
  *            (if record TSE field is set to -2 (enable asyn timestamp)).
  *            This is the preferred setting.\n
  *            defaultTimeSource=EPICS: The time stamp will be made when the
- *            updated data arrives in the EPCIS client.\n
+ *            updated data arrives in the EPICS client.\n
 
  * Initializes all variables and tries to connect to PLC system.
  */
@@ -1551,23 +1554,18 @@ void adsAsynPortDriver::bulkReadThread()
                 uint32_t* stat      = (uint32_t*)bulkdata;
                 uint8_t* srd        = bulkdata + cnt * sizeof(uint32_t);
                 uint64_t nTimeStamp = 0;
-                /* The first *two* bulk parameters might be the timestamp! */
-                if (!stat[0] && !stat[1] && bulk[i].sum[0].iGroup == ADSIGRP_SYM_VALBYHND)
-                {
-                    nTimeStamp = ((uint32_t*)srd)[0];
-                    nTimeStamp = (nTimeStamp << 32) | ((uint32_t*)srd)[1];
-                }
-                else
-                {
-                    /*
-                  * Sigh.  now has the time since 1970-01-01 00:00:00 UTC, but
-                  * we want 100ns increments since 1601-01-01!! So we grab the constant
-                  * from adsAsynPortDriverUtils.cpp and convert.
-                  */
-#define SEC_TO_UNIX_EPOCH 11644473600LL
-                    nTimeStamp = now.tv_sec + SEC_TO_UNIX_EPOCH;
-                    nTimeStamp = (nTimeStamp * 1000000 + now.tv_usec) * 10;
-                }
+                /* The first *two* bulk parameters are reserved for a PLC
+                 * timestamp (legacy MAIN.fbSystemTime.timeLoDW/HiDW). That
+                 * symbol is NOT guaranteed to exist in a PLC project; when it is
+                 * absent the timestamp slots return error status or a stale
+                 * handle resolves to junk -- producing garbage times (e.g. year
+                 * 2037) on every bulk record.
+                 *
+                 * Until a reliable, platform-wide PLC time symbol exists, do NOT
+                 * trust the PLC timestamp here. Leave nTimeStamp = 0 so that
+                 * refreshParamTime()'s `plcTimeStampRaw == 0` guard falls back to
+                 * EPICS/IOC host time. The two reserved slots are still skipped
+                 * below so srd stays aligned. */
                 /* Always advance srd past the two timestamp data slots.
               * SUMUP_READ writes iSize response bytes for every slot regardless
               * of whether that slot's status is success or failure.  Skipping
@@ -7266,12 +7264,16 @@ extern "C"
 
         if (defaultTimeSource < 0 || defaultTimeSource >= ADS_TIME_BASE_MAX)
         {
-            printf("adsAsynPortDriverConfigure bad default time source: %d. PLC time stamps will "
-                   "be used. Valid options are: PLC=%d and EPICS=%d.\n",
+            printf("adsAsynPortDriverConfigure bad default time source: %d. EPICS (IOC) time "
+                   "stamps will be used. Valid options are: EPICS=%d and PLC=%d.\n",
                    defaultTimeSource,
-                   (int)ADS_TIME_BASE_PLC,
-                   (int)ADS_TIME_BASE_EPICS);
-            defaultTimeSource = ADS_TIME_BASE_PLC;
+                   (int)ADS_TIME_BASE_EPICS,
+                   (int)ADS_TIME_BASE_PLC);
+            /* Default to EPICS/IOC host time. PLC time requires a reliable PLC
+             * time symbol that every PLC app exposes; until that exists, IOC
+             * time is the only trustworthy default. (Legacy
+             * MAIN.fbSystemTime is not a platform guarantee.) */
+            defaultTimeSource = ADS_TIME_BASE_EPICS;
         }
 
         adsAsynPortObj = new adsAsynPortDriver(portName,
@@ -7316,7 +7318,7 @@ extern "C"
     static const iocshArg adsAsynPortDriverConfigureArg8  = {"max delay time ms", iocshArgInt};
     static const iocshArg adsAsynPortDriverConfigureArg9  = {"ADS communication timeout ms",
                                                              iocshArgInt};
-    static const iocshArg adsAsynPortDriverConfigureArg10 = {"default time source (EPCIS=0,PLC=1)",
+    static const iocshArg adsAsynPortDriverConfigureArg10 = {"default time source (EPICS=0,PLC=1)",
                                                              iocshArgInt};
     static const iocshArg* adsAsynPortDriverConfigureArgs[] = {&adsAsynPortDriverConfigureArg0,
                                                                &adsAsynPortDriverConfigureArg1,
