@@ -2555,8 +2555,6 @@ asynStatus adsAsynPortDriver::getRecordInfoFromDrvInfo(const char* drvInfo, adsP
     asynPrint(
         pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s: drvInfo: %s\n", driverName, functionName, drvInfo);
 
-    paramInfo->amsPort =
-        amsportDefault_; // will need to improve this later to use ams server port of param.
 
     /* Build cache on first call — O(N) scan of entire database, done once. */
     buildDrvInfoCache();
