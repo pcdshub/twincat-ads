@@ -20,7 +20,7 @@ from pyads.testserver import AdsTestServer, AdvancedHandler, PLCVariable
 from pyads import constants
 
 sys.path.insert(0, os.path.dirname(__file__))
-from ads_test_server import load_symbols, start_variable_updater, TEST_SYMBOLS
+from ads_test_server import load_symbols, start_variable_updater, TEST_SYMBOLS, AdsTestHandler, AdsTestServerFixed
 
 JSON_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", "ads_symbols.json"
@@ -32,11 +32,11 @@ TEST_SERVER_AMS_PORT   = pyads.PORT_TC3PLC1  # 851
 
 def test_server_starts_and_symbol_readable():
     # ── Setup ─────────────────────────────────────────────────────────────────
-    handler = AdvancedHandler()
-    for var in load_symbols(JSON_PATH):
+    handler = AdsTestHandler()
+    for var in load_symbols(JSON_PATH, handler=handler):
         handler.add_variable(var)
 
-    server = AdsTestServer(handler=handler, logging=False)
+    server = AdsTestServerFixed(handler=handler, logging=False)
     server.start()
     time.sleep(1)
 

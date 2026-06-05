@@ -14,6 +14,13 @@ builddir/
 configure/O.*
 db/
 dbd/
+# unit-test build artifacts / local config (testIOC/tests/unit)
+testIOC/tests/unit/O.*
+testIOC/tests/unit/RELEASE_UNIT.local
+testIOC/tests/unit/testIoc_registerRecordDeviceDriver.cpp
+# generated/expanded databases from running the test IOC (TestIOC.db is the tracked source)
+testIOC/DB/input.db
+testIOC/DB/output.db
 iocBoot/
 lib/
 TwinCAT/demo_project/MCAG_Base_Project/_Boot*
