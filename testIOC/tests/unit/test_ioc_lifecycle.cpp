@@ -121,8 +121,8 @@ protected:
             pasynManager->freeAsynUser(pasynUser);
             pasynUser = nullptr;
         }
-        //delete driver;
-        //driver = nullptr;
+        delete driver;
+        driver = nullptr;
     }
 };
 
