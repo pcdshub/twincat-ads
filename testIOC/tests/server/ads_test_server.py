@@ -95,11 +95,25 @@ class AdsClientConnectionFixed(AdsClientConnection):
         FILETIME_EPOCH_DIFF = 116444736000000000
         filetime = int(_time.time() * 1e7) + FILETIME_EPOCH_DIFF
 
-        # AdsNotificationHeader: nTimeStamp(8) + hNotification(4) + cbSampleSize(4)
-        notif_header = struct.pack("<QII", filetime, notif_handle, len(value))
-
-        # DEVICENOTE payload: nStamps(4) + notif_header(16) + data
-        payload = struct.pack("<I", 1) + notif_header + value
+        # ADS/AdsLib NotificationDispatcher::Run() parses the AMS data section as:
+        #   cbLength(4)  nStamps(4)
+        #     AdsStampHeader:        nTimeStamp(8)   nSamples(4)
+        #       AdsNotificationSample: hNotification(4)  cbSampleSize(4)  data
+        # AoEHeader.length() is prepended into the ring by ReceiveNotification(),
+        # so it must NOT be part of this payload. The per-stamp nSamples count and
+        # the leading cbLength were both previously missing -> RingBuffer mis-parse.
+        stamp = (
+            struct.pack("<Q", filetime)        # nTimeStamp
+            + struct.pack("<I", 1)             # nSamples (one sample in this stamp)
+            + struct.pack("<I", notif_handle)  # hNotification
+            + struct.pack("<I", len(value))    # cbSampleSize
+            + value                            # sample data
+        )
+        payload = (
+            struct.pack("<I", 4 + len(stamp))  # cbLength: bytes following this field
+            + struct.pack("<I", 1)             # nStamps
+            + stamp
+        )
 
         # AoEHeader (32 bytes)
         aoe_header = (
