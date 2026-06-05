@@ -189,6 +189,10 @@ class AdsClientConnectionFixed(AdsClientConnection):
 
             request_packet = self.construct_request(data)
             self.server.request_history.append(request_packet)
+            # Attribute this request to its connection (per-thread) so an
+            # ADDDEVICENOTE can record which connection to push DEVICENOTEs over.
+            if hasattr(self.handler, "_tls"):
+                self.handler._tls.conn = self
             response = self.handler.handle_request(request_packet)
             if isinstance(response, AmsResponseData):
                 response_bytes = self.construct_response(
@@ -247,6 +251,14 @@ class AdsTestHandler(AdvancedHandler):
         self._conn_lock   = threading.Lock()
         # notif_handle → (client_net_id, client_port, server_net_id, server_port)
         self._notif_addrs = {}
+        # notif_handle → the connection that registered it (send DEVICENOTEs
+        # only over that connection, never broadcast — a DEVICENOTE delivered to
+        # a connection that never registered the handle has no dispatcher on the
+        # driver side and logs "No dispatcher found for notification").
+        self._notif_conn  = {}
+        # per-connection-thread handle to the connection currently being served,
+        # so handle_request() can attribute an ADDDEVICENOTE to its connection.
+        self._tls         = threading.local()
         self._addr_lock   = threading.Lock()
 
     def register_connection(self, conn) -> None:
@@ -258,22 +270,36 @@ class AdsTestHandler(AdvancedHandler):
         with self._conn_lock:
             if conn in self._connections:
                 self._connections.remove(conn)
+        # Drop notifications that belonged to this connection so the updater
+        # never pushes to a closed socket / unregistered driver (Stage9 reconnect).
+        with self._addr_lock:
+            stale = [h for h, c in self._notif_conn.items() if c is conn]
+            for h in stale:
+                self._notif_conn.pop(h, None)
+                self._notif_addrs.pop(h, None)
 
     def push_notification(self, notif_handle: int, value: bytes) -> None:
-        """Push a value-change DEVICENOTE to all connected clients."""
+        """Push a value-change DEVICENOTE to the connection that registered it.
+
+        Sending only over the registering connection (never broadcasting) keeps
+        DEVICENOTEs off connections that never issued the ADDDEVICENOTE, which on
+        the driver side would have no dispatcher for {targetPort, sourceAms}.
+        """
         with self._addr_lock:
             addr = self._notif_addrs.get(notif_handle)
-        if addr is None:
+            conn = self._notif_conn.get(notif_handle)
+        if addr is None or conn is None:
+            return
+        with self._conn_lock:
+            alive = conn in self._connections
+        if not alive:
             return
         client_net_id, client_port, server_net_id, server_port = addr
-        with self._conn_lock:
-            conns = list(self._connections)
-        for conn in conns:
-            conn.send_device_notification(
-                notif_handle, value,
-                client_net_id, client_port,
-                server_net_id, server_port
-            )
+        conn.send_device_notification(
+            notif_handle, value,
+            client_net_id, client_port,
+            server_net_id, server_port
+        )
 
     def handle_request(self, request) -> object:
         """Override to intercept ADDDEVICENOTE, plain READ, SUMUP variants."""
@@ -305,6 +331,8 @@ class AdsTestHandler(AdvancedHandler):
                         client_net_id, client_port,
                         server_net_id, server_port
                     )
+                    self._notif_conn[notif_handle] = getattr(
+                        self._tls, "conn", None)
                 content = notif_handle.to_bytes(4, byteorder='little')
             except Exception:
                 content = b"\x00\x00\x00\x00"
