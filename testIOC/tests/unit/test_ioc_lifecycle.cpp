@@ -228,17 +228,29 @@ TEST_F(AdsLifecycleTest, Stage7_CallbacksFired)
 // ─────────────────────────────────────────────────────────────────────────────
 TEST_F(AdsLifecycleTest, Stage8_DirectReadSucceeds)
 {
-    int index = 0;
-    asynStatus status = driver->findParam(SYM_LREAL, &index);
-    if (status != asynSuccess)
+    // The driver registers each asyn param under the full drvInfo string from
+    // the record link (e.g. "ADSPORT=851/POLL_RATE=1/Main.M1.fBacklash?"), not
+    // the bare symbol name — so findParam(SYM_LREAL) never matches. Locate the
+    // read param (drvInfo carrying "<symbol>?") by scanning the param table.
+    const std::string needle = std::string(SYM_LREAL) + "?";
+    int index = -1;
+    for (int i = 0; adsParamInfo *pi = driver->getAdsParamInfo(i); ++i)
     {
-        GTEST_SKIP() << "Symbol not registered as param";
+        if (pi->drvInfo != nullptr &&
+            std::string(pi->drvInfo).find(needle) != std::string::npos)
+        {
+            index = i;
+            break;
+        }
     }
+    ASSERT_GE(index, 0)
+        << "No read param registered for symbol " << SYM_LREAL;
 
     pasynUser->reason = index;
     epicsFloat64 val  = 0.0;
-    status = driver->readFloat64(pasynUser, &val);
-    EXPECT_EQ(status, asynSuccess) << "readFloat64 should succeed";
+    asynStatus status = driver->readFloat64(pasynUser, &val);
+    EXPECT_EQ(status, asynSuccess)
+        << "direct readFloat64 of " << SYM_LREAL << " should succeed";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
