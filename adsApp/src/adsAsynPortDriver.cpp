@@ -1558,6 +1558,15 @@ void adsAsynPortDriver::bulkReadThread()
     asynUser* asynTraceUser = getTraceAsynUser();
     while (!bulkOK)
     {
+        // Honour a shutdown request while still waiting for the first bulk-read
+        // setup. Without this a driver torn down before bulkOK is ever set
+        // (e.g. instantiated with no bulk params, then deleted) leaves this
+        // thread spinning here forever, so the epicsThreadMustJoin() in the
+        // destructor never returns. Completes the worker-thread stop/join path.
+        if (stopThreads_)
+        {
+            return;
+        }
         usleep(1000000);
     }
     {
