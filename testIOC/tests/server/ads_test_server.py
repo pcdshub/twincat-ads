@@ -150,7 +150,14 @@ class AdsClientConnectionFixed(AdsClientConnection):
             # ── Read full AMS TCP header (6 bytes) ────────────────────
             header = b""
             while len(header) < 6:
-                chunk = self.client.recv(6 - len(header))
+                # A test that is killed mid-run drops its TCP connection
+                # abruptly; treat the resulting reset/error as a disconnect
+                # rather than letting it crash the handler thread (which would
+                # wedge the server for every subsequent test).
+                try:
+                    chunk = self.client.recv(6 - len(header))
+                except (ConnectionResetError, OSError):
+                    chunk = b""
                 if not chunk:
                     self.client.close()
                     self._run = False
@@ -167,7 +174,10 @@ class AdsClientConnectionFixed(AdsClientConnection):
             payload = b""
             while len(payload) < payload_len:
                 to_read = min(65536, payload_len - len(payload))
-                chunk   = self.client.recv(to_read)
+                try:
+                    chunk = self.client.recv(to_read)
+                except (ConnectionResetError, OSError):
+                    chunk = b""
                 if not chunk:
                     self.client.close()
                     self._run = False
@@ -489,6 +499,24 @@ class AdsPLCVariable(PLCVariable):
 
     def set_handler(self, handler) -> None:
         self._handler = handler
+
+    # Notification handles must be unique across ALL variables. Real TwinCAT
+    # returns globally-unique handles, and the driver's NotificationDispatcher
+    # keys its notifications on them. The pyads base register_notification()
+    # uses a per-variable counter, so the first notification on every symbol
+    # returns handle 0 (the second returns 1, ...): multiple monitored symbols
+    # then collide on the same handle, value-change pushes land on the wrong
+    # symbol, and the driver drops them on a size mismatch ("8 doesn't match 1")
+    # so no callbacks ever fire. Hand out process-global handles instead.
+    _notif_handle_lock = threading.Lock()
+    _next_notif_handle = 0
+
+    def register_notification(self) -> int:
+        with AdsPLCVariable._notif_handle_lock:
+            AdsPLCVariable._next_notif_handle += 1
+            handle = AdsPLCVariable._next_notif_handle
+        self.notifications.append(handle)
+        return handle
 
     def get_packed_info(self) -> bytes:
         if self.comment is None:
