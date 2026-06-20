@@ -47,7 +47,11 @@ jobs:
             --json testIOC/ads_symbols.json &
           sleep 2
       - name: Build driver
-        run: make -C adsApp
+        # Build libads with -DADS_UNIT_TEST so the test-only hooks
+        # (setGlobalInstance, g_callbackCount) are compiled into the library;
+        # the unit tests link against ads and reference them, so a plain
+        # `make -C adsApp` leaves them out and the test link fails.
+        run: make -C adsApp USR_CXXFLAGS+="-DADS_UNIT_TEST -DCONFIG_DEFAULT_LOGLEVEL=1"
       - name: Build and run unit tests
         run: |
           make -C testIOC/tests/unit
