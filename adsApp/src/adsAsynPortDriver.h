@@ -304,34 +304,49 @@ class adsAsynPortDriver : public asynPortDriver
     bool symInfoResolved_ = false;
 
 #ifdef ADS_UNIT_TEST
-  // ── Test accessors — only compiled when ADS_UNIT_TEST is defined ──────────
-  // Exposes private/protected state for Google Test without affecting
-  // production builds.
+    // ── Test accessors — only compiled when ADS_UNIT_TEST is defined ──────────
+    // Exposes private/protected state for Google Test without affecting
+    // production builds.
 
-  /** True if connected to the ADS server. */
-  bool isConnected() const { return connectedAds_ != 0; }
+    /** True if connected to the ADS server. */
+    bool isConnected() const
+    {
+        return connectedAds_ != 0;
+    }
 
-  /** Local ADS port handle (> 0 when open). */
-  long getAdsPort() const { return adsPort_; }
+    /** Local ADS port handle (> 0 when open). */
+    long getAdsPort() const
+    {
+        return adsPort_;
+    }
 
-  /** True if the ADS route has been added (not deleted on disconnect). */
-  bool isRouteAdded() const { return routeAdded_ != 0; }
+    /** True if the ADS route has been added (not deleted on disconnect). */
+    bool isRouteAdded() const
+    {
+        return routeAdded_ != 0;
+    }
 
-  /** Number of entries in symbolDict_ (0 before resolveSymbolInfo). */
-  size_t symbolDictSize() const { return symbolDict_.size(); }
+    /** Number of entries in symbolDict_ (0 before resolveSymbolInfo). */
+    size_t symbolDictSize() const
+    {
+        return symbolDict_.size();
+    }
 
-  /** Look up a symbol by name (case-insensitive). Returns nullptr if not found. */
-  const AdsSymbolDictEntry *lookupSymbol(const char *name) const
-  {
-    std::string key(name);
-    std::transform(key.begin(), key.end(), key.begin(),
-                   [](unsigned char c){ return std::tolower(c); });
-    auto it = symbolDict_.find(key);
-    return (it != symbolDict_.end()) ? &it->second : nullptr;
-  }
+    /** Look up a symbol by name (case-insensitive). Returns nullptr if not found. */
+    const AdsSymbolDictEntry* lookupSymbol(const char* name) const
+    {
+        std::string key(name);
+        std::transform(
+            key.begin(), key.end(), key.begin(), [](unsigned char c) { return std::tolower(c); });
+        auto it = symbolDict_.find(key);
+        return (it != symbolDict_.end()) ? &it->second : nullptr;
+    }
 
-  /** Current value of bulkOK flag (1 = bulk read thread active). */
-  int getBulkOK() const { return bulkOK; }
+    /** Current value of bulkOK flag (1 = bulk read thread active). */
+    int getBulkOK() const
+    {
+        return bulkOK;
+    }
 
     /** Access raw param info array for a given param index. */
     adsParamInfo* getAdsParamInfo(int index) const
@@ -341,10 +356,10 @@ class adsAsynPortDriver : public asynPortDriver
         return const_cast<adsParamInfo*>(&adsParamArray_[index]);
     }
 
-  /** Set the global adsAsynPortObj pointer for initHook callbacks.
+    /** Set the global adsAsynPortObj pointer for initHook callbacks.
    *  Required when creating the driver directly (not via iocsh command)
    *  so that initHookAfterScanInit can find the driver and set bulkOK=1. */
-  static void setGlobalInstance(adsAsynPortDriver *obj);
+    static void setGlobalInstance(adsAsynPortDriver* obj);
 
 #endif /* ADS_UNIT_TEST */
 };

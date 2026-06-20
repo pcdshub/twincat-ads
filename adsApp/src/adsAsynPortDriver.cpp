@@ -58,7 +58,7 @@ static struct timeval s_iocStartTime; /* captured at initHookAtIocBuild */
 #include <atomic>
 std::atomic<int> g_callbackCount{0};
 
-void adsAsynPortDriver::setGlobalInstance(adsAsynPortDriver *obj)
+void adsAsynPortDriver::setGlobalInstance(adsAsynPortDriver* obj)
 {
     adsAsynPortObj = obj;
 }
