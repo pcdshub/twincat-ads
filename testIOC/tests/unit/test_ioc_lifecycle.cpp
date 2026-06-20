@@ -215,12 +215,22 @@ TEST_F(AdsLifecycleTest, Stage6_DriverRemainsConnectedAfterPolling)
 // ─────────────────────────────────────────────────────────────────────────────
 TEST_F(AdsLifecycleTest, Stage7_CallbacksFired)
 {
-    int before = g_callbackCount.load();
-    epicsThreadSleep(0.5);
-    int after = g_callbackCount.load();
-    EXPECT_GT(after, before)
-        << "At least one data callback should have fired "
-        << "(before=" << before << " after=" << after << ")";
+    // Notifications fire continuously over the run (g_callbackCount climbs into
+    // the hundreds), but the single-threaded test server interleaves
+    // notification flushing with request handling, so a given symbol's ON_CHANGE
+    // pushes can momentarily stall past any one fixed 0.5 s window. Poll for the
+    // counter to advance (up to ~5 s) instead of sampling a single window: still
+    // proves callbacks fire, without the fixed-window timing flake.
+    const int before = g_callbackCount.load();
+    bool fired = false;
+    for (int i = 0; i < 50 && !fired; ++i)
+    {
+        epicsThreadSleep(0.1);
+        fired = g_callbackCount.load() > before;
+    }
+    EXPECT_TRUE(fired)
+        << "At least one data callback should have fired within 5 s "
+        << "(before=" << before << " after=" << g_callbackCount.load() << ")";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
