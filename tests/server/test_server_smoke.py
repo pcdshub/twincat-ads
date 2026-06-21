@@ -22,8 +22,11 @@ from pyads import constants
 sys.path.insert(0, os.path.dirname(__file__))
 from ads_test_server import load_symbols, start_variable_updater, TEST_SYMBOLS, AdsTestHandler, AdsTestServerFixed
 
+# Symbol dict lives in the testIOC submodule; the smoke-test CI job must check
+# the submodule out (submodules: recursive).
 JSON_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "..", "ads_symbols.json"
+    os.path.dirname(__file__), "..", "..",
+    "testIOC", "iocBoot", "ioc-TestIOC", "ads_symbol_dict.json"
 )
 TEST_SERVER_AMS_NET_ID = "127.0.0.1.1.1"
 TEST_SERVER_IP         = "127.0.0.1"
