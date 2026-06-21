@@ -1,6 +1,6 @@
 # Building and running the unit tests
 
-The GoogleTest suite under `testIOC/tests/unit/` exercises `adsAsynPortDriver`
+The GoogleTest suite under `tests/unit/` exercises `adsAsynPortDriver`
 against a Python ADS test server. You can build and run it two ways: a native
 `make` build, or inside the CI Docker image.
 
@@ -27,7 +27,7 @@ Run from the repo root.
 make -C adsApp USR_CXXFLAGS+="-DADS_UNIT_TEST -DCONFIG_DEFAULT_LOGLEVEL=1"
 
 # 2. Build the test binaries.
-make -C testIOC/tests/unit
+make -C tests/unit
 ```
 
 If you built the driver earlier without the flag, `make` may skip the recompile
@@ -41,24 +41,24 @@ make -C adsApp USR_CXXFLAGS+="-DADS_UNIT_TEST -DCONFIG_DEFAULT_LOGLEVEL=1"
 Start the test server in a second terminal and leave it running:
 
 ```bash
-python3 -u testIOC/tests/server/ads_test_server.py
+python3 -u tests/server/ads_test_server.py
 # wait for: [ads_test_server] Listening on 127.0.0.1:48898
 ```
 
 Run the suite from the first terminal:
 
 ```bash
-make -C testIOC/tests/unit runtests
+make -C tests/unit runtests
 ```
 
 Expected: `test_basic` 1/1 and `test_ioc_lifecycle` 13/13. TAP output lands in
-`testIOC/tests/unit/O.<arch>/*.tap`.
+`tests/unit/O.<arch>/*.tap`.
 
 For faster iteration, run one binary directly. Cd into the arch dir first so it
 finds the DBD:
 
 ```bash
-cd testIOC/tests/unit/O.rhel9-x86_64
+cd tests/unit/O.rhel9-x86_64
 ./test_ioc_lifecycle
 ```
 
@@ -84,14 +84,14 @@ Inside the container:
 ```bash
 # Drop host build artifacts; the container shares the rhel9-x86_64 arch.
 make -C adsApp clean
-make -C testIOC/tests/unit clean
+make -C tests/unit clean
 
-python3 testIOC/tests/server/ads_test_server.py --json testIOC/ads_symbols.json &
+python3 tests/server/ads_test_server.py --json testIOC/iocBoot/ioc-TestIOC/ads_symbol_dict.json &
 sleep 2
 
 make -C adsApp USR_CXXFLAGS+="-DADS_UNIT_TEST -DCONFIG_DEFAULT_LOGLEVEL=1"
-make -C testIOC/tests/unit
-make -C testIOC/tests/unit runtests
+make -C tests/unit
+make -C tests/unit runtests
 ```
 
 The image already provides EPICS base, the module dependencies, and the

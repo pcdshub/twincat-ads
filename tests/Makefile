@@ -1,5 +1,5 @@
-# testIOC/tests/Makefile
-TOP = ../..
+# tests/Makefile
+TOP = ..
 include $(TOP)/configure/CONFIG
 
 DIRS += unit

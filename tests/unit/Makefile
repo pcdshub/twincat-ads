@@ -1,12 +1,12 @@
-# testIOC/tests/unit/Makefile
-TOP = ../../..
+# tests/unit/Makefile
+TOP = ../..
 include $(TOP)/configure/CONFIG
 -include RELEASE_UNIT.local
 
 USR_CXXFLAGS += -DADS_UNIT_TEST
 USR_CXXFLAGS += -std=c++14
-USR_CXXFLAGS += -DTEST_DBD_PATH=\"$(TOP)/testIOC/tests/unit/dbd/testIoc.dbd\"
-USR_CXXFLAGS += -DTEST_DB_PATH=\"$(TOP)/testIOC/DB/TestIOC.db\"
+USR_CXXFLAGS += -DTEST_DBD_PATH=\"$(TOP)/tests/unit/dbd/testIoc.dbd\"
+USR_CXXFLAGS += -DTEST_DB_PATH=\"$(TOP)/testIOC/iocBoot/ioc-TestIOC/TestIOC.db\"
 USR_DBDFLAGS += -I$(TOP)/dbd
 
 USR_INCLUDES += -I$(TOP)/adsApp/src
@@ -20,7 +20,7 @@ USR_LIBS += dbRecStd
 USR_LIBS += $(EPICS_BASE_IOC_LIBS)
 
 
-INSTALL_DBD = $(TOP)/testIOC/tests/unit/dbd
+INSTALL_DBD = $(TOP)/tests/unit/dbd
 
 DBD += testIoc.dbd
 testIoc_DBD += base.dbd

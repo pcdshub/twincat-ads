@@ -312,7 +312,22 @@ class AdsTestHandler(AdvancedHandler):
         )
 
     def handle_request(self, request) -> object:
-        """Override to intercept ADDDEVICENOTE, plain READ, SUMUP variants."""
+        """Return an ADS error response for any request that raises, instead of
+        letting the exception kill this connection's handler thread. A dead
+        thread leaves the client's later requests unanswered, so they time out
+        with ADSERR_CLIENT_SYNCTIMEOUT and the run hangs. Pyads' base
+        handle_read_write, for one, does write_data.decode() with no guard and
+        raises UnicodeDecodeError on a binary read-write payload."""
+        try:
+            return self._handle_request_inner(request)
+        except Exception:
+            state = struct.unpack("<H", request.ams_header.state_flags)[0]
+            state = struct.pack("<H", state | 0x0001)
+            return AmsResponseData(state, struct.pack("<I", 0x710), b"")
+
+    def _handle_request_inner(self, request) -> object:
+        """Intercept ADDDEVICENOTE, plain READ, and the SUMUP read-writes;
+        everything else falls through to pyads' base handler."""
         import struct as _struct
 
         command_id = _struct.unpack("<H", request.ams_header.command_id)[0]
@@ -695,7 +710,8 @@ def main():
     parser.add_argument(
         "--json",
         default=os.path.join(
-            os.path.dirname(__file__), "..", "..", "ads_symbols.json"
+            os.path.dirname(__file__), "..", "..",
+            "testIOC", "iocBoot", "ioc-TestIOC", "ads_symbol_dict.json"
         ),
         help="Path to ads_symbol_dict.json",
     )

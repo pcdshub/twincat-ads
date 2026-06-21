@@ -16,15 +16,15 @@
  *
  * Prerequisites:
  *   - pyads test server running on 127.0.0.1:48898
- *   - testIOC/DB/TestIOC.db present
+ *   - testIOC/iocBoot/ioc-TestIOC/TestIOC.db present
  *   - Built with -DADS_UNIT_TEST
  *
  * Build:
  *   make -C adsApp USR_CXXFLAGS+="-DADS_UNIT_TEST -DCONFIG_DEFAULT_LOGLEVEL=1"
- *   make -C testIOC/tests/unit
+ *   make -C tests/unit
  *
  * Run:
- *   make -C testIOC/tests/unit runtests
+ *   make -C tests/unit runtests
  */
 
 #include <gtest/gtest.h>
@@ -34,6 +34,7 @@
 #include "adsAsynPortDriver.h"
 #include "epicsThread.h"
 #include "dbAccess.h"
+#include "dbScan.h"
 #include "iocInit.h"
 #include "dbStaticLib.h"
 
@@ -116,6 +117,19 @@ protected:
 
     static void TearDownTestSuite()
     {
+        // Quiesce the IOC before destroying the driver. iocInit() started the
+        // periodic scan threads, and they keep processing records — including
+        // the motion output setpoints — that call into the driver. Deleting the
+        // driver while a scan is mid-write lets that thread dereference a
+        // just-freed paramInfo->plcAdrStr (use-after-free, seen as garbage
+        // symbol names in adsGetSymHandleByName), and the destructor then
+        // destroys a lock another thread still holds (pthread_mutex_destroy:
+        // Device or resource busy), crashing teardown. scanStop() halts the
+        // scan threads first; the short sleep lets any in-flight processing
+        // drain before the driver goes away.
+        scanStop();
+        epicsThreadSleep(1.0);
+
         if (pasynUser)
         {
             pasynManager->freeAsynUser(pasynUser);

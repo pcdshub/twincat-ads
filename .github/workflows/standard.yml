@@ -22,7 +22,7 @@ jobs:
       - name: Install pyads
         run: pip install pyads
       - name: Run smoke test
-        run: python3 testIOC/tests/server/test_server_smoke.py
+        run: python3 tests/server/test_server_smoke.py
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -43,8 +43,8 @@ jobs:
               $(dirname ${GITHUB_WORKSPACE})/RELEASE_SITE.check
       - name: Start ADS test server
         run: |
-          python3 testIOC/tests/server/ads_test_server.py \
-            --json testIOC/ads_symbols.json &
+          python3 tests/server/ads_test_server.py \
+            --json testIOC/iocBoot/ioc-TestIOC/ads_symbol_dict.json &
           sleep 2
       - name: Build driver
         # Build libads with -DADS_UNIT_TEST so the test-only hooks
@@ -54,5 +54,5 @@ jobs:
         run: make -C adsApp USR_CXXFLAGS+="-DADS_UNIT_TEST -DCONFIG_DEFAULT_LOGLEVEL=1"
       - name: Build and run unit tests
         run: |
-          make -C testIOC/tests/unit
-          make -C testIOC/tests/unit runtests
+          make -C tests/unit
+          make -C tests/unit runtests
