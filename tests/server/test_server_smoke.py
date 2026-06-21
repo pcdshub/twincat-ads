@@ -34,7 +34,7 @@ TEST_SERVER_AMS_PORT   = pyads.PORT_TC3PLC1  # 851
 
 
 def test_server_starts_and_symbol_readable():
-    # ── Setup ─────────────────────────────────────────────────────────────────
+    # Setup
     handler = AdsTestHandler()
     for var in load_symbols(JSON_PATH, handler=handler):
         handler.add_variable(var)
@@ -55,19 +55,19 @@ def test_server_starts_and_symbol_readable():
     plc.open()
 
     try:
-        # ── Test 1: zero-initialised read ─────────────────────────────────────
+        # Test 1: zero-initialised read 
         bool_sym = TEST_SYMBOLS["BOOL"]
         val = plc.read_by_name(bool_sym, pyads.PLCTYPE_BOOL)
         assert val == False, f"Expected False (zero init), got {val}"
         print(f"✓ Zero-init read:  {bool_sym} = {val}")
 
-        # ── Test 2: write + readback ──────────────────────────────────────────
+        # Test 2: write + readback 
         plc.write_by_name(bool_sym, True, pyads.PLCTYPE_BOOL)
         val = plc.read_by_name(bool_sym, pyads.PLCTYPE_BOOL)
         assert val == True, f"Expected True after write, got {val}"
         print(f"✓ Write+readback:  {bool_sym} = {val}")
 
-        # ── Test 3: updater changes values over time ──────────────────────────
+        # Test 3: updater changes values over time 
         updater = start_variable_updater(handler, interval=0.05)
 
         lreal_sym = TEST_SYMBOLS["LREAL"]
@@ -81,7 +81,7 @@ def test_server_starts_and_symbol_readable():
         print(f"✓ Updater working: {lreal_sym} "
               f"{val_before:.1f} → {val_after:.1f}")
 
-        # ── Test 4: DINT updater ──────────────────────────────────────────────
+        # Test 4: DINT updater 
         dint_sym = TEST_SYMBOLS["DINT"]
         v1 = plc.read_by_name(dint_sym, pyads.PLCTYPE_DINT)
         time.sleep(0.2)

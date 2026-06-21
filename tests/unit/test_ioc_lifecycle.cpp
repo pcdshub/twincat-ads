@@ -38,25 +38,25 @@
 #include "iocInit.h"
 #include "dbStaticLib.h"
 
-// ── Connection parameters ─────────────────────────────────────────────────────
+// Connection parameters  
 static constexpr const char  *TEST_IP       = "127.0.0.1";
 static constexpr const char  *TEST_AMSID    = "127.0.0.1.1.1";
 static constexpr unsigned int TEST_AMS_PORT = 851;
 static constexpr const char  *TEST_PORT     = "ADS_LIFECYCLE";
 static constexpr int TEST_PARAM_TABLE_SIZE = 30000;
-// ── Well-known test symbols ───────────────────────────────────────────────────
+// Well-known test symbols  
 static constexpr const char *SYM_BOOL  = "GVL_Logger.bTrickleTripped";
 static constexpr const char *SYM_DINT  = "GVL_Logger.iLogPort";
 static constexpr const char *SYM_LREAL = "Main.M1.fBacklash";
 
-// ── Test instrumentation (always defined — built with ADS_UNIT_TEST) ──────────
+// Test instrumentation (always defined — built with ADS_UNIT_TEST)  
 extern std::atomic<int> g_callbackCount;
 extern "C" int testIoc_registerRecordDeviceDriver(struct dbBase *pbase);
 extern int initHook(void);
 
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 // Shared fixture — one driver instance for all lifecycle stages
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 class AdsLifecycleTest : public ::testing::Test
 {
 protected:
@@ -143,9 +143,9 @@ protected:
 adsAsynPortDriver *AdsLifecycleTest::driver    = nullptr;
 asynUser          *AdsLifecycleTest::pasynUser = nullptr;
 
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 // Stage 1 — Connection
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 TEST_F(AdsLifecycleTest, Stage1_ConnectedToServer)
 {
     EXPECT_TRUE(driver->isConnected())
@@ -158,9 +158,9 @@ TEST_F(AdsLifecycleTest, Stage1_AdsPortOpen)
         << "ADS local port should be open";
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 // Stage 2 — resolveSymbolInfo
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 TEST_F(AdsLifecycleTest, Stage2_SymbolDictPopulated)
 {
     EXPECT_GT(driver->symbolDictSize(), 0u)
@@ -183,9 +183,9 @@ TEST_F(AdsLifecycleTest, Stage2_BoolSymbolResolved)
     EXPECT_EQ(e->adst, (uint32_t)ADST_BIT);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 // Stage 3 — resolveSymbolHandles
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 TEST_F(AdsLifecycleTest, Stage3_HandlesAcquired)
 {
     const AdsSymbolDictEntry *e = driver->lookupSymbol(SYM_LREAL);
@@ -205,18 +205,18 @@ TEST_F(AdsLifecycleTest, Stage3_AllTestSymbolsHaveHandles)
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 // Stage 5 — bulkOK timing (PINI fix)
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 TEST_F(AdsLifecycleTest, Stage5_BulkOKSet)
 {
     EXPECT_EQ(driver->getBulkOK(), 1)
         << "bulkOK should be 1 after IOC is running";
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 // Stage 6 — Bulk read thread
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 TEST_F(AdsLifecycleTest, Stage6_DriverRemainsConnectedAfterPolling)
 {
     epicsThreadSleep(1.5);
@@ -224,17 +224,18 @@ TEST_F(AdsLifecycleTest, Stage6_DriverRemainsConnectedAfterPolling)
         << "Driver should remain connected after bulk read cycles";
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 // Stage 7 — Notification callbacks
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 TEST_F(AdsLifecycleTest, Stage7_CallbacksFired)
 {
-    // Notifications fire continuously over the run (g_callbackCount climbs into
-    // the hundreds), but the single-threaded test server interleaves
-    // notification flushing with request handling, so a given symbol's ON_CHANGE
-    // pushes can momentarily stall past any one fixed 0.5 s window. Poll for the
-    // counter to advance (up to ~5 s) instead of sampling a single window: still
-    // proves callbacks fire, without the fixed-window timing flake.
+    /* Notifications fire continuously over the run (g_callbackCount climbs into
+		*  the hundreds), but the single-threaded test server interleaves
+		*  notification flushing with request handling, so a given symbol's ON_CHANGE
+		*  pushes can momentarily stall past any one fixed 0.5 s window. Poll for the
+		*  counter to advance (up to ~5 s) instead of sampling a single window: still
+		*  proves callbacks fire, without the fixed-window timing flake.
+	*/
     const int before = g_callbackCount.load();
     bool fired = false;
     for (int i = 0; i < 50 && !fired; ++i)
@@ -247,15 +248,16 @@ TEST_F(AdsLifecycleTest, Stage7_CallbacksFired)
         << "(before=" << before << " after=" << g_callbackCount.load() << ")";
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 // Stage 8 — Runtime read
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 TEST_F(AdsLifecycleTest, Stage8_DirectReadSucceeds)
 {
-    // The driver registers each asyn param under the full drvInfo string from
-    // the record link (e.g. "ADSPORT=851/POLL_RATE=1/Main.M1.fBacklash?"), not
-    // the bare symbol name — so findParam(SYM_LREAL) never matches. Locate the
-    // read param (drvInfo carrying "<symbol>?") by scanning the param table.
+    /* The driver registers each asyn param under the full drvInfo string from
+		*  the record link (e.g. "ADSPORT=851/POLL_RATE=1/Main.M1.fBacklash?"), not
+		*  the bare symbol name — so findParam(SYM_LREAL) never matches. Locate the
+		*  read param (drvInfo carrying "<symbol>?") by scanning the param table.
+	*/
     const std::string needle = std::string(SYM_LREAL) + "?";
     int index = -1;
     for (int i = 0; adsParamInfo *pi = driver->getAdsParamInfo(i); ++i)
@@ -277,9 +279,9 @@ TEST_F(AdsLifecycleTest, Stage8_DirectReadSucceeds)
         << "direct readFloat64 of " << SYM_LREAL << " should succeed";
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 // Stage 9 — Disconnect preserves route
-// ─────────────────────────────────────────────────────────────────────────────
+//  
 TEST_F(AdsLifecycleTest, Stage9_DisconnectPreservesRoute)
 {
     driver->disconnect(pasynUser);
