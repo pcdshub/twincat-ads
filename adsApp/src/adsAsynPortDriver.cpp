@@ -5840,6 +5840,16 @@ asynStatus adsAsynPortDriver::adsWriteParam(uint16_t amsClientPort,
     const char* functionName = "adsWriteParam";
     asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
 
+    // Reject I/O once teardown has begun. The destructor sets stopThreads_ and
+    // then frees each paramInfo (plcAdrStr, buffers); a straggler record-scan
+    // callback reaching this far would dereference freed memory. Bail before
+    // touching paramInfo. In a live IOC the driver outlives the process, so
+    // this only fires in the unit-test harness, which deletes the driver.
+    if (stopThreads_)
+    {
+        return asynError;
+    }
+
     // Calculate consumed time by this method
     struct timeval start, end;
     long secs_used, micros_used;
@@ -5962,6 +5972,14 @@ asynStatus adsAsynPortDriver::adsReadParam(uint16_t amsClientPort,
     uint32_t group  = 0;
     uint32_t offset = 0;
     *error          = 0;
+
+    // Reject I/O once teardown has begun (see adsWriteParam for the rationale):
+    // the destructor frees paramInfo after setting stopThreads_, so a straggler
+    // scan callback must bail before dereferencing freed memory.
+    if (stopThreads_)
+    {
+        return asynError;
+    }
 
     AmsAddr amsServer;
     amsServer = {remoteNetId_, paramInfo->amsPort};
