@@ -1148,13 +1148,15 @@ adsAsynPortDriver::adsAsynPortDriver(const char* portName,
     }
 
     //* Create the thread that computes the waveforms in the background */
-    status = (asynStatus)(epicsThreadCreate("adsAsynPortDriverCyclicThread",
-                                            epicsThreadPriorityMedium,
-                                            epicsThreadGetStackSize(epicsThreadStackMedium),
-                                            (EPICSTHREADFUNC)::cyclicThread,
-                                            this) == NULL);
-
-    if (status)
+    {
+        epicsThreadOpts opts = EPICS_THREAD_OPTS_INIT;
+        opts.priority        = epicsThreadPriorityMedium;
+        opts.stackSize       = epicsThreadGetStackSize(epicsThreadStackMedium);
+        opts.joinable        = 1; // joined in ~adsAsynPortDriver()
+        cyclicThreadId_      = epicsThreadCreateOpt(
+            "adsAsynPortDriverCyclicThread", (EPICSTHREADFUNC)::cyclicThread, this, &opts);
+    }
+    if (cyclicThreadId_ == NULL)
     {
         printf("%s:%s: epicsThreadCreate failure\n", driverName, functionName);
         return;
@@ -1180,37 +1182,49 @@ adsAsynPortDriver::adsAsynPortDriver(const char* portName,
     bulk_elapsed_us = 0;
 
     //* Create the thread that does the bulk reads */
-    status = (asynStatus)(epicsThreadCreate("adsAsynPortDriverBulkReadThread",
-                                            epicsThreadPriorityMedium,
-                                            epicsThreadGetStackSize(epicsThreadStackMedium),
-                                            (EPICSTHREADFUNC)::bulkReadThread,
-                                            this) == NULL);
-
-    if (status)
+    {
+        epicsThreadOpts opts = EPICS_THREAD_OPTS_INIT;
+        opts.priority        = epicsThreadPriorityMedium;
+        opts.stackSize       = epicsThreadGetStackSize(epicsThreadStackMedium);
+        opts.joinable        = 1; // joined in ~adsAsynPortDriver()
+        bulkReadThreadId_    = epicsThreadCreateOpt(
+            "adsAsynPortDriverBulkReadThread", (EPICSTHREADFUNC)::bulkReadThread, this, &opts);
+    }
+    if (bulkReadThreadId_ == NULL)
     {
         printf("%s:%s: epicsThreadCreate failure\n", driverName, functionName);
         return;
     }
     //* Create the thread that does the ADS subscription callbacks */
-    status = (asynStatus)(epicsThreadCreate("adsAsynPortDriverDataCallbackThread",
-                                            epicsThreadPriorityMedium,
-                                            epicsThreadGetStackSize(epicsThreadStackMedium),
-                                            (EPICSTHREADFUNC)::dataCallbackThread,
-                                            this) == NULL);
-
-    if (status)
+    {
+        epicsThreadOpts opts  = EPICS_THREAD_OPTS_INIT;
+        opts.priority         = epicsThreadPriorityMedium;
+        opts.stackSize        = epicsThreadGetStackSize(epicsThreadStackMedium);
+        opts.joinable         = 1; // joined in ~adsAsynPortDriver()
+        dataCallbackThreadId_ = epicsThreadCreateOpt("adsAsynPortDriverDataCallbackThread",
+                                                     (EPICSTHREADFUNC)::dataCallbackThread,
+                                                     this,
+                                                     &opts);
+    }
+    if (dataCallbackThreadId_ == NULL)
     {
         printf("%s:%s: epicsThreadCreate failure\n", driverName, functionName);
         return;
     }
 
     //* Create the thread that does I/O Intr callback triggers */
-    status = (asynStatus)(epicsThreadCreate("adsAsynPortDriverTriggerEpicsIoIntrCallbacksThread",
-                                            epicsThreadPriorityHigh,
-                                            epicsThreadGetStackSize(epicsThreadStackMedium),
-                                            (EPICSTHREADFUNC)::triggerEpicsIoIntrCallbacksThread,
-                                            this) == NULL);
-    if (status)
+    {
+        epicsThreadOpts opts = EPICS_THREAD_OPTS_INIT;
+        opts.priority        = epicsThreadPriorityHigh;
+        opts.stackSize       = epicsThreadGetStackSize(epicsThreadStackMedium);
+        opts.joinable        = 1; // joined in ~adsAsynPortDriver()
+        triggerIoIntrThreadId_ =
+            epicsThreadCreateOpt("adsAsynPortDriverTriggerEpicsIoIntrCallbacksThread",
+                                 (EPICSTHREADFUNC)::triggerEpicsIoIntrCallbacksThread,
+                                 this,
+                                 &opts);
+    }
+    if (triggerIoIntrThreadId_ == NULL)
     {
         throw std::runtime_error(string_format(
             "%s:%s: epicsThreadCreate failure for TriggerEpicsIoIntrCallbacksThread.\n",
@@ -1270,14 +1284,51 @@ adsAsynPortDriver::~adsAsynPortDriver()
     const char* functionName = "~adsAsynPortDriver";
     asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
 
+    // Stop and join the worker threads BEFORE releasing symbolic handles,
+    // freeing adsParamArray_ or closing the ADS port. The cyclic and bulk-read
+    // threads issue synchronous ADS requests on the shared AmsRouter; if they
+    // are still running while this destructor does the same and frees their
+    // data, teardown either hangs (all threads blocked in AmsResponse::Wait) or
+    // crashes (use-after-free on adsParamArray_/amsPortList_).
+    stopThreads_ = true;
+    if (cyclicThreadId_)
+    {
+        epicsThreadMustJoin(cyclicThreadId_);
+        cyclicThreadId_ = nullptr;
+    }
+    if (bulkReadThreadId_)
+    {
+        epicsThreadMustJoin(bulkReadThreadId_);
+        bulkReadThreadId_ = nullptr;
+    }
+    if (dataCallbackThreadId_)
+    {
+        epicsThreadMustJoin(dataCallbackThreadId_);
+        dataCallbackThreadId_ = nullptr;
+    }
+    if (triggerIoIntrThreadId_)
+    {
+        epicsThreadMustJoin(triggerIoIntrThreadId_);
+        triggerIoIntrThreadId_ = nullptr;
+    }
+
     free(ipaddr_);
     free(amsaddr_);
 
     // Only default ams client port remains so we use that to delete the ads callbacks and release symbolic handles.
     for (int i = 0; i < adsParamArrayCount_; i++)
     {
-        adsDelDataCallback(adsPort_, &adsParamArray_[i], true);       //Block error messages
-        adsReleaseSymbolicHandle(adsPort_, &adsParamArray_[i], true); //Block error messages
+        // Only release PLC-side notifications/handles while still connected. On
+        // a dropped connection TwinCAT already discards this connection's
+        // handles and notifications (the driver re-acquires them on reconnect
+        // in refreshParams), and a synchronous ADS release would otherwise block
+        // up to adsTimeoutMS per param. Matches the connectedAds_ guard in
+        // refreshParams(). The free()s below must run regardless.
+        if (connectedAds_)
+        {
+            adsDelDataCallback(adsPort_, &adsParamArray_[i], true);       //Block error messages
+            adsReleaseSymbolicHandle(adsPort_, &adsParamArray_[i], true); //Block error messages
+        }
         free(adsParamArray_[i].recordName);
         free(adsParamArray_[i].recordType);
         free(adsParamArray_[i].scan);
@@ -1330,6 +1381,10 @@ void adsAsynPortDriver::cyclicThread()
                   sampleTime);
 
         epicsThreadSleep(sampleTime);
+        if (stopThreads_)
+        {
+            break; // driver is being destroyed — exit before issuing ADS I/O
+        }
         if (!allowCallbackEpicsState)
         {
             continue; //Epics not started
@@ -1515,6 +1570,10 @@ void adsAsynPortDriver::bulkReadThread()
     }
     while (1)
     {
+        if (stopThreads_)
+        {
+            break; // driver is being destroyed — stop polling
+        }
         {
             std::lock_guard<std::mutex> lg(bulkReadInfoMutex_);
             gettimeofday(&start, NULL);
@@ -1624,6 +1683,10 @@ void adsAsynPortDriver::dataCallbackThread()
     asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
     while (1)
     {
+        if (stopThreads_)
+        {
+            break; // driver is being destroyed
+        }
         if (datacbqueue.empty() || !allowCallbackEpicsState)
         {
             usleep(10000);
@@ -1658,6 +1721,10 @@ void adsAsynPortDriver::triggerEpicsIoIntrCallbacksThread()
     asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, __func__);
     while (true)
     {
+        if (stopThreads_)
+        {
+            break; // driver is being destroyed
+        }
         if (!allowCallbackEpicsState)
         {
             epicsThreadSleep(0.5);
@@ -5773,6 +5840,16 @@ asynStatus adsAsynPortDriver::adsWriteParam(uint16_t amsClientPort,
     const char* functionName = "adsWriteParam";
     asynPrint(pasynUserSelf, ASYN_TRACE_FLOW, "%s:%s:\n", driverName, functionName);
 
+    // Reject I/O once teardown has begun. The destructor sets stopThreads_ and
+    // then frees each paramInfo (plcAdrStr, buffers); a straggler record-scan
+    // callback reaching this far would dereference freed memory. Bail before
+    // touching paramInfo. In a live IOC the driver outlives the process, so
+    // this only fires in the unit-test harness, which deletes the driver.
+    if (stopThreads_)
+    {
+        return asynError;
+    }
+
     // Calculate consumed time by this method
     struct timeval start, end;
     long secs_used, micros_used;
@@ -5895,6 +5972,14 @@ asynStatus adsAsynPortDriver::adsReadParam(uint16_t amsClientPort,
     uint32_t group  = 0;
     uint32_t offset = 0;
     *error          = 0;
+
+    // Reject I/O once teardown has begun (see adsWriteParam for the rationale):
+    // the destructor frees paramInfo after setting stopThreads_, so a straggler
+    // scan callback must bail before dereferencing freed memory.
+    if (stopThreads_)
+    {
+        return asynError;
+    }
 
     AmsAddr amsServer;
     amsServer = {remoteNetId_, paramInfo->amsPort};
