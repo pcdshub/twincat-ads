@@ -31,8 +31,8 @@ try:
     from pyads.testserver.testserver import AdsClientConnection
     from pyads.testserver.handler import AmsResponseData
     from pyads import constants
-except ImportError:
-    sys.exit("pyads is required: pip install pyads")
+except ImportError as exc:
+    raise ImportError("pyads is required: pip install pyads") from exc
 
 # ── SUMUP_READWRITE constant (0xF082) — not in pyads constants ───────────────
 ADSIGRP_SUMUP_READWRITE = 0xF082
@@ -89,11 +89,10 @@ class AdsClientConnectionFixed(AdsClientConnection):
                          source_net_id: bytes, source_port: int,
                          notif_handle: int, value: bytes) -> None:
         """Build and send a single DEVICENOTE AMS packet."""
-        import time as _time
 
         # Windows FILETIME: 100ns intervals since 1601-01-01
         FILETIME_EPOCH_DIFF = 116444736000000000
-        filetime = int(_time.time() * 1e7) + FILETIME_EPOCH_DIFF
+        filetime = int(time.time() * 1e7) + FILETIME_EPOCH_DIFF
 
         # ADS/AdsLib NotificationDispatcher::Run() parses the AMS data section as:
         #   cbLength(4)  nStamps(4)
@@ -328,21 +327,20 @@ class AdsTestHandler(AdvancedHandler):
     def _handle_request_inner(self, request) -> object:
         """Intercept ADDDEVICENOTE, plain READ, and the SUMUP read-writes;
         everything else falls through to pyads' base handler."""
-        import struct as _struct
 
-        command_id = _struct.unpack("<H", request.ams_header.command_id)[0]
+        command_id = struct.unpack("<H", request.ams_header.command_id)[0]
 
         # ── ADD_DEVICE_NOTIFICATION ────────────────────────────────────
         if command_id == constants.ADSCOMMAND_ADDDEVICENOTE:
             data = request.ams_header.data
-            index_group, index_offset = _struct.unpack_from("<II", data[:8])
+            index_group, index_offset = struct.unpack_from("<II", data[:8])
 
             # Extract per-request AMS addresses for DEVICENOTE targeting
             client_net_id = bytes(request.ams_header.source_net_id)
-            client_port   = _struct.unpack_from("<H",
+            client_port   = struct.unpack_from("<H",
                                 request.ams_header.source_port)[0]
             server_net_id = bytes(request.ams_header.target_net_id)
-            server_port   = _struct.unpack_from("<H",
+            server_port   = struct.unpack_from("<H",
                                 request.ams_header.target_port)[0]
 
             try:
@@ -367,9 +365,9 @@ class AdsTestHandler(AdvancedHandler):
         # ── Plain READ ─────────────────────────────────────────────────
         if command_id == constants.ADSCOMMAND_READ:
             data         = request.ams_header.data
-            index_group  = _struct.unpack_from("<I", data, 0)[0]
-            index_offset = _struct.unpack_from("<I", data, 4)[0]
-            read_length  = _struct.unpack_from("<I", data, 8)[0]
+            index_group  = struct.unpack_from("<I", data, 0)[0]
+            index_offset = struct.unpack_from("<I", data, 4)[0]
+            read_length  = struct.unpack_from("<I", data, 8)[0]
 
             try:
                 if index_group == constants.ADSIGRP_SYM_VALBYHND:
@@ -386,9 +384,9 @@ class AdsTestHandler(AdvancedHandler):
         # ── READWRITE (SUMUP_READWRITE / SUMUP_READ) ───────────────────
         if command_id == constants.ADSCOMMAND_READWRITE:
             data         = request.ams_header.data
-            index_group  = _struct.unpack_from("<I", data, 0)[0]
-            index_offset = _struct.unpack_from("<I", data, 4)[0]
-            write_length = _struct.unpack_from("<I", data, 12)[0]
+            index_group  = struct.unpack_from("<I", data, 0)[0]
+            index_offset = struct.unpack_from("<I", data, 4)[0]
+            write_length = struct.unpack_from("<I", data, 12)[0]
             write_data   = data[16: 16 + write_length]
 
             if index_group == ADSIGRP_SUMUP_READWRITE:
@@ -402,10 +400,9 @@ class AdsTestHandler(AdvancedHandler):
         try:
             return super().handle_request(request)
         except KeyError:
-            import struct as _s
-            state = _s.unpack("<H", request.ams_header.state_flags)[0]
-            state = _s.pack("<H", state | 0x0001)
-            return AmsResponseData(state, _s.pack("<I", 0x710), b"")
+            state = struct.unpack("<H", request.ams_header.state_flags)[0]
+            state = struct.pack("<H", state | 0x0001)
+            return AmsResponseData(state, struct.pack("<I", 0x710), b"")
 
     def _handle_sumup_readwrite(self, num_requests: int,
                                 write_data: bytes) -> bytes:
@@ -489,14 +486,12 @@ class AdsTestHandler(AdvancedHandler):
 
     def _build_response(self, request, read_data: bytes) -> object:
         """Build an AMS READ response (AoEReadResponseHeader format)."""
-        import struct as _s
-        state = _s.pack("<H", _s.unpack("<H", request.ams_header.state_flags)[0] | 0x0001)
+        state = struct.pack("<H", struct.unpack("<H", request.ams_header.state_flags)[0] | 0x0001)
         return AmsResponseData(state, request.ams_header.error_code, read_data)
 
     def _build_write_response(self, request, content: bytes) -> object:
         """Build an AMS WRITE-style response (error_code(4) + content)."""
-        import struct as _s
-        state = _s.pack("<H", _s.unpack("<H", request.ams_header.state_flags)[0] | 0x0001)
+        state = struct.pack("<H", struct.unpack("<H", request.ams_header.state_flags)[0] | 0x0001)
         return AmsResponseData(state, request.ams_header.error_code,
                                b"\x00\x00\x00\x00" + content)
 
