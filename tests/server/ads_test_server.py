@@ -34,7 +34,7 @@ try:
 except ImportError as exc:
     raise ImportError("pyads is required: pip install pyads") from exc
 
-# ── SUMUP_READWRITE constant (0xF082) — not in pyads constants ───────────────
+# SUMUP_READWRITE constant (0xF082) — not in pyads constants
 ADSIGRP_SUMUP_READWRITE = 0xF082
 
 
@@ -140,13 +140,13 @@ class AdsClientConnectionFixed(AdsClientConnection):
         while self._run:
             ready, _, _ = select.select([self.client], [], [], 0.05)
 
-            # ── Flush pending notifications every loop ────────────────
+            # Flush pending notifications every loop
             self._flush_notifications()
 
             if not ready:
                 continue
 
-            # ── Read full AMS TCP header (6 bytes) ────────────────────
+            # Read full AMS TCP header (6 bytes)
             header = b""
             while len(header) < 6:
                 # A test that is killed mid-run drops its TCP connection
@@ -166,10 +166,10 @@ class AdsClientConnectionFixed(AdsClientConnection):
             if not self._run or len(header) < 6:
                 break
 
-            # ── Parse payload length from TCP header bytes 2–6 ────────
+            # Parse payload length from TCP header bytes 2–6
             payload_len = struct.unpack("<I", header[2:6])[0]
 
-            # ── Read full payload, looping until complete ─────────────
+            # Read full payload, looping until complete
             payload = b""
             while len(payload) < payload_len:
                 to_read = min(65536, payload_len - len(payload))
@@ -190,7 +190,7 @@ class AdsClientConnectionFixed(AdsClientConnection):
             if len(data) < 38:
                 continue
 
-            # ── Register connection on first packet ───────────────────
+            # Register connection on first packet
             if not self._registered:
                 self._registered = True
                 if hasattr(self.handler, 'register_connection'):
@@ -330,7 +330,7 @@ class AdsTestHandler(AdvancedHandler):
 
         command_id = struct.unpack("<H", request.ams_header.command_id)[0]
 
-        # ── ADD_DEVICE_NOTIFICATION ────────────────────────────────────
+        # ADD_DEVICE_NOTIFICATION
         if command_id == constants.ADSCOMMAND_ADDDEVICENOTE:
             data = request.ams_header.data
             index_group, index_offset = struct.unpack_from("<II", data[:8])
@@ -362,7 +362,7 @@ class AdsTestHandler(AdvancedHandler):
 
             return self._build_write_response(request, content)
 
-        # ── Plain READ ─────────────────────────────────────────────────
+        # Plain READ
         if command_id == constants.ADSCOMMAND_READ:
             data         = request.ams_header.data
             index_group  = struct.unpack_from("<I", data, 0)[0]
@@ -381,7 +381,7 @@ class AdsTestHandler(AdvancedHandler):
 
             return self._build_response(request, read_data)
 
-        # ── READWRITE (SUMUP_READWRITE / SUMUP_READ) ───────────────────
+        # READWRITE (SUMUP_READWRITE / SUMUP_READ)
         if command_id == constants.ADSCOMMAND_READWRITE:
             data         = request.ams_header.data
             index_group  = struct.unpack_from("<I", data, 0)[0]
@@ -566,7 +566,7 @@ class AdsPLCVariable(PLCVariable):
                 self._handler.push_notification(notif_handle, value)
 
 
-# ── Datatype map: TwinCAT type string → (pyads ads_type constant, symbol_type) ──
+# Datatype map: TwinCAT type string → (pyads ads_type constant, symbol_type) ──
 _BASE_TYPE_MAP = {
     "BOOL":  (constants.ADST_BIT,     "BOOL"),
     "BYTE":  (constants.ADST_UINT8,   "BYTE"),
@@ -582,7 +582,7 @@ _BASE_TYPE_MAP = {
     "CHAR":  (constants.ADST_STRING,  "STRING"),
 }
 
-# ── Well-known test symbols ───────────────────────────────────────────────────
+# Well-known test symbols
 # These symbols are updated periodically by the updater thread.
 # C++ tests can rely on these names and types being present and changing.
 TEST_SYMBOLS = {
