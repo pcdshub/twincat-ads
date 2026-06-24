@@ -16,6 +16,7 @@
 # IOC apps or other Support apps
 # ===============================================================
 ASYN_MODULE_VERSION = R4.42-1.0.0
+GTEST_MODULE_VERSION = v1.0.1
 #AXIS_MODULE_VERSION = R0.0.1
 
 # ==========================================================
@@ -32,6 +33,7 @@ ASYN_MODULE_VERSION = R4.42-1.0.0
 # If your build fails, look for these paths in your build output
 # ==========================================================
 ASYN     = $(EPICS_MODULES)/asyn/$(ASYN_MODULE_VERSION)
+GTEST    = $(EPICS_MODULES)/gtest/$(GTEST_MODULE_VERSION)
 #AXIS     = $(EPICS_MODULES)/axis/$(AXIS_MODULE_VERSION)
 
 # Set EPICS_BASE last so it appears last in the DB, DBD, INCLUDE, and LIB search paths

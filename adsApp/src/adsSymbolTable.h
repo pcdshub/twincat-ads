@@ -127,12 +127,6 @@ using SymbolMap = std::unordered_map<std::string, AdsSymbolInfo>;
  * Value = SymbolMap for that port.
  */
 using SymbolCache = std::unordered_map<uint16_t, SymbolMap>;
-
-
-/* ─────────────────────────────────────────────────────────────────────────
- * Add to adsSymbolTable.h
- * ───────────────────────────────────────────────────────────────────────── */
-
 /**
  * One entry in the JSON-derived symbol dictionary.
  * Populated at construction from ads_symbol_dict.json.

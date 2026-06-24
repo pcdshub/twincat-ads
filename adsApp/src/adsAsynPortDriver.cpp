@@ -54,6 +54,15 @@ static int allowCallbackEpicsState     = 0;
 static initHookState currentEpicsState = initHookAtIocBuild;
 static struct timeval s_iocStartTime; /* captured at initHookAtIocBuild */
 
+#ifdef ADS_UNIT_TEST
+#include <atomic>
+std::atomic<int> g_callbackCount{0};
+
+void adsAsynPortDriver::setGlobalInstance(adsAsynPortDriver* obj)
+{
+    adsAsynPortObj = obj;
+}
+#endif
 /* drvInfo record-info cache
  *
  * getRecordInfoFromDrvInfo() initially walked the entire EPICS database
@@ -1549,6 +1558,15 @@ void adsAsynPortDriver::bulkReadThread()
     asynUser* asynTraceUser = getTraceAsynUser();
     while (!bulkOK)
     {
+        // Honour a shutdown request while still waiting for the first bulk-read
+        // setup. Without this a driver torn down before bulkOK is ever set
+        // (e.g. instantiated with no bulk params, then deleted) leaves this
+        // thread spinning here forever, so the epicsThreadMustJoin() in the
+        // destructor never returns. Completes the worker-thread stop/join path.
+        if (stopThreads_)
+        {
+            return;
+        }
         usleep(1000000);
     }
     {
@@ -1712,6 +1730,9 @@ void adsAsynPortDriver::dataCallbackThread()
         // This free is for the malloc in adsDataCallback
         free(info->data);
         datacbqueue.pop();
+#ifdef ADS_UNIT_TEST
+        g_callbackCount++;
+#endif
     }
 }
 

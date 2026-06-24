@@ -12,6 +12,7 @@
 #include <string.h>
 #include <initHooks.h>
 #include "epicsTime.h"
+#include <stdexcept>
 
 typedef struct
 {
