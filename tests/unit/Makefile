@@ -35,7 +35,6 @@ GTESTS += test_basic
 
 GTESTPROD_HOST += test_ioc_lifecycle
 test_ioc_lifecycle_SRCS += test_ioc_lifecycle.cpp
-test_ioc_lifecycle_SRCS += test_helpers.cpp
 test_ioc_lifecycle_SRCS += testIoc_registerRecordDeviceDriver.cpp
 GTESTS += test_ioc_lifecycle
 
