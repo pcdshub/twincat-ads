@@ -7,6 +7,7 @@
 #include <dbBase.h>
 #include <dbStaticLib.h>
 #include "AdsLib.h"
+#include "adsIocConfig.h"
 #include <vector>
 #include "adsAsynPortDriverUtils.h"
 #include "adsSymbolTable.h"
@@ -241,6 +242,7 @@ class adsAsynPortDriver : public asynPortDriver
     std::vector<adsParamInfo> adsParamArray_;
     std::vector<amsPortInfo*> amsPortList_;
     ADSTIMESOURCE defaultTimeSource_;
+    AdsIocOptions options_;
     std::unordered_map<epicsThreadId, AmsClientPortEntry> threadIdToAmsClientPortMap_;
     std::recursive_mutex threadIdToAmsClientPortMapMutex_;
 

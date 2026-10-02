@@ -8,3 +8,9 @@
 [submodule "testIOC"]
 	path = testIOC
 	url = https://github.com/pcdshub/lcls-plc-tst-tcads.git
+[submodule "toml11"]
+	path = adsApp/src/toml11
+	url = https://github.com/ToruNiina/toml11.git
+[submodule "gtest"]
+	path = gtest
+	url = https://github.com/epics-modules/gtest.git

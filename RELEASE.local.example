@@ -1,0 +1,3 @@
+# Copy this file to RELEASE.local and set the path for your EPICS installation.
+# This file is read by the local gtest submodule build.
+EPICS_BASE = /path/to/epics/base/R7.0.6.1-2.0

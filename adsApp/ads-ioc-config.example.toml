@@ -1,0 +1,54 @@
+# Single-target ADS IOC configuration.
+# Load this before adsAsynPortDriverConfigure using adsLoadConfig(path).
+# The legacy configure arguments override values represented by that command.
+
+[target]
+ip = "172.21.148.178"
+# Omit to discover the AMS Net ID; failed discovery falls back to target IP + .1.1.
+# amsNetId = "172.21.148.178.1.1"
+# Optional local AMS identity for target-side route creation.
+# localIp = "172.21.148.10"
+# localAmsNetId = "172.21.148.10.1.1"
+
+[ports]
+systemServicePort = 10000
+plcRuntimePorts = [851]
+ncConfigPort = 500
+ncSymbolPort = 501
+etherCatMasterPort = 65535
+loggerPort = 100
+adsTcpPort = 48898
+adsDiscoveryUdpPort = 48899
+
+[behavior]
+# NC and CoE write paths are future features and disabled unless explicitly enabled.
+enableNcParameterWrites = false
+enableCoeParameterWrites = false
+enableEcStateRequests = false
+enableAdsStateRequests = false
+enableIcmpPingCheck = true
+continueIfPingFails = false
+enableAdsReachabilityCheck = true
+enableAutoRouteDiagnostics = true
+enableRouteCreationCommands = true
+enableEventLoggerConnection = true
+allowIndexOffsetFallback = true
+allowSlowRecoveryRetry = true
+
+[timing]
+heartbeatPeriodSec = 5.0
+heartbeatFailureThreshold = 2
+routeCheckInitialBackoffSec = 1.0
+routeCheckMaxBackoffSec = 64.0
+bulkReadRetryWindowSec = 0.1
+bulkWriteGroupWindowSec = 0.1
+slowRecoveryRetryPeriodSec = 30.0
+# Explicit units avoid the former seconds/milliseconds ambiguity.
+adsRequestTimeoutMs = 5000
+
+[limits]
+maxBulkReadBatchSize = 500
+maxBulkWriteBatchSize = 500
+maxFailedSymbolsPerCycle = 500
+maxEventLoggerMessagesPerSec = 100
+maxDiagnosticLogRate = 100

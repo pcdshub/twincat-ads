@@ -1,0 +1,13 @@
+[workspace]
+name = "twincat-ads"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+version = "0.1.0"
+
+[tasks]
+test-server = "python -u tests/server/ads_test_server.py --json testIOC/iocBoot/ioc-TestIOC/ads_symbol_dict.json"
+unit-tests = "make -C tests/unit runtests"
+
+[dependencies]
+python = ">=3.11,<3.15"
+pyads = ">=3.5.2,<4"

@@ -28,6 +28,8 @@
 #include <errno.h>
 #include <math.h>
 #include <sys/time.h>
+#include <arpa/inet.h>
+#include <netdb.h>
 
 #include <epicsTypes.h>
 #include <epicsTime.h>
@@ -45,6 +47,7 @@
 #include <fstream>
 #include <algorithm>
 #include <unordered_map>
+#include <sstream>
 
 static const char* driverName = "adsAsynPortDriver";
 static adsAsynPortDriver* adsAsynPortObj;
@@ -1028,6 +1031,7 @@ adsAsynPortDriver::adsAsynPortDriver(const char* portName,
     routeAdded_            = 0;
     notConnectedCounter_   = 0;
     oneAmsConnectionOKold_ = 0;
+    options_ = getAdsIocOptions();
 
     //Octet interface
     octetAsciiBuffer_.bufferSize = ADS_CMD_BUFFER_SIZE;
@@ -7241,6 +7245,59 @@ asynStatus adsAsynPortDriver::adsAddRoute()
     return asynSuccess;
 }
 
+static std::string formatAmsNetId(const AmsNetId& netId)
+{
+    std::ostringstream value;
+    value << static_cast<unsigned int>(netId.b[0]) << '.'
+          << static_cast<unsigned int>(netId.b[1]) << '.'
+          << static_cast<unsigned int>(netId.b[2]) << '.'
+          << static_cast<unsigned int>(netId.b[3]) << '.'
+          << static_cast<unsigned int>(netId.b[4]) << '.'
+          << static_cast<unsigned int>(netId.b[5]);
+    return value.str();
+}
+
+static bool discoverOrFallbackAmsNetId(const std::string& targetIp,
+                                       std::string& amsNetId,
+                                       bool& usedFallback,
+                                       std::string& error)
+{
+    AmsNetId discovered;
+    const long discoveryStatus = bhf::ads::GetRemoteAddress(targetIp, discovered);
+    if (discoveryStatus == 0 && discovered)
+    {
+        amsNetId = formatAmsNetId(discovered);
+        usedFallback = false;
+        return true;
+    }
+
+    addrinfo hints = {};
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    addrinfo* addresses = nullptr;
+    const int resolveStatus = getaddrinfo(targetIp.c_str(), nullptr, &hints, &addresses);
+    if (resolveStatus != 0 || !addresses)
+    {
+        std::ostringstream message;
+        message << "AMS Net ID discovery failed (ADS error " << discoveryStatus
+                << ") and target IP could not be resolved for the IP-derived fallback: "
+                << gai_strerror(resolveStatus);
+        error = message.str();
+        if (addresses)
+        {
+            freeaddrinfo(addresses);
+        }
+        return false;
+    }
+
+    const sockaddr_in* address = reinterpret_cast<const sockaddr_in*>(addresses->ai_addr);
+    const AmsNetId fallback(ntohl(address->sin_addr.s_addr));
+    amsNetId = formatAmsNetId(fallback);
+    freeaddrinfo(addresses);
+    usedFallback = true;
+    return true;
+}
+
 
 /* Configuration routine.  Called directly, or from the iocsh function below */
 
@@ -7332,16 +7389,56 @@ extern "C"
             return -1;
         }
 
-        if (!ipaddr)
+        AdsIocOptions options = getAdsIocOptions();
+        const std::string effectiveIp = (ipaddr && strlen(ipaddr) > 0) ? ipaddr : options.targetIp;
+        if (effectiveIp.empty())
         {
-            printf("adsAsynPortDriverConfigure bad ipaddr: %s\n", ipaddr ? ipaddr : "");
+            printf("adsAsynPortDriverConfigure requires target IP via TOML or the legacy argument.\n");
             return -1;
         }
-        if (!amsaddr)
+
+        std::string effectiveAmsNetId =
+            (amsaddr && strlen(amsaddr) > 0) ? amsaddr : options.targetAmsNetId;
+        bool usedAmsFallback = false;
+        if (effectiveAmsNetId.empty())
         {
-            printf("adsAsynPortDriverConfigure bad amsaddr: %s\n", amsaddr ? amsaddr : "");
-            return -1;
+            std::string discoveryError;
+            if (!discoverOrFallbackAmsNetId(
+                    effectiveIp, effectiveAmsNetId, usedAmsFallback, discoveryError))
+            {
+                printf("adsAsynPortDriverConfigure could not determine target AMS Net ID: %s\n",
+                       discoveryError.c_str());
+                return -1;
+            }
+            if (usedAmsFallback)
+            {
+                printf("ADS AMS Net ID discovery failed; using IP-derived fallback %s.\n",
+                       effectiveAmsNetId.c_str());
+            }
+            else
+            {
+                printf("Discovered target AMS Net ID: %s\n", effectiveAmsNetId.c_str());
+            }
         }
+
+        options.targetIp = effectiveIp;
+        options.targetAmsNetId = effectiveAmsNetId;
+        if (amsport == 0 && !options.plcRuntimePorts.empty())
+        {
+            amsport = options.plcRuntimePorts.front();
+        }
+        if (!options.localAmsNetId.empty())
+        {
+            const AmsNetId localId(options.localAmsNetId);
+            if (!localId)
+            {
+                printf("adsAsynPortDriverConfigure invalid local AMS Net ID: %s\n",
+                       options.localAmsNetId.c_str());
+                return -1;
+            }
+            AdsSetLocalAddress(options.localAmsNetId);
+        }
+        setAdsIocOptions(options);
         if (defaultSampleTimeMS < 0)
         {
             printf("adsAsynPortDriverConfigure bad defaultSampleTimeMS: %dms. Standard value of "
@@ -7381,8 +7478,8 @@ extern "C"
         }
 
         adsAsynPortObj = new adsAsynPortDriver(portName,
-                                               ipaddr,
-                                               amsaddr,
+                                               effectiveIp.c_str(),
+                                               effectiveAmsNetId.c_str(),
                                                amsport,
                                                asynParamTableSize,
                                                priority,
@@ -7411,6 +7508,31 @@ extern "C"
     /*
    * IOC shell command registration
    */
+    static const iocshArg adsLoadConfigArg0 = {"TOML configuration file", iocshArgString};
+    static const iocshArg* adsLoadConfigArgs[] = {&adsLoadConfigArg0};
+    static const iocshFuncDef adsLoadConfigFuncDef = {"adsLoadConfig", 1, adsLoadConfigArgs};
+
+    static void adsLoadConfigCallFunc(const iocshArgBuf* args)
+    {
+        if (adsAsynPortObj)
+        {
+            printf("adsLoadConfig must be called before adsAsynPortDriverConfigure.\n");
+            return;
+        }
+        if (!args[0].sval || strlen(args[0].sval) == 0)
+        {
+            printf("adsLoadConfig requires a TOML file path.\n");
+            return;
+        }
+        std::string error;
+        if (!loadAdsIocConfig(args[0].sval, error))
+        {
+            printf("adsLoadConfig failed: %s\n", error.c_str());
+            return;
+        }
+        printf("Loaded ADS IOC configuration from %s\n", args[0].sval);
+    }
+
     static const iocshArg adsAsynPortDriverConfigureArg0  = {"port name", iocshArgString};
     static const iocshArg adsAsynPortDriverConfigureArg1  = {"ip-addr", iocshArgString};
     static const iocshArg adsAsynPortDriverConfigureArg2  = {"ams-addr", iocshArgString};
@@ -7495,6 +7617,7 @@ extern "C"
 
     static void adsAsynPortDriverRegister(void)
     {
+        iocshRegister(&adsLoadConfigFuncDef, adsLoadConfigCallFunc);
         iocshRegister(&adsAsynPortDriverConfigureFuncDef, adsAsynPortDriverConfigureCallFunc);
         iocshRegister(&adsSetLocalAddressFuncDef, adsSetLocalAddressCallFunc);
         iocshRegister(&adsPollInfoFuncDef, adsPollInfoCallFunc);

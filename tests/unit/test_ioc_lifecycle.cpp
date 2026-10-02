@@ -137,6 +137,7 @@ protected:
         }
         delete driver;
         driver = nullptr;
+        adsAsynPortDriver::setGlobalInstance(nullptr);
     }
 };
 
