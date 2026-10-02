@@ -13,4 +13,12 @@ iocBoot_DEPEND_DIRS += $(filter %App,$(DIRS))
 
 include $(TOP)/configure/RULES_TOP
 
+# Build the pinned, project-local EPICS GTest module. Keep its artifacts under
+# builddir/ and compile both GTest and the test binaries with the same C++14 mode.
+.PHONY: gtest-local
+gtest-local:
+	$(MAKE) -C gtest install \
+		INSTALL_LOCATION="$(abspath builddir/gtest)" \
+		USR_CXXFLAGS="-std=c++14"
+
 

@@ -1,0 +1,4 @@
+# Copy to RELEASE_SITE and adjust for your EPICS installation.
+EPICS_SITE_TOP = /cds/group/pcds/epics
+BASE_MODULE_VERSION = R7.0.6.1-2.0
+EPICS_MODULES = $(EPICS_SITE_TOP)/$(BASE_MODULE_VERSION)/modules

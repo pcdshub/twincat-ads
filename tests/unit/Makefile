@@ -10,6 +10,7 @@ USR_CXXFLAGS += -DTEST_DB_PATH=\"$(TOP)/testIOC/iocBoot/ioc-TestIOC/TestIOC.db\"
 USR_DBDFLAGS += -I$(TOP)/dbd
 
 USR_INCLUDES += -I$(TOP)/adsApp/src
+USR_INCLUDES += -I$(TOP)/adsApp/src/toml11/single_include
 USR_INCLUDES += -I$(TOP)/ADS/AdsLib
 USR_INCLUDES += -I$(ASYN)/include
 
@@ -32,6 +33,10 @@ testIoc_DBD += ads.dbd
 GTESTPROD_HOST += test_basic
 test_basic_SRCS += test_basic.cpp
 GTESTS += test_basic
+
+GTESTPROD_HOST += test_ads_ioc_config
+test_ads_ioc_config_SRCS += test_ads_ioc_config.cpp
+GTESTS += test_ads_ioc_config
 
 GTESTPROD_HOST += test_ioc_lifecycle
 test_ioc_lifecycle_SRCS += test_ioc_lifecycle.cpp

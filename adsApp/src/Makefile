@@ -5,8 +5,9 @@ include $(TOP)/configure/CONFIG
 #  ADD MACRO DEFINITIONS AFTER THIS LINE
 #=============================
 
-USR_CXXFLAGS += -std=c++11 -DCONFIG_DEFAULT_LOGLEVEL=1
+USR_CXXFLAGS += -std=c++14 -DCONFIG_DEFAULT_LOGLEVEL=1
 USR_CPPFLAGS += -I ../../../ADS/AdsLib/
+USR_CPPFLAGS += -I $(TOP)/adsApp/src/toml11/single_include
 USR_LDFLAGS  += -lpthread
 
 #=============================
@@ -24,6 +25,7 @@ ADSSUPPORTSOURCES = \
   AmsNetId.cpp \
   AmsPort.cpp \
   AmsRouter.cpp \
+  AdsLibDiscovery.cpp \
   Log.cpp \
   NotificationDispatcher.cpp \
   Sockets.cpp \
@@ -32,6 +34,7 @@ ADSSUPPORTSOURCES = \
 
 ads_SRCS += adsAsynPortDriver.cpp
 ads_SRCS += adsAsynPortDriverUtils.cpp
+ads_SRCS += adsIocConfig.cpp
 ads_SRCS += ${ADSSUPPORTSOURCES}
 
 ads_LIBS += asyn
