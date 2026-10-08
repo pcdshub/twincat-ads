@@ -16,7 +16,7 @@
 # IOC apps or other Support apps
 # ===============================================================
 ASYN_MODULE_VERSION = R4.42-1.0.0
-GTEST_MODULE_VERSION = v1.0.1
+GTEST_MODULE_VERSION = R1.0.1-1.0.0
 #AXIS_MODULE_VERSION = R0.0.1
 
 # ==========================================================
