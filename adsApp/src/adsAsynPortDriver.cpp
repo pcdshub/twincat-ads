@@ -5152,7 +5152,7 @@ adsAsynPortDriver::writeFloat64Array(asynUser* pasynUser, epicsFloat64* value, s
                                 pasynUser,
                                 allowedType,
                                 (const void*)value,
-                                nElements * nElements * sizeof(epicsFloat64));
+                                nElements * sizeof(epicsFloat64));
 }
 
 /** Returns pasynUserSelf for use in asynPrint().
