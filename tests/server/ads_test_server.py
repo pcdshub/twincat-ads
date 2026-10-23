@@ -36,6 +36,15 @@ except ImportError as exc:
 
 # SUMUP_READWRITE constant (0xF082) — not in pyads constants
 ADSIGRP_SUMUP_READWRITE = 0xF082
+ADS_ECAT_STATE_INDEX_GROUP = 0x0009
+ADS_ECAT_IO_DEVICE_STATE_INDEX_GROUP = 0x5000
+ADS_ECAT_IO_READ_DEVICE_IDS_OFFSET = 0x01
+ADS_ECAT_IO_READ_DEVICE_COUNT_OFFSET = 0x02
+ADS_ECAT_IO_READ_DEVICE_NET_ID_OFFSET = 0x05
+SIMULATED_ECAT_DEVICE_ID = 7
+SIMULATED_ECAT_DENIED_SLAVE_PORT = 1004
+DEFAULT_SIMULATED_ECAT_MASTER_AMS_NET_ID = "127.0.0.1.2.1"
+SIMULATED_ECAT_MASTER_RAW_AMS_NET_ID = bytes((0, 0, 0, 0, 2, 1))
 
 
 class AdsClientConnectionFixed(AdsClientConnection):
@@ -254,7 +263,10 @@ class AdsTestHandler(AdvancedHandler):
     - Server-initiated DEVICENOTE push when variables change
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        ethercat_master_ams_net_id: str = DEFAULT_SIMULATED_ECAT_MASTER_AMS_NET_ID,
+    ):
         super().__init__()
         self._connections = []
         self._conn_lock   = threading.Lock()
@@ -269,6 +281,11 @@ class AdsTestHandler(AdvancedHandler):
         # so handle_request() can attribute an ADDDEVICENOTE to its connection.
         self._tls         = threading.local()
         self._addr_lock   = threading.Lock()
+        self._ethercat_state_lock = threading.Lock()
+        self._ethercat_states = {}
+        self._ethercat_master_ams_net_id = bytes(
+            int(part) for part in ethercat_master_ams_net_id.split(".")
+        )
 
     def register_connection(self, conn) -> None:
         with self._conn_lock:
@@ -370,11 +387,50 @@ class AdsTestHandler(AdvancedHandler):
             read_length  = struct.unpack_from("<I", data, 8)[0]
 
             try:
-                if index_group == constants.ADSIGRP_SYM_VALBYHND:
+                if index_group == ADS_ECAT_IO_DEVICE_STATE_INDEX_GROUP:
+                    if index_offset == ADS_ECAT_IO_READ_DEVICE_COUNT_OFFSET:
+                        value = struct.pack("<I", 1)
+                    elif index_offset == ADS_ECAT_IO_READ_DEVICE_IDS_OFFSET:
+                        value = struct.pack("<HH", 0, SIMULATED_ECAT_DEVICE_ID)
+                    else:
+                        raise KeyError((index_group, index_offset))
+                elif (
+                    index_group
+                    == ADS_ECAT_IO_DEVICE_STATE_INDEX_GROUP + SIMULATED_ECAT_DEVICE_ID
+                    and index_offset == ADS_ECAT_IO_READ_DEVICE_NET_ID_OFFSET
+                ):
+                    value = SIMULATED_ECAT_MASTER_RAW_AMS_NET_ID
+                elif index_group == ADS_ECAT_STATE_INDEX_GROUP:
+                    target_net_id = bytes(request.ams_header.target_net_id)
+                    if target_net_id != self._ethercat_master_ams_net_id:
+                        print(
+                            "[ads_test_server] EtherCAT state read used AMS Net ID "
+                            f"{'.'.join(map(str, target_net_id))}, expected "
+                            f"{'.'.join(map(str, self._ethercat_master_ams_net_id))}",
+                            flush=True,
+                        )
+                        read_data = struct.pack("<II", 0x710, 0)
+                        return self._build_response(request, read_data)
+                    with self._ethercat_state_lock:
+                        default_state = (
+                            b"\x04\x18"
+                            if index_offset == SIMULATED_ECAT_DENIED_SLAVE_PORT
+                            else b"\x04\x10"
+                        )
+                        state = self._ethercat_states.get(
+                            index_offset, default_state
+                        )
+                    value = state[:read_length]
+                elif index_group == constants.ADSIGRP_SYM_VALBYHND:
                     var = self.get_variable_by_handle(index_offset)
                 else:
                     var = self.get_variable_by_indices(index_group, index_offset)
-                value     = var.value[:read_length]
+                if index_group not in (
+                    ADS_ECAT_STATE_INDEX_GROUP,
+                    ADS_ECAT_IO_DEVICE_STATE_INDEX_GROUP,
+                    ADS_ECAT_IO_DEVICE_STATE_INDEX_GROUP + SIMULATED_ECAT_DEVICE_ID,
+                ):
+                    value = var.value[:read_length]
                 read_data = struct.pack("<II", 0, len(value)) + value
             except Exception:
                 read_data = struct.pack("<II", 0x710, 0)
@@ -396,6 +452,58 @@ class AdsTestHandler(AdvancedHandler):
             elif index_group == constants.ADSIGRP_SUMUP_READ:
                 read_data = self._handle_sumup_read(index_offset, write_data)
                 return self._build_response(request, read_data)
+
+        # EtherCAT slave-state request (the data itself is a UINT state code).
+        if command_id == 0x00000003:
+            data = request.ams_header.data
+            index_group, index_offset, write_length = struct.unpack_from(
+                "<III", data, 0
+            )
+            if index_group == ADS_ECAT_STATE_INDEX_GROUP:
+                target_net_id = bytes(request.ams_header.target_net_id)
+                if target_net_id != self._ethercat_master_ams_net_id:
+                    print(
+                        "[ads_test_server] EtherCAT state write used AMS Net ID "
+                        f"{'.'.join(map(str, target_net_id))}, expected "
+                        f"{'.'.join(map(str, self._ethercat_master_ams_net_id))}",
+                        flush=True,
+                    )
+                    state = struct.pack(
+                        "<H",
+                        struct.unpack("<H", request.ams_header.state_flags)[0]
+                        | 0x0001,
+                    )
+                    return AmsResponseData(state, struct.pack("<I", 0x710), b"")
+                if write_length != 2:
+                    state = struct.pack(
+                        "<H",
+                        struct.unpack("<H", request.ams_header.state_flags)[0]
+                        | 0x0001,
+                    )
+                    return AmsResponseData(state, struct.pack("<I", 0x710), b"")
+
+                requested_state = struct.unpack_from("<H", data, 12)[0]
+                if requested_state not in (0x01, 0x02, 0x03, 0x04, 0x08):
+                    state = struct.pack(
+                        "<H",
+                        struct.unpack("<H", request.ams_header.state_flags)[0]
+                        | 0x0001,
+                    )
+                    return AmsResponseData(state, struct.pack("<I", 0x710), b"")
+
+                with self._ethercat_state_lock:
+                    default_state = (
+                        b"\x04\x18"
+                        if index_offset == SIMULATED_ECAT_DENIED_SLAVE_PORT
+                        else b"\x04\x10"
+                    )
+                    current = self._ethercat_states.get(
+                        index_offset, default_state
+                    )
+                    self._ethercat_states[index_offset] = bytes(
+                        (requested_state, current[1])
+                    )
+                return self._build_write_response(request, b"")
 
         try:
             return super().handle_request(request)
@@ -721,13 +829,18 @@ def main():
         action="store_true",
         help="Disable the periodic variable updater",
     )
+    parser.add_argument(
+        "--ethercat-master-ams-net-id",
+        default=DEFAULT_SIMULATED_ECAT_MASTER_AMS_NET_ID,
+        help="Target AMS Net ID expected for simulated EtherCAT requests",
+    )
     args = parser.parse_args()
 
     json_path = os.path.abspath(args.json)
     if not os.path.exists(json_path):
         sys.exit(f"[ads_test_server] JSON not found: {json_path}")
 
-    handler = AdsTestHandler()
+    handler = AdsTestHandler(args.ethercat_master_ams_net_id)
     for var in load_symbols(json_path, handler=handler):
         handler.add_variable(var)
 

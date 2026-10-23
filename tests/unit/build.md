@@ -51,7 +51,7 @@ Run the suite from the first terminal:
 make -C tests/unit runtests
 ```
 
-Expected: `test_basic` 1/1 and `test_ioc_lifecycle` 13/13. TAP output lands in
+Expected: `test_basic` 4/4 and `test_ioc_lifecycle` 13/13. TAP output lands in
 `tests/unit/O.<arch>/*.tap`.
 
 For faster iteration, run one binary directly. Cd into the arch dir first so it
