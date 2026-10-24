@@ -15,9 +15,9 @@ inline bool parseAmsNetId(const char* text, AmsNetId* netId)
     if (!text || !netId || !*text)
         return false;
 
-    unsigned int bytes[6] = {};
+    unsigned int bytes[6]  = {};
     char trailingCharacter = '\0';
-    const int parsed = std::sscanf(text,
+    const int parsed       = std::sscanf(text,
                                    "%u.%u.%u.%u.%u.%u%c",
                                    &bytes[0],
                                    &bytes[1],
@@ -26,10 +26,10 @@ inline bool parseAmsNetId(const char* text, AmsNetId* netId)
                                    &bytes[4],
                                    &bytes[5],
                                    &trailingCharacter);
-    if (parsed != 6 ||
-        !std::all_of(bytes, bytes + 6, [](unsigned int byte) {
-            return byte <= std::numeric_limits<std::uint8_t>::max();
-        }))
+    if (parsed != 6 || !std::all_of(bytes,
+                                    bytes + 6,
+                                    [](unsigned int byte)
+                                    { return byte <= std::numeric_limits<std::uint8_t>::max(); }))
     {
         return false;
     }
