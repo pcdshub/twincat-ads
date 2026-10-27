@@ -20,8 +20,12 @@ EPICS record layer.
 For EtherCAT state records, the driver discovers the EtherCAT master AMS
 Net ID through the PLC's ADS R0 I/O device list. It uses the discovered ID
 when exactly one configured I/O device is present, or derives the conventional
-`.2.1` suffix from the PLC AMS Net ID otherwise. Set the IOC environment
-variable `ECAT_MASTER_AMS_NET_ID` before `adsAsynPortDriverConfigure` to
-override discovery.
+`.2.1` suffix from the PLC AMS Net ID otherwise. A successful device-count
+read returning zero is reported as a PLC project with no EtherCAT master;
+EtherCAT state reads and requests are then rejected without sending state
+traffic to the PLC. A failed discovery read is logged as an error and uses the
+derived ID fallback. Set the IOC environment variable
+`ECAT_MASTER_AMS_NET_ID` before `adsAsynPortDriverConfigure` to override
+discovery.
 
 Contact: anders.sandstrom@esss.se

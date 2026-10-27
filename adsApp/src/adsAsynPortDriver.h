@@ -148,6 +148,10 @@ class adsAsynPortDriver : public asynPortDriver
     adsReleaseSymbolicHandle(uint16_t amsClientPort, adsParamInfo* paramInfo, bool blockErrorMsg);
     asynStatus adsConnect(uint16_t amsClientPort);
     bool resolveEthercatMasterAmsNetId(uint16_t amsClientPort);
+    bool ethercatMasterIsResolved() const;
+    bool ethercatMasterIsAvailable() const;
+    bool checkEthercatMasterForParam(
+        uint16_t amsClientPort, const adsParamInfo* paramInfo, const char* functionName);
     AmsNetId adsTargetNetIdForParam(const adsParamInfo* paramInfo) const;
     asynStatus adsDisconnect();
     asynStatus adsWriteParam(uint16_t amsClientPort,
@@ -245,9 +249,10 @@ class adsAsynPortDriver : public asynPortDriver
     unsigned int priority_;
     AmsNetId remoteNetId_;
     AmsNetId ethercatMasterNetId_;
-    bool ethercatMasterNetIdResolved_ = false;
+    std::atomic<bool> ethercatMasterNetIdResolved_{false};
+    bool ethercatMasterAvailable_ = false;
     std::string ethercatMasterAmsNetIdSource_;
-    std::mutex ethercatMasterNetIdMutex_;
+    mutable std::mutex ethercatMasterNetIdMutex_;
     std::vector<adsParamInfo> adsParamArray_;
     std::vector<amsPortInfo*> amsPortList_;
     ADSTIMESOURCE defaultTimeSource_;

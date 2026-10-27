@@ -266,7 +266,10 @@ class AdsTestHandler(AdvancedHandler):
     def __init__(
         self,
         ethercat_master_ams_net_id: str = DEFAULT_SIMULATED_ECAT_MASTER_AMS_NET_ID,
+        ethercat_io_device_count: int = 1,
     ):
+        if ethercat_io_device_count not in (0, 1):
+            raise ValueError("ethercat_io_device_count must be 0 or 1")
         super().__init__()
         self._connections = []
         self._conn_lock   = threading.Lock()
@@ -283,6 +286,7 @@ class AdsTestHandler(AdvancedHandler):
         self._addr_lock   = threading.Lock()
         self._ethercat_state_lock = threading.Lock()
         self._ethercat_states = {}
+        self._ethercat_io_device_count = ethercat_io_device_count
         self._ethercat_master_ams_net_id = bytes(
             int(part) for part in ethercat_master_ams_net_id.split(".")
         )
@@ -389,8 +393,10 @@ class AdsTestHandler(AdvancedHandler):
             try:
                 if index_group == ADS_ECAT_IO_DEVICE_STATE_INDEX_GROUP:
                     if index_offset == ADS_ECAT_IO_READ_DEVICE_COUNT_OFFSET:
-                        value = struct.pack("<I", 1)
+                        value = struct.pack("<I", self._ethercat_io_device_count)
                     elif index_offset == ADS_ECAT_IO_READ_DEVICE_IDS_OFFSET:
+                        if self._ethercat_io_device_count == 0:
+                            raise KeyError((index_group, index_offset))
                         value = struct.pack("<HH", 0, SIMULATED_ECAT_DEVICE_ID)
                     else:
                         raise KeyError((index_group, index_offset))
@@ -401,6 +407,14 @@ class AdsTestHandler(AdvancedHandler):
                 ):
                     value = SIMULATED_ECAT_MASTER_RAW_AMS_NET_ID
                 elif index_group == ADS_ECAT_STATE_INDEX_GROUP:
+                    if self._ethercat_io_device_count == 0:
+                        print(
+                            "[ads_test_server] unexpected EtherCAT state read "
+                            "when no master is configured",
+                            flush=True,
+                        )
+                        read_data = struct.pack("<II", 0x710, 0)
+                        return self._build_response(request, read_data)
                     target_net_id = bytes(request.ams_header.target_net_id)
                     if target_net_id != self._ethercat_master_ams_net_id:
                         print(
@@ -460,6 +474,18 @@ class AdsTestHandler(AdvancedHandler):
                 "<III", data, 0
             )
             if index_group == ADS_ECAT_STATE_INDEX_GROUP:
+                if self._ethercat_io_device_count == 0:
+                    print(
+                        "[ads_test_server] unexpected EtherCAT state write "
+                        "when no master is configured",
+                        flush=True,
+                    )
+                    state = struct.pack(
+                        "<H",
+                        struct.unpack("<H", request.ams_header.state_flags)[0]
+                        | 0x0001,
+                    )
+                    return AmsResponseData(state, struct.pack("<I", 0x710), b"")
                 target_net_id = bytes(request.ams_header.target_net_id)
                 if target_net_id != self._ethercat_master_ams_net_id:
                     print(
@@ -834,13 +860,23 @@ def main():
         default=DEFAULT_SIMULATED_ECAT_MASTER_AMS_NET_ID,
         help="Target AMS Net ID expected for simulated EtherCAT requests",
     )
+    parser.add_argument(
+        "--ethercat-io-device-count",
+        type=int,
+        choices=(0, 1),
+        default=1,
+        help="Simulated PLC EtherCAT-capable I/O device count (default: 1)",
+    )
     args = parser.parse_args()
 
     json_path = os.path.abspath(args.json)
     if not os.path.exists(json_path):
         sys.exit(f"[ads_test_server] JSON not found: {json_path}")
 
-    handler = AdsTestHandler(args.ethercat_master_ams_net_id)
+    handler = AdsTestHandler(
+        args.ethercat_master_ams_net_id,
+        ethercat_io_device_count=args.ethercat_io_device_count,
+    )
     for var in load_symbols(json_path, handler=handler):
         handler.add_variable(var)
 
