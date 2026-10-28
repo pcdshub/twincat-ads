@@ -53,6 +53,7 @@ static constexpr const char *SYM_LREAL = "Main.M1.fBacklash";
 extern std::atomic<int> g_callbackCount;
 extern "C" int testIoc_registerRecordDeviceDriver(struct dbBase *pbase);
 extern int initHook(void);
+static std::atomic<int> callbackCountBeforeIocInit{0};
 
 //  
 // Shared fixture — one driver instance for all lifecycle stages
@@ -100,6 +101,7 @@ protected:
         // 5. iocInit — triggers full boot sequence:
         //    drvUserCreate → buildDrvInfoCache → resolveSymbolInfo
         //    → resolveSymbolHandles → bulkOK=1
+        callbackCountBeforeIocInit.store(g_callbackCount.load());
         iocInit();
 		const char *syms[] = {"Main.M1.bUserBacklashEn", "Main.M1.bUserEnable", "Main.M1.fBacklash"};
 		for (auto sym : syms) {
@@ -229,23 +231,8 @@ TEST_F(AdsLifecycleTest, Stage6_DriverRemainsConnectedAfterPolling)
 //  
 TEST_F(AdsLifecycleTest, Stage7_CallbacksFired)
 {
-    /* Notifications fire continuously over the run (g_callbackCount climbs into
-		*  the hundreds), but the single-threaded test server interleaves
-		*  notification flushing with request handling, so a given symbol's ON_CHANGE
-		*  pushes can momentarily stall past any one fixed 0.5 s window. Poll for the
-		*  counter to advance (up to ~5 s) instead of sampling a single window: still
-		*  proves callbacks fire, without the fixed-window timing flake.
-	*/
-    const int before = g_callbackCount.load();
-    bool fired = false;
-    for (int i = 0; i < 50 && !fired; ++i)
-    {
-        epicsThreadSleep(0.1);
-        fired = g_callbackCount.load() > before;
-    }
-    EXPECT_TRUE(fired)
-        << "At least one data callback should have fired within 5 s "
-        << "(before=" << before << " after=" << g_callbackCount.load() << ")";
+    EXPECT_GT(g_callbackCount.load(), callbackCountBeforeIocInit.load())
+        << "At least one data callback should fire during IOC initialization";
 }
 
 //  

@@ -1,6 +1,7 @@
 \#*#
 *~
-*.pyc
+*.py[codz]
+__pycache__/
 *.bak
 ID
 RELEASE_SITE

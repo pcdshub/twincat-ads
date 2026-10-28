@@ -14,6 +14,7 @@
 #include <queue>
 #include <atomic>
 #include <algorithm>
+#include <string>
 
 /** Class derived of asynPortDriver for ads communication with TwinCAT plc:s */
 
@@ -30,7 +31,8 @@ class adsAsynPortDriver : public asynPortDriver
                       int defaultSampleTimeMS,
                       int maxDelayTimeMS,
                       int adsTimeoutMS,
-                      ADSTIMESOURCE defaultTimeSource);
+                      ADSTIMESOURCE defaultTimeSource,
+                      const char* ethercatMasterAmsNetIdOverride = nullptr);
 
     virtual ~adsAsynPortDriver();
     virtual void report(FILE* fp, int details);
@@ -145,6 +147,13 @@ class adsAsynPortDriver : public asynPortDriver
     asynStatus
     adsReleaseSymbolicHandle(uint16_t amsClientPort, adsParamInfo* paramInfo, bool blockErrorMsg);
     asynStatus adsConnect(uint16_t amsClientPort);
+    bool resolveEthercatMasterAmsNetId(uint16_t amsClientPort);
+    bool ethercatMasterIsResolved() const;
+    bool ethercatMasterIsAvailable() const;
+    bool checkEthercatMasterForParam(uint16_t amsClientPort,
+                                     const adsParamInfo* paramInfo,
+                                     const char* functionName);
+    AmsNetId adsTargetNetIdForParam(const adsParamInfo* paramInfo) const;
     asynStatus adsDisconnect();
     asynStatus adsWriteParam(uint16_t amsClientPort,
                              adsParamInfo* paramInfo,
@@ -164,6 +173,7 @@ class adsAsynPortDriver : public asynPortDriver
     asynStatus adsWriteState(uint16_t amsClientPort, uint16_t amsport, uint16_t adsState);
 
     asynStatus adsDelRoute(int force);
+    asynStatus adsAddEthercatRoute();
     asynStatus adsGenericArrayWrite(uint16_t amsClientPort,
                                     asynUser* pasynUser,
                                     long allowedType,
@@ -233,11 +243,17 @@ class adsAsynPortDriver : public asynPortDriver
     int connectedAds_;
     long adsPort_;
     int routeAdded_;
+    int ethercatRouteAdded_ = 0;
     int notConnectedCounter_;
     int oneAmsConnectionOKold_;
     uint16_t amsportDefault_;
     unsigned int priority_;
     AmsNetId remoteNetId_;
+    AmsNetId ethercatMasterNetId_;
+    std::atomic<bool> ethercatMasterNetIdResolved_{false};
+    bool ethercatMasterAvailable_ = false;
+    std::string ethercatMasterAmsNetIdSource_;
+    mutable std::mutex ethercatMasterNetIdMutex_;
     std::vector<adsParamInfo> adsParamArray_;
     std::vector<amsPortInfo*> amsPortList_;
     ADSTIMESOURCE defaultTimeSource_;
@@ -318,6 +334,12 @@ class adsAsynPortDriver : public asynPortDriver
     long getAdsPort() const
     {
         return adsPort_;
+    }
+
+    /** EtherCAT master address selected from the override or ADS discovery. */
+    const AmsNetId& getEthercatMasterAmsNetId() const
+    {
+        return ethercatMasterNetId_;
     }
 
     /** True if the ADS route has been added (not deleted on disconnect). */
