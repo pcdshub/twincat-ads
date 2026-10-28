@@ -150,8 +150,9 @@ class adsAsynPortDriver : public asynPortDriver
     bool resolveEthercatMasterAmsNetId(uint16_t amsClientPort);
     bool ethercatMasterIsResolved() const;
     bool ethercatMasterIsAvailable() const;
-    bool checkEthercatMasterForParam(
-        uint16_t amsClientPort, const adsParamInfo* paramInfo, const char* functionName);
+    bool checkEthercatMasterForParam(uint16_t amsClientPort,
+                                     const adsParamInfo* paramInfo,
+                                     const char* functionName);
     AmsNetId adsTargetNetIdForParam(const adsParamInfo* paramInfo) const;
     asynStatus adsDisconnect();
     asynStatus adsWriteParam(uint16_t amsClientPort,

@@ -6096,8 +6096,8 @@ bool adsAsynPortDriver::resolveEthercatMasterAmsNetId(uint16_t amsClientPort)
     }
     if (deviceCount != ADS_ECAT_EXPECTED_SINGLE_IO_DEVICE_COUNT)
     {
-        return useDerivedMasterId(
-            "found a count other than one configured I/O device", ASYN_TRACE_WARNING);
+        return useDerivedMasterId("found a count other than one configured I/O device",
+                                  ASYN_TRACE_WARNING);
     }
 
     std::array<uint16_t, ADS_ECAT_IO_DEVICE_ID_TABLE_WORDS_FOR_SINGLE_DEVICE> deviceIds{};
@@ -6127,8 +6127,8 @@ bool adsAsynPortDriver::resolveEthercatMasterAmsNetId(uint16_t amsClientPort)
                                &bytesRead);
     if (status || bytesRead != rawNetId.size())
     {
-        return useDerivedMasterId(
-            "failed to read the discovered I/O device AMS Net ID", ASYN_TRACE_ERROR);
+        return useDerivedMasterId("failed to read the discovered I/O device AMS Net ID",
+                                  ASYN_TRACE_ERROR);
     }
 
     const bool missingIpPrefix = std::all_of(rawNetId.begin(),
@@ -6166,16 +6166,15 @@ bool adsAsynPortDriver::ethercatMasterIsResolved() const
 bool adsAsynPortDriver::ethercatMasterIsAvailable() const
 {
     std::lock_guard<std::mutex> lockGuard(ethercatMasterNetIdMutex_);
-    return ethercatMasterNetIdResolved_.load(std::memory_order_acquire) &&
-           ethercatMasterAvailable_;
+    return ethercatMasterNetIdResolved_.load(std::memory_order_acquire) && ethercatMasterAvailable_;
 }
 
-bool adsAsynPortDriver::checkEthercatMasterForParam(
-    uint16_t amsClientPort, const adsParamInfo* paramInfo, const char* functionName)
+bool adsAsynPortDriver::checkEthercatMasterForParam(uint16_t amsClientPort,
+                                                    const adsParamInfo* paramInfo,
+                                                    const char* functionName)
 {
-    const bool isEthercatStateParam =
-        paramInfo && paramInfo->isAdrCommand &&
-        paramInfo->plcAbsAdrGroup == ADSIGRP_ECAT_SLAVE_STATE;
+    const bool isEthercatStateParam = paramInfo && paramInfo->isAdrCommand &&
+                                      paramInfo->plcAbsAdrGroup == ADSIGRP_ECAT_SLAVE_STATE;
     if (!isEthercatStateParam)
         return true;
 
