@@ -1823,7 +1823,7 @@ void adsAsynPortDriver::report(FILE* fp, int details)
     std::string ethercatMasterAmsNetIdSource;
     {
         std::lock_guard<std::mutex> ethercatMasterLock(ethercatMasterNetIdMutex_);
-        ethercatMasterNetId = ethercatMasterNetId_;
+        ethercatMasterNetId          = ethercatMasterNetId_;
         ethercatMasterAmsNetIdSource = ethercatMasterAmsNetIdSource_;
     }
 
@@ -7709,8 +7709,8 @@ extern "C"
                                                              iocshArgInt};
     static const iocshArg adsAsynPortDriverConfigureArg10 = {"default time source (EPICS=0,PLC=1)",
                                                              iocshArgInt};
-    static const iocshArg adsAsynPortDriverConfigureArg11 = {
-        "EtherCAT master AMS Net ID override", iocshArgString};
+    static const iocshArg adsAsynPortDriverConfigureArg11 = {"EtherCAT master AMS Net ID override",
+                                                             iocshArgString};
     static const iocshArg* adsAsynPortDriverConfigureArgs[] = {&adsAsynPortDriverConfigureArg0,
                                                                &adsAsynPortDriverConfigureArg1,
                                                                &adsAsynPortDriverConfigureArg2,
