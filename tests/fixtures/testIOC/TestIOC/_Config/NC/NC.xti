@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.17" ClassName="CNcSafTaskDef" SubType="0">
+	<NC>
+		<SafTask Priority="4" CycleTime="20000" AmsPort="501" IoAtBegin="true" SafTaskInfo="256">
+			<Name>NC-Task 1 SAF</Name>
+			<Vars VarGrpType="1" InsertType="1">
+				<Name>Inputs</Name>
+			</Vars>
+			<Vars VarGrpType="2" InsertType="1">
+				<Name>Outputs</Name>
+			</Vars>
+			<Image Id="1" AddrType="1" ImageType="1">
+				<Name>Image</Name>
+			</Image>
+		</SafTask>
+		<SvbTask Priority="8" CycleTime="100000" AmsPort="511">
+			<Name>NC-Task 1 SVB</Name>
+		</SvbTask>
+		<Axis File="Axis 1.xti" Id="1"/>
+		<Axis File="Axis 2.xti" Id="2"/>
+		<Axis File="Axis 3.xti" Id="3"/>
+		<Axis File="Axis 4.xti" Id="4"/>
+		<Axis File="Axis 5.xti" Id="5"/>
+		<Axis File="Axis 6.xti" Id="6"/>
+		<Axis File="Axis 7.xti" Id="7"/>
+		<Axis File="Axis 8.xti" Id="8"/>
+		<Axis File="Axis 9.xti" Id="9"/>
+		<Axis File="Axis 10.xti" Id="10"/>
+		<Axis File="Axis 11.xti" Id="11"/>
+		<Axis File="Axis 12.xti" Id="12"/>
+		<Axis File="Axis 13.xti" Id="13"/>
+		<Axis File="Axis 14.xti" Id="14"/>
+		<Axis File="Axis 15.xti" Id="15"/>
+		<Axis File="Axis 16.xti" Id="16"/>
+		<Axis File="Axis 17.xti" Id="17"/>
+		<Axis File="Axis 18.xti" Id="18"/>
+		<Axis File="Axis 19.xti" Id="19"/>
+		<Axis File="Axis 20.xti" Id="20"/>
+		<Axis File="Axis 21.xti" Id="21"/>
+		<Axis File="Axis 22.xti" Id="22"/>
+		<Axis File="Axis 23.xti" Id="23"/>
+		<Axis File="Axis 24.xti" Id="24"/>
+		<Axis File="Axis 25.xti" Id="25"/>
+		<Axis File="Axis 26.xti" Id="26"/>
+		<Axis File="Axis 27.xti" Id="27"/>
+		<Axis File="Axis 28.xti" Id="28"/>
+		<Axis File="Axis 29.xti" Id="29"/>
+		<Axis File="Axis 30.xti" Id="30"/>
+		<Axis File="Axis 31.xti" Id="31"/>
+		<Axis File="Axis 32.xti" Id="32"/>
+		<Axis File="Axis 33.xti" Id="33"/>
+		<Axis File="Axis 34.xti" Id="34"/>
+		<Axis File="Axis 35.xti" Id="35"/>
+		<Axis File="Axis 36.xti" Id="36"/>
+		<Axis File="Axis 37.xti" Id="37"/>
+		<Axis File="Axis 38.xti" Id="38"/>
+		<Axis File="Axis 39.xti" Id="39"/>
+		<Axis File="Axis 40.xti" Id="40"/>
+		<Axis File="Axis 41.xti" Id="41"/>
+		<Axis File="Axis 42.xti" Id="42"/>
+		<Axis File="Axis 43.xti" Id="43"/>
+		<Axis File="Axis 44.xti" Id="44"/>
+		<Axis File="Axis 45.xti" Id="45"/>
+		<Axis File="Axis 46.xti" Id="46"/>
+		<Axis File="Axis 47.xti" Id="47"/>
+		<Axis File="Axis 48.xti" Id="48"/>
+		<Axis File="Axis 49.xti" Id="49"/>
+		<Axis File="Axis 50.xti" Id="50"/>
+		<Axis File="Axis 51.xti" Id="51"/>
+		<Axis File="Axis 52.xti" Id="52"/>
+	</NC>
+</TcSmItem>

@@ -1,0 +1,233 @@
+<?xml version="1.0"?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.17" ClassName="CTComPlcObjDef">
+	<Instance Id="#x08502000" TcSmClass="TComPlcObjDef" KeepUnrestoredLinks="2" XtvPath="TestIOC\TestIOC Instance.xtv" TmcPath="TestIOC\TestIOC.tmc">
+		<Name>__FILENAME__</Name>
+		<CLSID ClassFactory="TcPlc30">{08500001-0000-0000-F000-000000000064}</CLSID>
+		<Contexts>
+			<Context>
+				<Id>0</Id>
+				<Name>PlcTask</Name>
+				<ManualConfig>
+					<OTCID>#x02010050</OTCID>
+				</ManualConfig>
+				<Priority>20</Priority>
+				<CycleTime>10000000</CycleTime>
+			</Context>
+		</Contexts>
+		<TaskPouOids>
+			<TaskPouOid Prio="20" OTCID="#x08502001"/>
+		</TaskPouOids>
+	</Instance>
+	<Mappings>
+		<OwnerA>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 1">
+				<Link VarA="PlcTask Inputs^Main.M1.Axis.NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.M1.Axis.PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 10">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[8].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[8].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 11">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[9].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[9].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 12">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[10].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[10].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 13">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[11].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[11].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 14">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[12].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[12].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 15">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[13].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[13].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 16">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[14].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[14].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 17">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[15].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[15].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 18">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[16].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[16].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 19">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[17].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[17].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 2">
+				<Link VarA="PlcTask Inputs^Main.M2.Axis.NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.M2.Axis.PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 20">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[18].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[18].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 21">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[19].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[19].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 22">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[20].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[20].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 23">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[21].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[21].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 24">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[22].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[22].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 25">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[23].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[23].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 26">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[24].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[24].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 27">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[25].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[25].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 28">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[26].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[26].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 29">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[27].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[27].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 3">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[1].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[1].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 30">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[28].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[28].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 31">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[29].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[29].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 32">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[30].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[30].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 33">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[31].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[31].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 34">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[32].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[32].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 35">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[33].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[33].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 36">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[34].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[34].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 37">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[35].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[35].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 38">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[36].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[36].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 39">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[37].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[37].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 4">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[2].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[2].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 40">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[38].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[38].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 41">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[39].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[39].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 42">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[40].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[40].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 43">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[41].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[41].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 44">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[42].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[42].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 45">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[43].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[43].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 46">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[44].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[44].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 47">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[45].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[45].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 48">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[46].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[46].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 49">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[47].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[47].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 5">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[3].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[3].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 50">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[48].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[48].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 51">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[49].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[49].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 52">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[50].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[50].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 6">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[4].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[4].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 7">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[5].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[5].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 8">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[6].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[6].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 9">
+				<Link VarA="PlcTask Inputs^Main.aAxisRef[7].NcToPlc" VarB="Outputs^ToPlc" AutoLink="true"/>
+				<Link VarA="PlcTask Outputs^Main.aAxisRef[7].PlcToNc" VarB="Inputs^FromPlc" AutoLink="true"/>
+			</OwnerB>
+		</OwnerA>
+	</Mappings>
+</TcSmItem>

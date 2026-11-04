@@ -1,0 +1,88 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.12">
+  <POU Name="F_UpdateArray" Id="{3ef87d3f-7287-4f09-82d6-2a1343ccd38d}" SpecialFunc="None">
+    <Declaration><![CDATA[
+FUNCTION F_UpdateArray 
+VAR_IN_OUT
+	stIncr : ST_PytmcTypes;
+END_VAR
+VAR
+	idx : UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+// Array, copy value to next and add one in first slot
+FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+	stIncr.arrBool[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrBool[GVL.nPytmcTypesArrayLength - 1 - idx];
+END_FOR
+stIncr.arrBool[0] := NOT stIncr.arrBool[0];
+
+// pytmc cannot handle byte arrays we should fix that...
+// FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+// 	stIncr.arrByte[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrByte[GVL.nPytmcTypesArrayLength - 1 - idx];
+// END_FOR
+// stIncr.arrByte[0] := stIncr.arrByte[0] + 1;
+
+// pytmc cannot handle sint arrays we should fix that...
+// FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+// 	stIncr.arrSint[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrSint[GVL.nPytmcTypesArrayLength - 1 - idx];
+// END_FOR
+// stIncr.arrSint[0] := stIncr.arrSint[0] + 1;
+
+// pytmc cannot handle usint arrays we should fix that...
+// FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+// 	stIncr.arrUsint[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrUsint[GVL.nPytmcTypesArrayLength - 1 - idx];
+// END_FOR
+// stIncr.arrUsint[0] := stIncr.arrUsint[0] + 1;
+
+// pytmc cannot handle word arrays we should fix that...
+// FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+// 	stIncr.arrWord[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrWord[GVL.nPytmcTypesArrayLength - 1 - idx];
+// END_FOR
+// stIncr.arrWord[0] := stIncr.arrWord[0] + 1;
+
+FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+	stIncr.arrInt[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrInt[GVL.nPytmcTypesArrayLength - 1 - idx];
+END_FOR
+stIncr.arrInt[0] := stIncr.arrInt[0] + 1;
+
+// pytmc cannot handle uint arrays we should fix that...
+// FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+// 	stIncr.arrUint[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrUint[GVL.nPytmcTypesArrayLength - 1 - idx];
+// END_FOR
+// stIncr.arrUint[0] := stIncr.arrUint[0] + 1;
+
+// pytmc cannot handle dword arrays we should fix that...
+// FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+// 	stIncr.arrDword[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrDword[GVL.nPytmcTypesArrayLength - 1 - idx];
+// END_FOR
+// stIncr.arrDword[0] := stIncr.arrDword[0] + 1;
+
+FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+	stIncr.arrDint[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrDint[GVL.nPytmcTypesArrayLength - 1 - idx];
+END_FOR
+stIncr.arrDint[0] := stIncr.arrDint[0] + 1;
+
+// pytmc cannot handle udint arrays we should fix that...
+// FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+// 	stIncr.arrUdint[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrUdint[GVL.nPytmcTypesArrayLength - 1 - idx];
+// END_FOR
+// stIncr.arrUdint[0] := stIncr.arrUdint[0] + 1;
+
+FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+	stIncr.arrReal[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrReal[GVL.nPytmcTypesArrayLength - 1 - idx];
+END_FOR
+stIncr.arrReal[0] := stIncr.arrReal[0] + 1.0;
+
+FOR idx := 0 TO GVL.nPytmcTypesArrayLength - 1 DO
+	stIncr.arrLreal[GVL.nPytmcTypesArrayLength - idx] := stIncr.arrLreal[GVL.nPytmcTypesArrayLength - 1 - idx];
+END_FOR
+stIncr.arrLreal[0] := stIncr.arrLreal[0] + 1.0;
+]]></ST>
+    </Implementation>
+    <LineIds Name="F_UpdateArray">
+      <LineId Id="1" Count="68" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

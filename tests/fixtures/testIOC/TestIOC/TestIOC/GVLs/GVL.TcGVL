@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.12">
+  <GVL Name="GVL" Id="{4625bf49-36db-4e2a-9d02-8d0b19f122e5}">
+    <Declaration><![CDATA[
+{attribute 'qualified_only'}
+VAR_GLOBAL CONSTANT
+	nPytmcTypesArrayLength : UINT := 99;
+END_VAR
+]]></Declaration>
+  </GVL>
+</TcPlcObject>
