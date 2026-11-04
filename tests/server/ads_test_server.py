@@ -1,9 +1,10 @@
 """
 ADS test server for adsAsynPortDriver integration tests.
 
-Reads testIoc/ads_symbol_dict.json and registers every symbol as a
-PLCVariable in a pyads AdvancedHandler, then starts an AdsTestServer
-on the default ADS port (48898 / 0xBF02).
+Reads
+tests/fixtures/testIOC/iocBoot/ioc-TestIOC/ads_symbol_dict.json and registers
+every symbol as a PLCVariable in a pyads AdvancedHandler, then starts an
+AdsTestServer on the default ADS port (48898 / 0xBF02).
 
 A background updater thread periodically increments a set of well-known
 test symbols so that bulk read and notification tests can verify the
@@ -839,8 +840,8 @@ def main():
     parser.add_argument(
         "--json",
         default=os.path.join(
-            os.path.dirname(__file__), "..", "..",
-            "testIOC", "iocBoot", "ioc-TestIOC", "ads_symbol_dict.json"
+            os.path.dirname(__file__), "..", "fixtures", "testIOC",
+            "iocBoot", "ioc-TestIOC", "ads_symbol_dict.json"
         ),
         help="Path to ads_symbol_dict.json",
     )

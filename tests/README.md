@@ -14,8 +14,8 @@ What the test suite exercises, and how the pieces fit together.
 
 The driver is built with `-DADS_UNIT_TEST`, which compiles in test-only hooks
 (`setGlobalInstance`, `g_callbackCount`). Symbols and records come from the
-`testIOC` submodule (`pcdshub/lcls-plc-tst-tcads`): a 26755-record `TestIOC.db`
-and a 23368-symbol `ads_symbol_dict.json`.
+`tests/fixtures/testIOC` fixture: a 26755-record `TestIOC.db` and a
+23368-symbol `ads_symbol_dict.json`.
 
 ## How the pieces connect
 
@@ -27,12 +27,12 @@ graph TD
         EP["EPICS IOC core<br/>db · asyn · scan threads"]
         SRV["pyads ADS test server<br/>ads_test_server.py"]
     end
+    FIX["tests/fixtures/testIOC"]
     JSON["ads_symbol_dict.json<br/>23368 symbols"]
     DB["TestIOC.db<br/>26755 records"]
-    SUB["testIOC submodule<br/>lcls-plc-tst-tcads"]
 
-    SUB --> JSON
-    SUB --> DB
+    FIX --> JSON
+    FIX --> DB
     TB --> DRV
     TB --> EP
     EP --> DRV
@@ -126,6 +126,6 @@ flowchart LR
     J3["unit-tests · CI Docker image<br/>checkout +submodules<br/>start ads_test_server<br/>build driver -DADS_UNIT_TEST<br/>make + runtests"]
 ```
 
-Both `smoke-test` and `unit-tests` check the `testIOC` submodule out, because the
-symbol dict and DB live there. See [`unit/build.md`](unit/build.md) to run the
-suite locally.
+Both `smoke-test` and `unit-tests` use the in-tree fixture, so they no longer
+need to check out a `testIOC` submodule. See [`unit/build.md`](unit/build.md) to
+run the suite locally.

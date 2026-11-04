@@ -16,7 +16,7 @@
  *
  * Prerequisites:
  *   - pyads test server running on 127.0.0.1:48898
- *   - testIOC/iocBoot/ioc-TestIOC/TestIOC.db present
+ *   - tests/fixtures/testIOC/iocBoot/ioc-TestIOC/TestIOC.db present
  *   - Built with -DADS_UNIT_TEST
  *
  * Build:
@@ -54,6 +54,7 @@ extern std::atomic<int> g_callbackCount;
 extern "C" int testIoc_registerRecordDeviceDriver(struct dbBase *pbase);
 extern int initHook(void);
 static std::atomic<int> callbackCountBeforeIocInit{0};
+static std::atomic<int> callbackCountAfterIocInit{0};
 
 //  
 // Shared fixture — one driver instance for all lifecycle stages
@@ -110,6 +111,7 @@ protected:
 		}
         // 6. Wait for bulk thread to start and callbacks to settle
         epicsThreadSleep(3.0);
+        callbackCountAfterIocInit.store(g_callbackCount.load());
 
         printf("bulkOK after iocInit = %d\n", driver->getBulkOK());
         const AdsSymbolDictEntry *e = driver->lookupSymbol(SYM_DINT);
@@ -231,7 +233,7 @@ TEST_F(AdsLifecycleTest, Stage6_DriverRemainsConnectedAfterPolling)
 //  
 TEST_F(AdsLifecycleTest, Stage7_CallbacksFired)
 {
-    EXPECT_GT(g_callbackCount.load(), callbackCountBeforeIocInit.load())
+    EXPECT_GT(g_callbackCount.load(), callbackCountAfterIocInit.load() - callbackCountBeforeIocInit.load() > 0)
         << "At least one data callback should fire during IOC initialization";
 }
 

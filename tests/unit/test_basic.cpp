@@ -11,6 +11,8 @@
 #include "adsAmsNetId.h"
 #include "adsEthercatState.h"
 #include "epicsThread.h"
+#include <memory>
+#include <stdexcept>
 
 static constexpr const char *TEST_IP    = "127.0.0.1";
 static constexpr const char *TEST_AMSID = "127.0.0.1.1.1";
@@ -99,6 +101,25 @@ TEST(AdsEthercatState, UsesConfiguredMasterAmsNetIdOverride)
     EXPECT_EQ(masterId.b[4], 3);
     EXPECT_EQ(masterId.b[5], 1);
     delete driver;
+}
+
+TEST(AdsEthercatState, ConstructorRejectsInvalidMasterAmsNetIdOverride)
+{
+    EXPECT_THROW(
+        std::unique_ptr<adsAsynPortDriver>(new adsAsynPortDriver(
+            "ADS_ECAT_INVALID_OVERRIDE_TEST",
+            TEST_IP,
+            TEST_AMSID,
+            TEST_PORT,
+            1000,
+            50,
+            1,
+            100,
+            150,
+            1000,
+            ADS_TIME_BASE_EPICS,
+            "127.0.0.1.256.1")),
+        std::invalid_argument);
 }
 
 TEST(AdsEthercatState, AcceptsSupportedStateRequests)

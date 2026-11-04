@@ -24,8 +24,8 @@ when exactly one configured I/O device is present, or derives the conventional
 read returning zero is reported as a PLC project with no EtherCAT master;
 EtherCAT state reads and requests are then rejected without sending state
 traffic to the PLC. A failed discovery read is logged as an error and uses the
-derived ID fallback. Set the IOC environment variable
-`ECAT_MASTER_AMS_NET_ID` before `adsAsynPortDriverConfigure` to override
-discovery.
+derived ID fallback. Pass an optional EtherCAT master AMS Net ID as the final
+`adsAsynPortDriverConfigure` argument to override discovery; pass an empty
+string to use automatic discovery.
 
 Contact: anders.sandstrom@esss.se

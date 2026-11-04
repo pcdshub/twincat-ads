@@ -6,7 +6,7 @@ include $(TOP)/configure/CONFIG
 USR_CXXFLAGS += -DADS_UNIT_TEST
 USR_CXXFLAGS += -std=c++14
 USR_CXXFLAGS += -DTEST_DBD_PATH=\"$(TOP)/tests/unit/dbd/testIoc.dbd\"
-USR_CXXFLAGS += -DTEST_DB_PATH=\"$(TOP)/testIOC/iocBoot/ioc-TestIOC/TestIOC.db\"
+USR_CXXFLAGS += -DTEST_DB_PATH=\"$(TOP)/tests/fixtures/testIOC/iocBoot/ioc-TestIOC/TestIOC.db\"
 USR_DBDFLAGS += -I$(TOP)/dbd
 
 USR_INCLUDES += -I$(TOP)/adsApp/src

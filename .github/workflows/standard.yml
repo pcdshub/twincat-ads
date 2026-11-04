@@ -46,7 +46,7 @@ jobs:
       - name: Start ADS test server
         run: |
           python3 tests/server/ads_test_server.py \
-            --json testIOC/iocBoot/ioc-TestIOC/ads_symbol_dict.json &
+            --json tests/fixtures/testIOC/iocBoot/ioc-TestIOC/ads_symbol_dict.json &
           sleep 2
       - name: Build driver
         # Build libads with -DADS_UNIT_TEST so the test-only hooks

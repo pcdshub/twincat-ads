@@ -20,6 +20,7 @@ tests/unit/O.*
 tests/unit/RELEASE_UNIT.local
 tests/unit/testIoc_registerRecordDeviceDriver.cpp
 iocBoot/
+!tests/fixtures/testIOC/iocBoot/
 lib/
 TwinCAT/demo_project/MCAG_Base_Project/_Boot*
 TwinCAT/demo_project/MCAG_Base_Project/_Configure*
