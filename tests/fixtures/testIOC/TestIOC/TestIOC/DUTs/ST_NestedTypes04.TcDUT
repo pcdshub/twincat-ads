@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.12">
+  <DUT Name="ST_NestedTypes04" Id="{258ccdec-b0a9-406c-9307-94482452fd67}">
+    <Declaration><![CDATA[
+TYPE ST_NestedTypes04 :
+STRUCT
+	stPytmcTypes : ST_PytmcTypes;
+	stNestedTypes : ST_NestedTypes05;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

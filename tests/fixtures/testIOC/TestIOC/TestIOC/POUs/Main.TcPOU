@@ -1,0 +1,258 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.12">
+  <POU Name="Main" Id="{72a901fa-9a97-4d81-8b01-730815a6ff9d}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Main
+VAR CONSTANT
+	nInArray : UINT := 250;
+	nMotAbsAxes : UINT := 50;
+END_VAR
+VAR
+	{attribute 'pytmc' := 'pv: @(PREFIX)M1'}
+	{attribute 'TcNcAxis' := '.Axis := Axis 1'}
+    M1: ST_MotionStage;
+    {attribute 'pytmc' := 'pv: @(PREFIX)M2'}
+	{attribute 'TcNcAxis' := '.Axis := Axis 2'}
+    M2: ST_MotionStage;
+
+    fbMotion01: FB_MotionStageSim;
+    fbMotion02: FB_MotionStageSim;
+	
+	fbPersistentDataStorage: LCLS_Tc_DevAbs.FB_PersistentDataStorage;
+	{attribute 'TcNcAxis' := '
+		[1]  := Axis 3;
+		[2]  := Axis 4;
+		[3]  := Axis 5;
+		[4]  := Axis 6;
+		[5]  := Axis 7;
+		[6]  := Axis 8;
+		[7]  := Axis 9;
+		[8]  := Axis 10;
+		[9]  := Axis 11;
+		[10] := Axis 12;
+		[11] := Axis 13;
+		[12] := Axis 14;
+		[13] := Axis 15;
+		[14] := Axis 16;
+		[15] := Axis 17;
+		[16] := Axis 18;
+		[17] := Axis 19;
+		[18] := Axis 20;
+		[19] := Axis 21;
+		[20] := Axis 22;
+		[21] := Axis 23;
+		[22] := Axis 24;
+		[23] := Axis 25;
+		[24] := Axis 26;
+		[25] := Axis 27;
+		[26] := Axis 28;
+		[27] := Axis 29;
+		[28] := Axis 30;
+		[29] := Axis 31;
+		[30] := Axis 32;
+		[31] := Axis 33;
+		[32] := Axis 34;
+		[33] := Axis 35;
+		[34] := Axis 36;
+		[35] := Axis 37;
+		[36] := Axis 38;
+		[37] := Axis 39;
+		[38] := Axis 40;
+		[39] := Axis 41;
+		[40] := Axis 42;
+		[41] := Axis 43;
+		[42] := Axis 44;
+		[43] := Axis 45;
+		[44] := Axis 46;
+		[45] := Axis 47;
+		[46] := Axis 48;
+		[47] := Axis 49;
+		[48] := Axis 50;
+		[49] := Axis 51;
+		[50] := Axis 52
+	'}
+	aAxisRef : ARRAY[1..nMotAbsAxes] OF AXIS_REF;
+	{attribute 'pytmc' := 'pv: @(PREFIX)MOTABS'}
+	fbMotionArr: ARRAY[1..nMotAbsAxes] OF FB_MotionStageNC[
+		(AxisRef := aAxisRef[1],  iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_03'),
+		(AxisRef := aAxisRef[2],  iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_02'),
+		(AxisRef := aAxisRef[3],  iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_03'),
+		(AxisRef := aAxisRef[4],  iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_04'),
+		(AxisRef := aAxisRef[5],  iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_05'),
+		(AxisRef := aAxisRef[6],  iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_06'),
+		(AxisRef := aAxisRef[7],  iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_07'),
+		(AxisRef := aAxisRef[8],  iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_08'),
+		(AxisRef := aAxisRef[9],  iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_09'),
+		(AxisRef := aAxisRef[10], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_10'),
+		(AxisRef := aAxisRef[11], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_11'),
+		(AxisRef := aAxisRef[12], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_12'),
+		(AxisRef := aAxisRef[13], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_13'),
+		(AxisRef := aAxisRef[14], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_14'),
+		(AxisRef := aAxisRef[15], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_15'),
+		(AxisRef := aAxisRef[16], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_16'),
+		(AxisRef := aAxisRef[17], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_17'),
+		(AxisRef := aAxisRef[18], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_18'),
+		(AxisRef := aAxisRef[19], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_19'),
+		(AxisRef := aAxisRef[20], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_20'),
+		(AxisRef := aAxisRef[21], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_21'),
+		(AxisRef := aAxisRef[22], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_22'),
+		(AxisRef := aAxisRef[23], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_23'),
+		(AxisRef := aAxisRef[24], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_24'),
+		(AxisRef := aAxisRef[25], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_25'),
+		(AxisRef := aAxisRef[26], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_26'),
+		(AxisRef := aAxisRef[27], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_27'),
+		(AxisRef := aAxisRef[28], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_28'),
+		(AxisRef := aAxisRef[29], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_29'),
+		(AxisRef := aAxisRef[30], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_30'),
+		(AxisRef := aAxisRef[31], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_31'),
+		(AxisRef := aAxisRef[32], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_32'),
+		(AxisRef := aAxisRef[33], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_33'),
+		(AxisRef := aAxisRef[34], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_34'),
+		(AxisRef := aAxisRef[35], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_35'),
+		(AxisRef := aAxisRef[36], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_36'),
+		(AxisRef := aAxisRef[37], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_37'),
+		(AxisRef := aAxisRef[38], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_38'),
+		(AxisRef := aAxisRef[39], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_39'),
+		(AxisRef := aAxisRef[40], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_40'),
+		(AxisRef := aAxisRef[41], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_41'),
+		(AxisRef := aAxisRef[42], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_42'),
+		(AxisRef := aAxisRef[43], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_43'),
+		(AxisRef := aAxisRef[44], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_44'),
+		(AxisRef := aAxisRef[45], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_45'),
+		(AxisRef := aAxisRef[46], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_46'),
+		(AxisRef := aAxisRef[47], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_47'),
+		(AxisRef := aAxisRef[48], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_48'),
+		(AxisRef := aAxisRef[49], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_49'),
+		(AxisRef := aAxisRef[50], iPersistentDataStorage := fbPersistentDataStorage, sName := 'Axis_50')
+	];
+
+    {attribute 'pytmc' :='
+        pv: @(PREFIX)INCR
+        io: i
+    '}
+    stIncr: ST_PytmcTypes;
+    {attribute 'pytmc' :='
+        pv: @(PREFIX)SET
+        io: io
+    '}
+    stSet: ST_PytmcTypes;
+
+    timer: TON := (PT := T#2S);
+    rand: DRAND;
+    idx: UINT;
+    mult: LREAL;
+	nI : UINT;
+END_VAR
+VAR PERSISTENT
+    {attribute 'pytmc' :='
+        pv: @(PREFIX)PERS:PASS0
+        io: io
+		autosave_pass0: VAL
+    '}
+	afPersistentPass0: ARRAY[1..nInArray] OF LREAL;
+    {attribute 'pytmc' :='
+        pv: @(PREFIX)PERS:PASS1
+        io: io
+		autosave_pass1: VAL
+    '}
+	afPersistentPass1: ARRAY[1..nInArray] OF LREAL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[
+fbMotion01(stMotionStage:=M1);
+fbMotion02(stMotionStage:=M2);
+
+FOR nI := 1 TO nMotAbsAxes BY 1 DO
+	fbMotionArr[nI]();
+END_FOR
+
+timer(
+    IN:=NOT timer.Q
+);
+
+IF timer.Q THEN
+	// Flip the boolean
+	stIncr.bBool := NOT stIncr.bBool;
+
+	// Increment the ints
+	stIncr.iByte := stIncr.iByte + 1;
+	stIncr.iSint := stIncr.iSint + 1;
+	stIncr.iUsint := stIncr.iUsint + 1;
+	stIncr.iWord := stIncr.iWord + 1;
+	stIncr.iInt := stIncr.iInt + 1;
+	stIncr.iUint := stIncr.iUint + 1;
+	stIncr.iDword := stIncr.iDword + 1;
+	stIncr.iDint := stIncr.iDint + 1;
+	stIncr.iUdint := stIncr.iUdint + 1;
+
+	// Multiply the floats randomly
+	rand(Seed:=42);
+	IF rand.Num < 0.5 THEN
+		mult := rand.Num + 0.5;
+	ELSE
+		mult := rand.Num * 2;
+	END_IF
+	IF stIncr.fReal = 0 THEN
+		stIncr.fReal := 1;
+	ELSIF stIncr.fReal > 99999999.9999 THEN
+		stIncr.fReal := 1;
+	ELSE
+		stIncr.fReal := LREAL_TO_REAL(stIncr.fReal * mult);
+	END_IF
+	IF stIncr.fLreal = 0 THEN
+		stIncr.fLreal := 1;
+	ELSIF stIncr.fLreal > 99999999.9999 THEN
+		stIncr.fLreal := 1;
+	ELSE
+		stIncr.fLreal := stIncr.fLreal * mult;
+	END_IF
+
+	// To the next enum
+	CASE stIncr.eEnum OF
+		ENUM_Test.zero : stIncr.eEnum := Enum_test.one;
+		ENUM_Test.one : stIncr.eEnum := Enum_test.two;
+		ENUM_Test.two : stIncr.eEnum := Enum_test.three;
+		ENUM_Test.three : stIncr.eEnum := Enum_test.four;
+		ENUM_Test.four : stIncr.eEnum := Enum_test.five;
+		ENUM_Test.five : stIncr.eEnum := Enum_test.six;
+		ENUM_Test.six : stIncr.eEnum := Enum_test.seven;
+		ENUM_Test.seven : stIncr.eEnum := Enum_test.zero;
+	END_CASE
+
+	// I guess we'll just do the letter a a lot
+	IF LEN(stIncr.sString) > 39 THEN
+		stIncr.sString := '';
+	ELSE
+		stIncr.sString := CONCAT(stIncr.sString, 'a');
+	END_IF
+	
+	// I guess we'll just do the letter b a lot
+	IF LEN(stIncr.sMaxString) > 254 THEN
+		stIncr.sMaxString := '';
+	ELSE
+		stIncr.sMaxString := CONCAT(stIncr.sMaxString, 'b');
+	END_IF
+
+	F_UpdateArray(stIncr := stIncr);
+END_IF]]></ST>
+    </Implementation>
+    <LineIds Name="Main">
+      <LineId Id="3" Count="0" />
+      <LineId Id="95" Count="1" />
+      <LineId Id="91" Count="3" />
+      <LineId Id="6" Count="2" />
+      <LineId Id="10" Count="6" />
+      <LineId Id="71" Count="0" />
+      <LineId Id="18" Count="17" />
+      <LineId Id="80" Count="1" />
+      <LineId Id="36" Count="3" />
+      <LineId Id="82" Count="1" />
+      <LineId Id="40" Count="22" />
+      <LineId Id="85" Count="5" />
+      <LineId Id="84" Count="0" />
+      <LineId Id="63" Count="0" />
+      <LineId Id="68" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -51,7 +51,7 @@ Run the suite from the first terminal:
 make -C tests/unit runtests
 ```
 
-Expected: `test_basic` 1/1 and `test_ioc_lifecycle` 13/13. TAP output lands in
+Expected: `test_basic` 7/7 and `test_ioc_lifecycle` 13/13. TAP output lands in
 `tests/unit/O.<arch>/*.tap`.
 
 For faster iteration, run one binary directly. Cd into the arch dir first so it
@@ -86,7 +86,8 @@ Inside the container:
 make -C adsApp clean
 make -C tests/unit clean
 
-python3 tests/server/ads_test_server.py --json testIOC/iocBoot/ioc-TestIOC/ads_symbol_dict.json &
+python3 tests/server/ads_test_server.py \
+    --json tests/fixtures/testIOC/iocBoot/ioc-TestIOC/ads_symbol_dict.json &
 sleep 2
 
 make -C adsApp USR_CXXFLAGS+="-DADS_UNIT_TEST -DCONFIG_DEFAULT_LOGLEVEL=1"

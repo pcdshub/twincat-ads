@@ -5,6 +5,3 @@
 [submodule "TwinCATexample"]
 	path = TwinCATexample
 	url = https://torstenbogershausen@bitbucket.org/europeanspallationsource/tc_ads_example.git
-[submodule "testIOC"]
-	path = testIOC
-	url = https://github.com/pcdshub/lcls-plc-tst-tcads.git

@@ -20,14 +20,18 @@
 */
 #define USE_TYPED_RSET // Shut up about rset already!
 #include "adsAsynPortDriver.h"
+#include "adsAmsNetId.h"
+#include "adsEthercatState.h"
 
 #include <stdlib.h>
+#include <cstdlib>
 #include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
 #include <math.h>
 #include <sys/time.h>
+#include <stdexcept>
 
 #include <epicsTypes.h>
 #include <epicsTime.h>
@@ -44,6 +48,7 @@
 
 #include <fstream>
 #include <algorithm>
+#include <array>
 #include <unordered_map>
 
 static const char* driverName = "adsAsynPortDriver";
@@ -993,7 +998,8 @@ adsAsynPortDriver::adsAsynPortDriver(const char* portName,
                                      int defaultSampleTimeMS,
                                      int maxDelayTimeMS,
                                      int adsTimeoutMS,
-                                     ADSTIMESOURCE defaultTimeSource)
+                                     ADSTIMESOURCE defaultTimeSource,
+                                     const char* ethercatMasterAmsNetIdOverride)
     : asynPortDriver(
           portName,
           1, /* maxAddr */
@@ -1036,8 +1042,9 @@ adsAsynPortDriver::adsAsynPortDriver(const char* portName,
     octetReturnVarName_ = 0;
 
     //ADS
-    adsPort_     = 0; //handle
-    remoteNetId_ = {0, 0, 0, 0, 0, 0};
+    adsPort_             = 0; //handle
+    remoteNetId_         = {0, 0, 0, 0, 0, 0};
+    ethercatMasterNetId_ = {0, 0, 0, 0, 0, 0};
     amsPortList_.clear();
 
     if (amsportDefault_ <= 0)
@@ -1069,6 +1076,29 @@ adsAsynPortDriver::adsAsynPortDriver(const char* portName,
                   functionName,
                   amsaddr_);
         return;
+    }
+
+    if (ethercatMasterAmsNetIdOverride && *ethercatMasterAmsNetIdOverride)
+    {
+        if (!ads::parseAmsNetId(ethercatMasterAmsNetIdOverride, &ethercatMasterNetId_))
+        {
+            asynPrint(pasynUserSelf,
+                      ASYN_TRACE_ERROR,
+                      "%s:%s: invalid EtherCAT master AMS Net ID override: %s\n",
+                      driverName,
+                      functionName,
+                      ethercatMasterAmsNetIdOverride);
+            throw std::invalid_argument("Invalid EtherCAT master AMS Net ID override");
+        }
+        ethercatMasterAvailable_      = true;
+        ethercatMasterAmsNetIdSource_ = "override";
+        ethercatMasterNetIdResolved_.store(true, std::memory_order_release);
+        asynPrint(pasynUserSelf,
+                  ASYN_TRACE_FLOW,
+                  "%s:%s: using configured EtherCAT master AMS Net ID %s\n",
+                  driverName,
+                  functionName,
+                  ethercatMasterAmsNetIdOverride);
     }
 
     if (nvals != 6)
@@ -1270,6 +1300,18 @@ adsAsynPortDriver::adsAsynPortDriver(const char* portName,
         }
         if (adsState == ADSSTATE_RUN)
         {
+            if (!ethercatMasterIsResolved())
+                resolveEthercatMasterAmsNetId(amsClientPort);
+            if (ethercatMasterIsAvailable() && adsAddEthercatRoute() != asynSuccess)
+            {
+                asynPrint(pasynUserSelf,
+                          ASYN_TRACE_WARNING,
+                          "%s:%s: EtherCAT master route could not be established. "
+                          "State PVs may remain unavailable.\n",
+                          driverName,
+                          functionName);
+            }
+
             asynPrint(pasynUserSelf,
                       ASYN_TRACE_ERROR,
                       "%s:%s: connection established for port %s.\n",
@@ -1776,12 +1818,31 @@ void adsAsynPortDriver::report(FILE* fp, int details)
         return;
     }
 
+    lock();
+    AmsNetId ethercatMasterNetId;
+    std::string ethercatMasterAmsNetIdSource;
+    {
+        std::lock_guard<std::mutex> ethercatMasterLock(ethercatMasterNetIdMutex_);
+        ethercatMasterNetId          = ethercatMasterNetId_;
+        ethercatMasterAmsNetIdSource = ethercatMasterAmsNetIdSource_;
+    }
+
     if (details >= 1)
     {
         fprintf(fp, "General information:\n");
         fprintf(fp, "  Port:                        %s\n", portName);
         fprintf(fp, "  Ip-address:                  %s\n", ipaddr_);
         fprintf(fp, "  Ams-address:                 %s\n", amsaddr_);
+        fprintf(fp,
+                "  EtherCAT master AMS Net ID:  %u.%u.%u.%u.%u.%u (%s)\n",
+                ethercatMasterNetId.b[0],
+                ethercatMasterNetId.b[1],
+                ethercatMasterNetId.b[2],
+                ethercatMasterNetId.b[3],
+                ethercatMasterNetId.b[4],
+                ethercatMasterNetId.b[5],
+                ethercatMasterAmsNetIdSource.empty() ? "unresolved"
+                                                     : ethercatMasterAmsNetIdSource.c_str());
         fprintf(fp, "  Default Ams-port :           %d\n", amsportDefault_);
         fprintf(fp, "  Auto-connect:                %s\n", autoConnect_ ? "true" : "false");
         fprintf(fp, "  Priority:                    %u\n", priority_);
@@ -1880,6 +1941,8 @@ void adsAsynPortDriver::report(FILE* fp, int details)
             fprintf(fp, "\n");
         }
     }
+
+    unlock();
 }
 
 /** Disconencts the PLC with asyn lock.
@@ -2073,6 +2136,11 @@ asynStatus adsAsynPortDriver::connect(asynUser* pasynUser)
     asynStatus stat = adsConnect(amsClientPort);
 
     if (stat != asynSuccess)
+    {
+        return asynError;
+    }
+
+    if (ethercatMasterIsAvailable() && adsAddEthercatRoute() != asynSuccess)
     {
         return asynError;
     }
@@ -2746,17 +2814,6 @@ asynStatus adsAsynPortDriver::parsePlcInfofromDrvInfo(const char* drvInfo, adsPa
     const char* isThere       = strstr(drvInfo, option);
     if (isThere)
     {
-        if (strlen(isThere) < (strlen(option) + strlen("16#%x,16#%x,%u,%u")))
-        {
-            asynPrint(pasynUserSelf,
-                      ASYN_TRACE_ERROR,
-                      "%s:%s: Failed to parse %s command from drvInfo (%s). String to short.\n",
-                      driverName,
-                      functionName,
-                      option,
-                      drvInfo);
-            return asynError;
-        }
         paramInfo->isAdrCommand = true;
 
         int nvals = sscanf(isThere + strlen(option),
@@ -4022,6 +4079,18 @@ asynStatus adsAsynPortDriver::writeInt32(asynUser* pasynUser, epicsInt32 value)
     }
 
     auto paramInfo = &adsParamArray_[paramIndex];
+
+    if (paramInfo->isAdrCommand &&
+        !adsIsValidEthercatStateRequest(
+            paramInfo->plcAbsAdrGroup, paramInfo->plcSize, paramInfo->plcDataType, value))
+    {
+        asynPrint(pasynUser,
+                  ASYN_TRACE_ERROR,
+                  "%s:%s: Invalid EtherCAT state request or data type; write canceled.\n",
+                  driverName,
+                  functionName);
+        return setAlarmParam(paramInfo, WRITE_ALARM, INVALID_ALARM);
+    }
 
     //Special case. Check if write ams port state
     if (paramInfo->dataSource == ADS_DATASOURCE_AMS_STATE)
@@ -5870,6 +5939,10 @@ asynStatus adsAsynPortDriver::adsWriteParam(uint16_t amsClientPort,
     {
         return asynError;
     }
+    if (!checkEthercatMasterForParam(amsClientPort, paramInfo, functionName))
+    {
+        return asynError;
+    }
 
     // Calculate consumed time by this method
     struct timeval start, end;
@@ -5879,8 +5952,7 @@ asynStatus adsAsynPortDriver::adsWriteParam(uint16_t amsClientPort,
     uint32_t group  = 0;
     uint32_t offset = 0;
 
-    AmsAddr amsServer;
-    amsServer = {remoteNetId_, paramInfo->amsPort};
+    AmsAddr amsServer = {adsTargetNetIdForParam(paramInfo), paramInfo->amsPort};
 
     if (paramInfo->isAdrCommand)
     { // Abs access (ADR command)
@@ -5975,6 +6047,172 @@ asynStatus adsAsynPortDriver::adsReadParam(uint16_t amsClientPort, adsParamInfo*
     return adsReadParam(amsClientPort, paramInfo, &notused, 1);
 }
 
+bool adsAsynPortDriver::resolveEthercatMasterAmsNetId(uint16_t amsClientPort)
+{
+    std::lock_guard<std::mutex> lockGuard(ethercatMasterNetIdMutex_);
+    if (ethercatMasterNetIdResolved_.load(std::memory_order_acquire))
+        return ethercatMasterAvailable_;
+
+    const auto useDerivedMasterId = [this](const char* reason, int traceLevel)
+    {
+        ethercatMasterNetId_          = remoteNetId_;
+        ethercatMasterNetId_.b[4]     = ADS_ECAT_DERIVED_AMS_PORT_HIGH_BYTE;
+        ethercatMasterNetId_.b[5]     = ADS_ECAT_DERIVED_AMS_PORT_LOW_BYTE;
+        ethercatMasterAvailable_      = true;
+        ethercatMasterAmsNetIdSource_ = "derived";
+        ethercatMasterNetIdResolved_.store(true, std::memory_order_release);
+        asynPrint(pasynUserSelf,
+                  traceLevel,
+                  "%s:%s: EtherCAT master AMS Net ID discovery %s; using derived ID "
+                  "%u.%u.%u.%u.%u.%u\n",
+                  driverName,
+                  __func__,
+                  reason,
+                  ethercatMasterNetId_.b[0],
+                  ethercatMasterNetId_.b[1],
+                  ethercatMasterNetId_.b[2],
+                  ethercatMasterNetId_.b[3],
+                  ethercatMasterNetId_.b[4],
+                  ethercatMasterNetId_.b[5]);
+        return true;
+    };
+
+    AmsAddr ioRouter     = {remoteNetId_, ADS_ECAT_R0_IO_AMS_PORT};
+    uint32_t deviceCount = 0;
+    uint32_t bytesRead   = 0;
+    long status          = AdsSyncReadReqEx2(amsClientPort,
+                                    &ioRouter,
+                                    ADS_ECAT_IO_DEVICE_STATE_INDEX_GROUP_BASE,
+                                    ADS_ECAT_IO_READ_DEVICE_COUNT_OFFSET,
+                                    sizeof(deviceCount),
+                                    &deviceCount,
+                                    &bytesRead);
+    if (status || bytesRead != sizeof(deviceCount))
+    {
+        return useDerivedMasterId("failed to read the I/O device count", ASYN_TRACE_ERROR);
+    }
+    if (deviceCount == 0)
+    {
+        ethercatMasterNetId_          = {0, 0, 0, 0, 0, 0};
+        ethercatMasterAvailable_      = false;
+        ethercatMasterAmsNetIdSource_ = "none";
+        ethercatMasterNetIdResolved_.store(true, std::memory_order_release);
+        asynPrint(pasynUserSelf,
+                  ASYN_TRACE_WARNING,
+                  "%s:%s: PLC project declares that it has no EtherCAT master; "
+                  "EtherCAT state access is unavailable.\n",
+                  driverName,
+                  __func__);
+        return false;
+    }
+    if (deviceCount != ADS_ECAT_EXPECTED_SINGLE_IO_DEVICE_COUNT)
+    {
+        return useDerivedMasterId("found a count other than one configured I/O device",
+                                  ASYN_TRACE_WARNING);
+    }
+
+    std::array<uint16_t, ADS_ECAT_IO_DEVICE_ID_TABLE_WORDS_FOR_SINGLE_DEVICE> deviceIds{};
+    bytesRead = 0;
+    status    = AdsSyncReadReqEx2(amsClientPort,
+                               &ioRouter,
+                               ADS_ECAT_IO_DEVICE_STATE_INDEX_GROUP_BASE,
+                               ADS_ECAT_IO_READ_DEVICE_IDS_OFFSET,
+                               sizeof(deviceIds),
+                               deviceIds.data(),
+                               &bytesRead);
+    if (status || bytesRead != sizeof(deviceIds))
+    {
+        return useDerivedMasterId("failed to read the I/O device IDs", ASYN_TRACE_ERROR);
+    }
+
+    const uint16_t deviceId         = deviceIds[ADS_ECAT_IO_DEVICE_ID_TABLE_FIRST_ID_INDEX];
+    const uint32_t deviceIndexGroup = ADS_ECAT_IO_DEVICE_STATE_INDEX_GROUP_BASE + deviceId;
+    std::array<uint8_t, ADS_ECAT_AMS_NET_ID_SIZE_BYTES> rawNetId{};
+    bytesRead = 0;
+    status    = AdsSyncReadReqEx2(amsClientPort,
+                               &ioRouter,
+                               deviceIndexGroup,
+                               ADS_ECAT_IO_READ_DEVICE_NET_ID_OFFSET,
+                               rawNetId.size(),
+                               rawNetId.data(),
+                               &bytesRead);
+    if (status || bytesRead != rawNetId.size())
+    {
+        return useDerivedMasterId("failed to read the discovered I/O device AMS Net ID",
+                                  ASYN_TRACE_ERROR);
+    }
+
+    const bool missingIpPrefix = std::all_of(rawNetId.begin(),
+                                             rawNetId.begin() + ADS_ECAT_AMS_NET_ID_IP_PREFIX_BYTES,
+                                             [](uint8_t byte) { return byte == 0; });
+    if (missingIpPrefix)
+    {
+        std::copy(
+            remoteNetId_.b, remoteNetId_.b + ADS_ECAT_AMS_NET_ID_IP_PREFIX_BYTES, rawNetId.begin());
+    }
+    ethercatMasterNetId_ =
+        AmsNetId(rawNetId[0], rawNetId[1], rawNetId[2], rawNetId[3], rawNetId[4], rawNetId[5]);
+    ethercatMasterAvailable_      = true;
+    ethercatMasterAmsNetIdSource_ = "discovered";
+    ethercatMasterNetIdResolved_.store(true, std::memory_order_release);
+    asynPrint(pasynUserSelf,
+              ASYN_TRACE_FLOW,
+              "%s:%s: discovered EtherCAT master AMS Net ID %u.%u.%u.%u.%u.%u\n",
+              driverName,
+              __func__,
+              ethercatMasterNetId_.b[0],
+              ethercatMasterNetId_.b[1],
+              ethercatMasterNetId_.b[2],
+              ethercatMasterNetId_.b[3],
+              ethercatMasterNetId_.b[4],
+              ethercatMasterNetId_.b[5]);
+    return true;
+}
+
+bool adsAsynPortDriver::ethercatMasterIsResolved() const
+{
+    return ethercatMasterNetIdResolved_.load(std::memory_order_acquire);
+}
+
+bool adsAsynPortDriver::ethercatMasterIsAvailable() const
+{
+    std::lock_guard<std::mutex> lockGuard(ethercatMasterNetIdMutex_);
+    return ethercatMasterNetIdResolved_.load(std::memory_order_acquire) && ethercatMasterAvailable_;
+}
+
+bool adsAsynPortDriver::checkEthercatMasterForParam(uint16_t amsClientPort,
+                                                    const adsParamInfo* paramInfo,
+                                                    const char* functionName)
+{
+    const bool isEthercatStateParam = paramInfo && paramInfo->isAdrCommand &&
+                                      paramInfo->plcAbsAdrGroup == ADSIGRP_ECAT_SLAVE_STATE;
+    if (!isEthercatStateParam)
+        return true;
+
+    if (!ethercatMasterIsResolved())
+        resolveEthercatMasterAmsNetId(amsClientPort);
+    if (ethercatMasterIsAvailable())
+        return true;
+
+    asynPrint(pasynUserSelf,
+              ASYN_TRACE_ERROR,
+              "%s:%s: EtherCAT state read/request was received but the PLC project "
+              "declares that it has no EtherCAT master defined.\n",
+              driverName,
+              functionName);
+    return false;
+}
+
+AmsNetId adsAsynPortDriver::adsTargetNetIdForParam(const adsParamInfo* paramInfo) const
+{
+    if (paramInfo && paramInfo->isAdrCommand &&
+        paramInfo->plcAbsAdrGroup == ADSIGRP_ECAT_SLAVE_STATE)
+    {
+        return ethercatMasterNetId_;
+    }
+    return remoteNetId_;
+}
+
 /** Read value of variable in TwinCAT.
  *
  * \param[in] paramInfo Parameter information.
@@ -6001,9 +6239,12 @@ asynStatus adsAsynPortDriver::adsReadParam(uint16_t amsClientPort,
     {
         return asynError;
     }
+    if (!checkEthercatMasterForParam(amsClientPort, paramInfo, functionName))
+    {
+        return asynError;
+    }
 
-    AmsAddr amsServer;
-    amsServer = {remoteNetId_, paramInfo->amsPort};
+    AmsAddr amsServer = {adsTargetNetIdForParam(paramInfo), paramInfo->amsPort};
 
     if (paramInfo->isAdrCommand)
     { // Abs access (ADR command)
@@ -7211,6 +7452,46 @@ asynStatus adsAsynPortDriver::adsDelRoute(int force)
         routeAdded_ = 0;
         AdsDelRoute(remoteNetId_);
     }
+    if (ethercatRouteAdded_)
+    {
+        ethercatRouteAdded_ = 0;
+        AdsDelRoute(ethercatMasterNetId_);
+    }
+    return asynSuccess;
+}
+
+asynStatus adsAsynPortDriver::adsAddEthercatRoute()
+{
+    if (!ethercatMasterIsAvailable() ||
+        memcmp(ethercatMasterNetId_.b, remoteNetId_.b, sizeof(remoteNetId_.b)) == 0 ||
+        ethercatRouteAdded_)
+    {
+        return asynSuccess;
+    }
+
+    const long addRouteStatus = AdsAddRoute(ethercatMasterNetId_, ipaddr_);
+    if (addRouteStatus == ADSERR_DEVICE_EXISTS)
+    {
+        asynPrint(pasynUserSelf,
+                  ASYN_TRACE_FLOW,
+                  "%s:%s: EtherCAT master route already exists.\n",
+                  driverName,
+                  __func__);
+        return asynSuccess;
+    }
+    if (addRouteStatus)
+    {
+        asynPrint(pasynUserSelf,
+                  ASYN_TRACE_ERROR,
+                  "%s:%s: Adding EtherCAT master ADS route failed with: %s (0x%lx).\n",
+                  driverName,
+                  __func__,
+                  adsErrorToString(addRouteStatus),
+                  addRouteStatus);
+        return asynError;
+    }
+
+    ethercatRouteAdded_ = 1;
     return asynSuccess;
 }
 
@@ -7264,7 +7545,8 @@ extern "C"
         printf("                            <Default sample time> [ms],\n");
         printf("                            <Default max delay time [ms]>,\n");
         printf("                            <ADS command timeout [ms]>,\n");
-        printf("                            <Default time source>)\n");
+        printf("                            <Default time source>,\n");
+        printf("                            <EtherCAT master AMS Net ID override>)\n");
         printf("\n");
         printf(" Example configuration:\n");
         printf(" 0. Asyn port name                             : \"ADS_1\"\n");
@@ -7282,10 +7564,11 @@ extern "C"
             " 9. ADS command timeout in ms                 : 1000 (timeout for adsLib commands)\n");
         printf(" 10. default time source (PLC=0,EPICS=1).      : 0 (PLC) NOTE: record TSE field "
                "need to be set to -2 for timestamp in asyn (field(TSE, -2))\n");
+        printf(" 11. EtherCAT master AMS Net ID override      : empty to discover automatically\n");
         printf("\n");
         printf(" Resulting adsAsynPortDriverConfigure() command: \n");
         printf(" adsAsynPortDriverConfigure(\"ADS_1\",\"192.168.88.44\",\"192.168.88.44.1.1\",851,"
-               "1000,0,0,50,100,1000,0)\n");
+               "1000,0,0,50,100,1000,0,\"\")\n");
         printf("\n");
         printf("\n");
         printf(
@@ -7318,7 +7601,8 @@ extern "C"
                                                   int defaultSampleTimeMS,
                                                   int maxDelayTimeMS,
                                                   int adsTimeoutMS,
-                                                  int defaultTimeSource)
+                                                  int defaultTimeSource,
+                                                  const char* ethercatMasterAmsNetIdOverride)
     {
         if (!portName)
         {
@@ -7390,7 +7674,8 @@ extern "C"
                                                defaultSampleTimeMS,
                                                maxDelayTimeMS,
                                                adsTimeoutMS,
-                                               (ADSTIMESOURCE)defaultTimeSource);
+                                               (ADSTIMESOURCE)defaultTimeSource,
+                                               ethercatMasterAmsNetIdOverride);
         if (adsAsynPortObj)
         {
             asynUser* traceUser = adsAsynPortObj->getTraceAsynUser();
@@ -7424,6 +7709,8 @@ extern "C"
                                                              iocshArgInt};
     static const iocshArg adsAsynPortDriverConfigureArg10 = {"default time source (EPICS=0,PLC=1)",
                                                              iocshArgInt};
+    static const iocshArg adsAsynPortDriverConfigureArg11 = {"EtherCAT master AMS Net ID override",
+                                                             iocshArgString};
     static const iocshArg* adsAsynPortDriverConfigureArgs[] = {&adsAsynPortDriverConfigureArg0,
                                                                &adsAsynPortDriverConfigureArg1,
                                                                &adsAsynPortDriverConfigureArg2,
@@ -7434,10 +7721,11 @@ extern "C"
                                                                &adsAsynPortDriverConfigureArg7,
                                                                &adsAsynPortDriverConfigureArg8,
                                                                &adsAsynPortDriverConfigureArg9,
-                                                               &adsAsynPortDriverConfigureArg10};
+                                                               &adsAsynPortDriverConfigureArg10,
+                                                               &adsAsynPortDriverConfigureArg11};
 
     static const iocshFuncDef adsAsynPortDriverConfigureFuncDef = {
-        "adsAsynPortDriverConfigure", 11, adsAsynPortDriverConfigureArgs};
+        "adsAsynPortDriverConfigure", 12, adsAsynPortDriverConfigureArgs};
 
     static void adsAsynPortDriverConfigureCallFunc(const iocshArgBuf* args)
     {
@@ -7451,7 +7739,8 @@ extern "C"
                                    args[7].ival,
                                    args[8].ival,
                                    args[9].ival,
-                                   args[10].ival);
+                                   args[10].ival,
+                                   args[11].sval);
     }
 
     /*

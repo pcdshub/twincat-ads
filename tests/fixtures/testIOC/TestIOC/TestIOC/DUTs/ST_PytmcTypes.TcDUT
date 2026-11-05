@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.12">
+  <DUT Name="ST_PytmcTypes" Id="{b6b1762f-8c9f-44b3-8428-243d291b76e5}">
+    <Declaration><![CDATA[
+TYPE ST_PytmcTypes :
+STRUCT
+    {attribute 'pytmc' := 'pv: BOOL'}
+    bBool: BOOL;
+    {attribute 'pytmc' := 'pv: ARRAYBOOL'}
+    arrBool: ARRAY[0..GVL.nPytmcTypesArrayLength] OF BOOL;
+    {attribute 'pytmc' := 'pv: BYTE'}
+    iByte: BYTE;
+    {attribute 'pytmc' := 'pv: SINT'}
+    iSint: SINT;
+    {attribute 'pytmc' := 'pv: USINT'}
+    iUsint: USINT;
+    {attribute 'pytmc' := 'pv: WORD'}
+    iWord: WORD;
+    {attribute 'pytmc' := 'pv: INT'}
+    iInt: INT;
+    {attribute 'pytmc' := 'pv: ARRAYINT'}
+    arrInt: ARRAY[0..GVL.nPytmcTypesArrayLength] OF INT;
+    {attribute 'pytmc' := 'pv: UINT'}
+    iUint: UINT;
+    {attribute 'pytmc' := 'pv: ENUM'}
+    eEnum: ENUM_Test;
+    {attribute 'pytmc' := 'pv: ARRAYENUM'}
+    arrUEnum: ARRAY[0..GVL.nPytmcTypesArrayLength] OF ENUM_Test;
+    {attribute 'pytmc' := 'pv: DWORD'}
+    iDword: DWORD;
+    {attribute 'pytmc' := 'pv: DINT'}
+    iDint: DINT;
+    {attribute 'pytmc' := 'pv: ARRAYDINT'}
+    arrDint: ARRAY[0..GVL.nPytmcTypesArrayLength] OF DINT;
+    {attribute 'pytmc' := 'pv: UDINT'}
+    iUdint: UDINT;
+    {attribute 'pytmc' := 'pv: REAL'}
+    fReal: REAL;
+    {attribute 'pytmc' := 'pv: ARRAYREAL'}
+    arrReal: ARRAY[0..GVL.nPytmcTypesArrayLength] OF REAL;
+    {attribute 'pytmc' := 'pv: LREAL'}
+    fLreal: LREAL;
+    {attribute 'pytmc' := 'pv: ARRAYLREAL'}
+    arrLreal: ARRAY[0..GVL.nPytmcTypesArrayLength] OF LREAL;
+    {attribute 'pytmc' := 'pv: STRING'}
+    sString: STRING;
+    {attribute 'pytmc' := 'pv: MAXSTRING'}
+    sMaxString: T_MaxString;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

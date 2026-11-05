@@ -1,0 +1,4240 @@
+<?xml version="1.0"?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.17" ClassName="CTComPlcObjDef">
+	<DataTypes>
+		<DataType>
+			<Name GUID="{CBC83B73-B816-4597-A9E5-2B03263CA131}" Namespace="MC" TcBaseType="true" HideType="true" IecDeclaration="DWORD;">NCTOPLC_AXIS_REF_STATE</Name>
+			<BitSize>32</BitSize>
+			<SubItem>
+				<Name>Operational</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>Homed</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>1</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>NotMoving</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>2</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>InPositionArea</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>3</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>InTargetPosition</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>4</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>Protected</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>5</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ErrorPropagationDelayed</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>6</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>HasBeenStopped</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>7</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>HasJob</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>8</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>PositiveDirection</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>9</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>NegativeDirection</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>10</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>HomingBusy</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>11</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ConstantVelocity</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>12</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>Compensating</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>13</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ExtSetPointGenEnabled</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>14</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>PhasingActive</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>15</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ExternalLatchValid</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>16</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>NewTargetPos</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>17</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>IsDriveLimitActive</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>18</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ContinuousMotion</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>19</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ControlLoopClosed</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>20</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CamTableQueued</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>21</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CamDataQueued</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>22</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CamScalingPending</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>23</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CmdBuffered</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>24</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>PTPmode</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>25</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>SoftLimitMinExceeded</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>26</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>SoftLimitMaxExceeded</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>27</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>DriveDeviceError</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>28</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>MotionCommandsLocked</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>29</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>IoDataInvalid</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>30</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>Error</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>31</BitOffs>
+			</SubItem>
+			<Format Name="Short">
+				<Printf>%08x</Printf>
+			</Format>
+			<Format Name="Cpp">
+				<Printf>0x%08x</Printf>
+			</Format>
+			<Format Name="IEC">
+				<Printf>16#%08X</Printf>
+			</Format>
+			<Relations>
+				<Relation Priority="100">
+					<Type>{4C3FC5AC-D5AA-44C6-AC5A-159774BA0F6D}</Type>
+				</Relation>
+			</Relations>
+		</DataType>
+		<DataType>
+			<Name GUID="{6BDEED54-7268-405F-A18B-665A0AE0FEE9}" Namespace="MC" TcBaseType="true" HideType="true" IecDeclaration="DWORD;">NCTOPLC_AXIS_REF_OPMODE</Name>
+			<BitSize>32</BitSize>
+			<SubItem>
+				<Name>OpModePosAreaMonitoring</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeTargetPosMonitoring</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>1</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeLoop</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>2</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeMotionMonitoring</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>3</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModePEHTimeMonitoring</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>4</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeBacklashCompensation</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>5</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeDelayedErrorReaction</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>6</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeModulo</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>7</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeSimulationAxis</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>8</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeStopMonitoring</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>12</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeOutputSmoothingFilter</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>13</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModePosLagMonitoring</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>16</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeVeloLagMonitoring</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>17</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeSoftLimitMinMonitoring</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>18</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeSoftLimitMaxMonitoring</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>19</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModePosCorrection</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>20</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeAllowSlaveCommands</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>21</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeAllowExtSetAxisCommands</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>22</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ApplicationRequest</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>23</BitOffs>
+			</SubItem>
+		</DataType>
+		<DataType>
+			<Name GUID="{303D9411-849C-467F-8A4C-5C8CD0F3DD46}" Namespace="MC" TcBaseType="true" HideType="true">NCTOPLC_AXIS_REF_STATE2_FLAGS</Name>
+			<BitSize>32</BitSize>
+			<SubItem>
+				<Name>AvoidingCollision</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<Format Name="Short">
+				<Printf>%08x</Printf>
+			</Format>
+			<Format Name="Cpp">
+				<Printf>0x%08x</Printf>
+			</Format>
+			<Format Name="IEC">
+				<Printf>16#%08X</Printf>
+			</Format>
+		</DataType>
+		<DataType>
+			<Name GUID="{669F3788-48FD-42CF-8A59-2DA946853FB6}" Namespace="MC" TcBaseType="true" HideType="true">NCTOPLC_AXIS_REF_STATE2</Name>
+			<BitSize>32</BitSize>
+			<SubItem>
+				<Name>Value</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000007}">DWORD</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>Flags</Name>
+				<Type GUID="{303D9411-849C-467F-8A4C-5C8CD0F3DD46}" Namespace="MC">NCTOPLC_AXIS_REF_STATE2_FLAGS</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<Format Name="Short">
+				<Printf>%08x</Printf>
+			</Format>
+			<Format Name="Cpp">
+				<Printf>0x%08x</Printf>
+			</Format>
+			<Format Name="IEC">
+				<Printf>16#%08X</Printf>
+			</Format>
+		</DataType>
+		<DataType>
+			<Name GUID="{F7B9FC50-054E-4547-B468-83A9E72D8064}" Namespace="MC" TcBaseType="true" HideType="true">NCTOPLC_AXIS_REF_STATE3_FLAGS</Name>
+			<BitSize>32</BitSize>
+			<SubItem>
+				<Name>TouchProbe1InputState</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>TouchProbe2InputState</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>1</BitOffs>
+			</SubItem>
+			<Format Name="Short">
+				<Printf>%08x</Printf>
+			</Format>
+			<Format Name="Cpp">
+				<Printf>0x%08x</Printf>
+			</Format>
+			<Format Name="IEC">
+				<Printf>16#%08X</Printf>
+			</Format>
+		</DataType>
+		<DataType>
+			<Name GUID="{60E203BA-3CEE-4BB0-8728-643B1F529592}" Namespace="MC" TcBaseType="true" HideType="true">NCTOPLC_AXIS_REF_STATE3</Name>
+			<BitSize>32</BitSize>
+			<SubItem>
+				<Name>Value</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000007}">DWORD</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>Flags</Name>
+				<Type GUID="{F7B9FC50-054E-4547-B468-83A9E72D8064}" Namespace="MC">NCTOPLC_AXIS_REF_STATE3_FLAGS</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<Format Name="Short">
+				<Printf>%08x</Printf>
+			</Format>
+			<Format Name="Cpp">
+				<Printf>0x%08x</Printf>
+			</Format>
+			<Format Name="IEC">
+				<Printf>16#%08X</Printf>
+			</Format>
+		</DataType>
+		<DataType>
+			<Name GUID="{BA9D9D0F-1A4A-4A27-A19F-3032626A8491}" Namespace="MC" TcBaseType="true" HideType="true">NCTOPLC_AXIS_REF_CAMCOUPLINGSTATE</Name>
+			<BitSize>8</BitSize>
+			<SubItem>
+				<Name>CamActivationPending</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CamDeactivationPending</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>1</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CamActive</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>2</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CamDataQueued</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>6</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CamScalingPending</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>7</BitOffs>
+			</SubItem>
+		</DataType>
+		<DataType>
+			<Name GUID="{18071995-0000-0000-0000-000000000039}" TcBaseType="true" HideType="true">UINTARR8</Name>
+			<BitSize>128</BitSize>
+			<BaseType GUID="{18071995-0000-0000-0000-000000000005}">UINT</BaseType>
+			<ArrayInfo>
+				<LBound>0</LBound>
+				<Elements>8</Elements>
+			</ArrayInfo>
+		</DataType>
+		<DataType>
+			<Name GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC" TcBaseType="true">NCTOPLC_AXIS_REF</Name>
+			<BitSize>2048</BitSize>
+			<SubItem>
+				<Name>StateDWord</Name>
+				<Type GUID="{CBC83B73-B816-4597-A9E5-2B03263CA131}" Namespace="MC">NCTOPLC_AXIS_REF_STATE</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ErrorCode</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>32</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>AxisState</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<Comment><![CDATA[Present State Of The Axis Movement (continuous axis):
+0  = INACTIVE:		axis has no job
+1  = RUNNING:		axis is executing a motion job
+2  = OVERRIDE_ZERO:	axis is executing a job but override is zero
+3  = PHASE_VELOCONST:	axis is moving at constant velocity
+4  = PHASE_ACCPOS:	axis is accelerating
+5  = PHASE_ACCNEG:	axis is decelerating
+Slaves only:
+11 = PREPHASE:		slave axis is in a motion pre-phase
+12 = SYNCHRONIZING:	slave axis is synchronizing
+13 = SYNCHRONOUS:	slave axis is moving synchronously
+External Setpoint Generation:
+41 = EXTSETGEN_MODE1:	external setpoint generation active
+42 = EXTSETGEN_MODE2:	internal and external setpoint gen. active
+]]></Comment>
+				<BitSize>32</BitSize>
+				<BitOffs>64</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>AxisModeConfirmation</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>96</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>HomingState</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<Comment><![CDATA[Axis Homing Status:
+0: idle
+1: start homing
+2: searching home switch
+3: stopping on home switch
+4: moving off home switch
+5: searching sync pulse
+6: stopping after homing
+]]></Comment>
+				<BitSize>32</BitSize>
+				<BitOffs>128</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CoupleState</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<Comment><![CDATA[Axis Coupling Status:
+0: axis is a single axis (not coupled)
+1: axis is a master axis
+2: axis is master and slave
+3: axis is a slave axis
+]]></Comment>
+				<BitSize>32</BitSize>
+				<BitOffs>160</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>SvbEntries</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>192</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>SafEntries</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>224</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>AxisId</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>256</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>OpModeDWord</Name>
+				<Type GUID="{6BDEED54-7268-405F-A18B-665A0AE0FEE9}" Namespace="MC">NCTOPLC_AXIS_REF_OPMODE</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>288</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ActPos</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>320</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ModuloActPos</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>384</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ActiveControlLoopIndex</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000005}">UINT</Type>
+				<BitSize>16</BitSize>
+				<BitOffs>448</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ControlLoopIndex</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000005}">UINT</Type>
+				<BitSize>16</BitSize>
+				<BitOffs>464</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ModuloActTurns</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000009}">DINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>480</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ActVelo</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>512</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>PosDiff</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>576</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>SetPos</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>640</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>SetVelo</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>704</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>SetAcc</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>768</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>TargetPos</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>832</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ModuloSetPos</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>896</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ModuloSetTurns</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000009}">DINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>960</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CmdNo</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000005}">UINT</Type>
+				<BitSize>16</BitSize>
+				<BitOffs>992</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CmdState</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000005}">UINT</Type>
+				<BitSize>16</BitSize>
+				<BitOffs>1008</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>SetJerk</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>1024</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>SetTorque</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>1088</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ActTorque</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>1152</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>StateDWord2</Name>
+				<Type GUID="{669F3788-48FD-42CF-8A59-2DA946853FB6}" Namespace="MC">NCTOPLC_AXIS_REF_STATE2</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>1216</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>StateDWord3</Name>
+				<Type GUID="{60E203BA-3CEE-4BB0-8728-643B1F529592}" Namespace="MC">NCTOPLC_AXIS_REF_STATE3</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>1248</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>TouchProbeState</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000007}">DWORD</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>1280</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>TouchProbeCounter</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000007}">DWORD</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>1312</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CamCouplingState</Name>
+				<Type GUID="{BA9D9D0F-1A4A-4A27-A19F-3032626A8491}" Namespace="MC">NCTOPLC_AXIS_REF_CAMCOUPLINGSTATE</Type>
+				<ArrayInfo>
+					<LBound>0</LBound>
+					<Elements>8</Elements>
+				</ArrayInfo>
+				<BitSize>64</BitSize>
+				<BitOffs>1344</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>CamCouplingTableID</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000039}">UINTARR8</Type>
+				<BitSize>128</BitSize>
+				<BitOffs>1408</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ActTorqueDerivative</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>1536</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>SetTorqueDerivative</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>1600</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>AbsPhasingPos</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>1664</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>TorqueOffset</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>1728</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ActPosWithoutPosCorrection</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>1792</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ActAcc</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>1856</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>DcTimeStamp</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>1920</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>UserData</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>1984</BitOffs>
+			</SubItem>
+			<Properties>
+				<Property>
+					<Name>NcStructType</Name>
+					<Value>2</Value>
+				</Property>
+			</Properties>
+			<Relations>
+				<Relation Priority="100">
+					<Type GUID="{429B767E-373B-40AE-BFA5-E1C08B444DF3}">NCAXLESTRUCT_TOPLC</Type>
+				</Relation>
+				<Relation Priority="100">
+					<Type GUID="{E8DA524A-605F-4879-82E6-B86EF6986572}">NCAXLESTRUCT_TOPLC2</Type>
+				</Relation>
+				<Relation Priority="100">
+					<Type GUID="{B507963E-69F3-4B64-BB8C-2BD7A560976D}">NCAXLESTRUCT_TOPLC3</Type>
+				</Relation>
+				<Relation Priority="100">
+					<Type GUID="{F794B740-82D7-4637-848E-4F74A711D038}">NCAXLESTRUCT_TOPLC4</Type>
+				</Relation>
+				<Relation Priority="100">
+					<Type GUID="{40BD39B0-C3EA-4F74-9F4F-5F1982786F7C}"></Type>
+				</Relation>
+				<Relation Priority="100">
+					<Type GUID="{40BD39B2-C3EA-4F74-9F4F-5F1982786F7C}"></Type>
+				</Relation>
+				<Relation Priority="100">
+					<Type GUID="{8CDE0C45-AB9D-42DB-BC94-1CF7521AB268}"></Type>
+				</Relation>
+				<Relation Priority="100">
+					<Type GUID="{6A65C767-34E5-42BF-AD87-E1A503EAC7BE}"></Type>
+				</Relation>
+				<Relation Priority="100">
+					<Type GUID="{72F5AAAA-16DF-4ED3-8367-F6C8C3ADAE99}"></Type>
+				</Relation>
+				<Relation Priority="100">
+					<Type GUID="{10036166-C9D3-404B-BDD3-323034AAA7F4}"></Type>
+				</Relation>
+			</Relations>
+		</DataType>
+		<DataType>
+			<Name GUID="{875D2B22-B7EB-497E-B933-0C004593CCF3}" Namespace="MC" TcBaseType="true" HideType="true" IecDeclaration="DWORD;">PLCTONC_AXIS_REF_CTRL</Name>
+			<BitSize>32</BitSize>
+			<SubItem>
+				<Name>Enable</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>FeedEnablePlus</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>1</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>FeedEnableMinus</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>2</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>HomingSensor</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>5</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>AcceptBlockedDrive</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>8</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>PlcDebugFlag</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>30</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>NcDebugFlag</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000010}">BIT</Type>
+				<BitSize>1</BitSize>
+				<BitOffs>31</BitOffs>
+			</SubItem>
+			<Format Name="Short">
+				<Printf>%08x</Printf>
+			</Format>
+			<Format Name="Cpp">
+				<Printf>0x%08x</Printf>
+			</Format>
+			<Format Name="IEC">
+				<Printf>16#%08X</Printf>
+			</Format>
+		</DataType>
+		<DataType>
+			<Name GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC" TcBaseType="true">PLCTONC_AXIS_REF</Name>
+			<BitSize>1024</BitSize>
+			<SubItem>
+				<Name>ControlDWord</Name>
+				<Type GUID="{875D2B22-B7EB-497E-B933-0C004593CCF3}" Namespace="MC">PLCTONC_AXIS_REF_CTRL</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>0</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>Override</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>32</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>AxisModeRequest</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>64</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>AxisModeDWord</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000008}">UDINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>96</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>AxisModeLReal</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>128</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>PositionCorrection</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>192</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ExtSetPos</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>256</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ExtSetVelo</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>320</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ExtSetAcc</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>384</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ExtSetDirection</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000009}">DINT</Type>
+				<BitSize>32</BitSize>
+				<BitOffs>448</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ExtControllerOutput</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>512</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>GearRatio1</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>576</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>GearRatio2</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>640</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>GearRatio3</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>704</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>GearRatio4</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>768</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>MapState</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000030}">BOOL</Type>
+				<BitSize>8</BitSize>
+				<BitOffs>832</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>PlcCycleControl</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000001}">BYTE</Type>
+				<BitSize>8</BitSize>
+				<BitOffs>840</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>PlcCycleCount</Name>
+				<Type GUID="{18071995-0000-0000-0000-000000000001}">BYTE</Type>
+				<BitSize>8</BitSize>
+				<BitOffs>848</BitOffs>
+			</SubItem>
+			<SubItem>
+				<Name>ExtTorque</Name>
+				<Type GUID="{18071995-0000-0000-0000-00000000000E}">LREAL</Type>
+				<BitSize>64</BitSize>
+				<BitOffs>896</BitOffs>
+			</SubItem>
+			<Properties>
+				<Property>
+					<Name>NcStructType</Name>
+					<Value>1</Value>
+				</Property>
+			</Properties>
+			<Relations>
+				<Relation Priority="100">
+					<Type GUID="{60392271-8688-4F4C-B404-618DF106325D}"></Type>
+				</Relation>
+				<Relation Priority="100">
+					<Type GUID="{63A84524-72E3-41C8-BEAB-4CCE44690A13}"></Type>
+				</Relation>
+			</Relations>
+		</DataType>
+	</DataTypes>
+	<Instance TmcHash="{68C3770B-0048-9120-4C0E-603DDB9C6B5A}">
+		<Vars VarGrpType="1">
+			<Name>PlcTask Inputs</Name>
+			<Var>
+				<Name>GVL_TestStructs.TestPitch_LimitSwitches.diEncCnt</Name>
+				<Comment><![CDATA[Raw encoder count]]></Comment>
+				<Type>LINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.M1.Axis.NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.M1.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.M1.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.M1.bHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.M1.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.M1.nRawEncoderULINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for ULINT (Biss-C)]]></Comment>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.M1.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.M1.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.M1.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.M2.Axis.NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.M2.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.M2.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.M2.bHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.M2.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.M2.nRawEncoderULINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for ULINT (Biss-C)]]></Comment>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.M2.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.M2.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.M2.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotion01.fbMotionStage.fbDriveVirtual.MasterAxis.NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotion02.fbMotionStage.fbDriveVirtual.MasterAxis.NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[1].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[2].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[3].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[4].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[5].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[6].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[7].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[8].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[9].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[10].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[11].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[12].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[13].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[14].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[15].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[16].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[17].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[18].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[19].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[20].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[21].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[22].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[23].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[24].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[25].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[26].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[27].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[28].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[29].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[30].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[31].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[32].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[33].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[34].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[35].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[36].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[37].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[38].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[39].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[40].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[41].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[42].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[43].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[44].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[45].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[46].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[47].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[48].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[49].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[50].NcToPlc</Name>
+				<Type GUID="{25521FAA-EA5F-4C7F-8864-BBCCDACD2E98}" Namespace="MC">NCTOPLC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[1].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[1].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[1].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[1].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[1].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[1].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[1].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[1].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[1].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[1].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[2].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[2].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[2].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[2].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[2].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[2].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[2].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[2].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[2].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[2].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[3].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[3].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[3].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[3].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[3].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[3].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[3].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[3].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[3].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[3].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[4].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[4].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[4].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[4].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[4].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[4].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[4].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[4].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[4].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[4].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[5].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[5].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[5].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[5].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[5].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[5].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[5].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[5].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[5].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[5].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[6].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[6].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[6].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[6].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[6].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[6].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[6].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[6].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[6].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[6].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[7].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[7].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[7].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[7].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[7].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[7].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[7].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[7].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[7].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[7].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[8].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[8].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[8].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[8].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[8].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[8].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[8].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[8].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[8].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[8].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[9].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[9].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[9].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[9].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[9].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[9].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[9].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[9].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[9].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[9].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[10].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[10].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[10].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[10].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[10].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[10].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[10].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[10].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[10].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[10].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[11].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[11].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[11].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[11].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[11].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[11].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[11].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[11].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[11].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[11].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[12].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[12].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[12].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[12].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[12].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[12].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[12].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[12].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[12].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[12].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[13].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[13].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[13].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[13].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[13].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[13].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[13].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[13].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[13].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[13].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[14].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[14].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[14].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[14].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[14].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[14].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[14].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[14].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[14].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[14].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[15].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[15].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[15].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[15].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[15].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[15].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[15].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[15].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[15].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[15].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[16].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[16].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[16].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[16].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[16].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[16].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[16].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[16].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[16].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[16].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[17].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[17].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[17].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[17].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[17].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[17].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[17].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[17].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[17].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[17].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[18].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[18].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[18].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[18].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[18].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[18].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[18].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[18].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[18].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[18].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[19].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[19].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[19].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[19].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[19].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[19].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[19].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[19].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[19].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[19].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[20].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[20].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[20].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[20].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[20].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[20].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[20].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[20].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[20].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[20].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[21].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[21].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[21].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[21].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[21].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[21].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[21].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[21].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[21].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[21].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[22].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[22].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[22].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[22].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[22].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[22].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[22].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[22].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[22].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[22].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[23].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[23].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[23].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[23].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[23].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[23].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[23].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[23].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[23].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[23].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[24].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[24].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[24].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[24].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[24].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[24].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[24].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[24].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[24].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[24].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[25].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[25].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[25].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[25].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[25].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[25].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[25].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[25].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[25].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[25].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[26].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[26].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[26].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[26].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[26].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[26].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[26].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[26].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[26].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[26].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[27].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[27].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[27].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[27].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[27].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[27].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[27].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[27].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[27].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[27].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[28].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[28].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[28].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[28].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[28].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[28].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[28].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[28].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[28].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[28].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[29].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[29].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[29].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[29].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[29].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[29].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[29].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[29].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[29].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[29].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[30].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[30].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[30].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[30].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[30].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[30].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[30].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[30].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[30].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[30].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[31].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[31].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[31].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[31].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[31].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[31].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[31].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[31].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[31].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[31].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[32].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[32].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[32].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[32].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[32].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[32].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[32].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[32].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[32].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[32].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[33].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[33].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[33].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[33].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[33].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[33].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[33].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[33].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[33].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[33].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[34].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[34].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[34].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[34].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[34].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[34].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[34].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[34].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[34].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[34].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[35].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[35].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[35].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[35].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[35].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[35].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[35].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[35].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[35].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[35].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[36].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[36].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[36].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[36].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[36].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[36].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[36].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[36].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[36].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[36].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[37].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[37].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[37].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[37].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[37].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[37].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[37].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[37].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[37].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[37].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[38].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[38].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[38].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[38].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[38].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[38].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[38].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[38].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[38].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[38].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[39].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[39].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[39].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[39].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[39].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[39].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[39].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[39].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[39].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[39].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[40].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[40].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[40].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[40].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[40].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[40].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[40].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[40].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[40].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[40].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[41].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[41].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[41].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[41].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[41].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[41].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[41].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[41].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[41].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[41].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[42].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[42].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[42].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[42].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[42].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[42].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[42].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[42].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[42].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[42].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[43].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[43].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[43].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[43].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[43].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[43].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[43].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[43].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[43].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[43].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[44].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[44].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[44].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[44].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[44].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[44].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[44].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[44].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[44].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[44].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[45].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[45].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[45].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[45].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[45].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[45].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[45].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[45].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[45].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[45].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[46].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[46].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[46].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[46].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[46].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[46].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[46].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[46].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[46].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[46].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[47].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[47].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[47].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[47].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[47].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[47].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[47].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[47].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[47].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[47].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[48].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[48].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[48].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[48].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[48].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[48].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[48].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[48].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[48].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[48].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[49].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[49].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[49].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[49].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[49].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[49].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[49].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[49].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[49].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[49].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[50].fbMotionAxis.fbParMgrNc.fbNcParManager.nAxisId</Name>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[50].fbEncoderScaling.nRawEncoderULINT</Name>
+				<Type>ULINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[50].fbEncoderScaling.nRawEncoderUINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for UINT (Relative Encoders)]]></Comment>
+				<Type>UINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[50].fbEncoderScaling.nRawEncoderINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (LVDT)]]></Comment>
+				<Type>INT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[50].fbEncoderScaling.nRawEncoderDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL5072 LVDT)]]></Comment>
+				<Type>DINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[50].fbEncoderScaling.nRawEncoderUDINT</Name>
+				<Comment><![CDATA[ Raw encoder IO for INT (EL7062)]]></Comment>
+				<Type>UDINT</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[50].fbLimSwStatus.bLimitForwardEnable</Name>
+				<Comment><![CDATA[ Hardware 
+ NC Forward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[50].fbLimSwStatus.bLimitBackwardEnable</Name>
+				<Comment><![CDATA[ NC Backward Limit Switch: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[50].fbLimSwStatus.bLimitHome</Name>
+				<Comment><![CDATA[ NO Home Switch: TRUE if at home]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[50].fbMotionInterlocksCommon.bHardwareEnable</Name>
+				<Comment><![CDATA[ NC STO Input: TRUE if ok to move]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+		</Vars>
+		<Vars VarGrpType="2" AreaNo="1">
+			<Name>PlcTask Outputs</Name>
+			<Var>
+				<Name>Main.M1.Axis.PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.M1.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.M2.Axis.PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.M2.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotion01.fbMotionStage.fbDriveVirtual.MasterAxis.PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotion02.fbMotionStage.fbDriveVirtual.MasterAxis.PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[1].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[2].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[3].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[4].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[5].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[6].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[7].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[8].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[9].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[10].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[11].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[12].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[13].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[14].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[15].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[16].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[17].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[18].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[19].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[20].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[21].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[22].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[23].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[24].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[25].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[26].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[27].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[28].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[29].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[30].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[31].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[32].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[33].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[34].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[35].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[36].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[37].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[38].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[39].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[40].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[41].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[42].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[43].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[44].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[45].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[46].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[47].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[48].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[49].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.aAxisRef[50].PlcToNc</Name>
+				<Type GUID="{96B75FEB-2D84-43BE-A3EC-D9A681F27D52}" Namespace="MC">PLCTONC_AXIS_REF</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[1].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[2].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[3].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[4].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[5].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[6].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[7].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[8].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[9].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[10].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[11].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[12].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[13].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[14].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[15].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[16].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[17].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[18].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[19].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[20].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[21].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[22].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[23].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[24].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[25].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[26].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[27].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[28].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[29].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[30].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[31].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[32].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[33].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[34].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[35].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[36].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[37].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[38].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[39].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[40].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[41].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[42].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[43].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[44].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[45].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[46].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[47].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[48].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[49].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+			<Var>
+				<Name>Main.fbMotionArr[50].fbMotionAxis.fbBrake.bBrakeRelease</Name>
+				<Comment><![CDATA[ NC Brake Output: TRUE to release brake]]></Comment>
+				<Type>BOOL</Type>
+			</Var>
+		</Vars>
+		<Vars VarGrpType="8" AreaNo="4">
+			<Name>PlcTask Retains</Name>
+			<Var>
+				<Name>PMPS_GVL.SuccessfulPreemption</Name>
+				<Comment><![CDATA[ Any time BPTM applies a new BP request which is confirmed]]></Comment>
+				<Type>UDINT</Type>
+				<InOut>7</InOut>
+			</Var>
+			<Var>
+				<Name>PMPS_GVL.AccumulatedFF</Name>
+				<Comment><![CDATA[ Any time a FF occurs]]></Comment>
+				<Type>UDINT</Type>
+				<InOut>7</InOut>
+			</Var>
+			<Var>
+				<Name>PMPS_GVL.BP_jsonDoc</Name>
+				<Type>SJsonValue</Type>
+				<InOut>7</InOut>
+			</Var>
+		</Vars>
+	</Instance>
+</TcSmItem>

@@ -1,0 +1,7 @@
+# For intial setup, copy this file and rename it to RELEASE_SITE.
+# Update the EPICS_SITE_TOP, BASE_MODULE_VERSION, and EPICS_MODULES
+# to point to the correct paths and versions as needed.
+# Local environment: EPICS Base 7.0.3.1-2.0 with asyn R4.42-1.0.0.
+EPICS_SITE_TOP = /cds/group/pcds/epics
+BASE_MODULE_VERSION = R7.0.3.1-2.0
+EPICS_MODULES = $(EPICS_SITE_TOP)/$(BASE_MODULE_VERSION)/modules
